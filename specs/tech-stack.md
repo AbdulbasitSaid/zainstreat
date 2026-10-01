@@ -31,10 +31,11 @@ as containers on one self-hosted VPS, fronted by a reverse proxy.
 - **Next.js (App Router), React, TypeScript** — server-rendered pages for
   SEO (README §33) on public routes, with client components for the cart
   and admin interactivity.
-- **Tailwind CSS** — matches the brand's visual direction (rounded cards,
-  soft corners, subtle borders — README §34) without hand-rolled CSS
-  overhead, and makes the brand color tokens (README §3) easy to wire up as
-  Tailwind theme colors.
+- **Pico CSS** — a classless/semantic-HTML CSS framework that matches the
+  brand's visual direction (rounded cards, soft corners, subtle borders —
+  README §34) out of the box, with minimal markup overhead. Brand color
+  tokens (README §3) are wired up via Pico's CSS custom properties
+  (`--pico-primary`, etc.) rather than a utility-class theme.
 - **`next/image`** for image optimization, lazy loading, and modern formats
   (README §33 performance requirements).
 
@@ -129,7 +130,7 @@ which fits a small single-business deployment.
 
 | Concern | Choice |
 |---|---|
-| Frontend | Next.js (App Router) + React + TypeScript + Tailwind CSS |
+| Frontend | Next.js (App Router) + React + TypeScript + Pico CSS |
 | Backend API | Rust + Axum + sqlx + serde |
 | Database | PostgreSQL |
 | Admin auth | argon2 + tower-sessions (Postgres-backed sessions) |
