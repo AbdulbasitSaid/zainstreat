@@ -1,0 +1,15 @@
+# JS / web
+apps/web/node_modules/
+apps/web/.next/
+apps/web/.pnpm-store/
+apps/web/next-env.d.ts
+
+# Rust / api
+apps/api/target/
+
+# env
+.env
+.env.*.local
+
+# OS
+.DS_Store
