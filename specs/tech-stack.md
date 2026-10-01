@@ -24,7 +24,7 @@ Postgres MinIO   Email
 ```
 
 A single Next.js app talks to a single Rust API over HTTPS/JSON. Both run
-as containers on one self-hosted VPS, fronted by a reverse proxy.
+as containers on one AWS Lightsail VPS, fronted by a reverse proxy.
 
 ## Frontend
 
@@ -111,20 +111,53 @@ alongside, not a replacement for, the online ordering system.
 
 ## Hosting & Deployment
 
-- **Self-hosted VPS**, all services run via **Docker Compose**:
+- **AWS Lightsail VPS**, Ubuntu LTS blueprint, **`eu-central-1` (Frankfurt)**
+  — AWS has no region physically in the Netherlands; Frankfurt is the
+  closest full region and the standard low-latency choice for NL-based
+  traffic. 2 GB RAM plan (comfortable headroom for Postgres + MinIO + the
+  `web`/`api` containers + Caddy running concurrently), with a static IP
+  attached.
+- Lightsail's built-in firewall allows only `22` (SSH), `80`, and `443` —
+  no other ports are exposed publicly.
+- All services run via **Docker Compose**:
   - `web` — Next.js app
   - `api` — Rust/Axum API
   - `postgres` — database
   - `minio` — object storage
   - `caddy` — reverse proxy, automatic HTTPS via Let's Encrypt
-- Postgres and MinIO data are backed up on a regular schedule from the VPS
-  (mechanism to be defined during the deployment phase — see
-  `roadmap.md`).
+- In production, only `caddy` publishes ports to the host (`80`/`443`);
+  `web`, `api`, `postgres`, and `minio` are reachable solely over the
+  internal Docker network. A `docker-compose.prod.yml` override expresses
+  this (see `roadmap.md` Phase 2).
+- **CI/CD:** GitHub Actions builds the `web` and `api` Docker images on
+  every push to `master` and pushes them to a **private GHCR** registry,
+  then deploys over SSH as a dedicated, sudo-less `deploy` user (`docker`
+  group only — a separate key from the admin account used for manual
+  access). The Lightsail box never builds images itself; it only pulls
+  and runs them. True continuous deployment — no manual approval gate.
+- **Backups:** Lightsail's automatic daily instance snapshots (built-in
+  add-on) — no hand-rolled `pg_dump`/`mc mirror` scripts needed. This is
+  provisioned in `roadmap.md` Phase 2; restore is verified in Phase 14
+  once real data exists.
 
 _Why self-hosted over a managed PaaS (e.g. Vercel + managed Postgres):_
 decided explicitly — gives full control over the Rust API runtime and
 keeps all infrastructure (compute, DB, storage) on one bill and one box,
 which fits a small single-business deployment.
+
+_Why Lightsail over raw EC2:_ decided explicitly — Lightsail's flat
+monthly price already bundles a static IP, a data-transfer allowance, and
+snapshot backups, so there's no separate Elastic IP/EBS/security-group
+bookkeeping to maintain for a single-box deployment. Raw EC2 would offer
+more flexibility the business doesn't need yet; it can be revisited if the
+app ever outgrows one Lightsail instance.
+
+_Why build in CI and push to GHCR instead of building on the box:_ a 2 GB
+Lightsail instance is shared with Postgres, MinIO, and live traffic —
+running a Rust release compile and a Next.js build on it too is wasteful
+and would periodically starve the running services. GitHub's hosted
+runners absorb that cost for free, and the box's job shrinks to just
+"pull and run."
 
 ## Summary Table
 
@@ -137,5 +170,7 @@ which fits a small single-business deployment.
 | Image/object storage | MinIO (S3-compatible, self-hosted) |
 | Email (P1) | lettre + transactional email provider |
 | WhatsApp | `wa.me` deep links |
-| Hosting | Self-hosted VPS, Docker Compose |
+| Hosting | AWS Lightsail VPS (`eu-central-1`, Frankfurt), Docker Compose |
+| CI/CD | GitHub Actions → private GHCR → SSH deploy (dedicated `deploy` user) |
+| Backups | Lightsail automatic daily snapshots |
 | Reverse proxy / TLS | Caddy (automatic HTTPS) |
