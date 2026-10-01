@@ -1,0 +1,82 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-zainstreat}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-zainstreat_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-zainstreat}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-zainstreat} -d ${POSTGRES_DB:-zainstreat}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    # Official minio/minio images now require registry auth (Docker Hub repo
+    # removed, Quay returns 401 for anonymous pulls). alpine/minio is a
+    # community rebuild from MinIO's source, pinned to a dated release tag.
+    image: alpine/minio:RELEASE.2025-10-15T17-29-55Z
+    # the image's default non-root `minio` user can't write to a
+    # root-owned named volume on first create; dev-only, run as root.
+    user: "0:0"
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-zainstreat}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-zainstreat_dev}
+    volumes:
+      - minio_data:/data
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile.dev
+    working_dir: /app
+    volumes:
+      - ./apps/api:/app
+      - api_cargo_target:/app/target
+      - cargo_registry_cache:/usr/local/cargo/registry
+    command: cargo run
+    environment:
+      PORT: ${API_PORT:-8080}
+    ports:
+      - "${API_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
+  web:
+    image: node:22-bookworm-slim
+    working_dir: /app
+    volumes:
+      - ./apps/web:/app
+      - web_node_modules:/app/node_modules
+    command: sh -c "corepack enable && pnpm install && pnpm dev"
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+
+volumes:
+  postgres_data:
+  minio_data:
+  api_cargo_target:
+  cargo_registry_cache:
+  web_node_modules:
