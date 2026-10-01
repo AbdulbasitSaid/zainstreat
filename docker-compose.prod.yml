@@ -1,0 +1,40 @@
+services:
+  postgres:
+    ports: !reset []
+
+  minio:
+    ports: !reset []
+
+  api:
+    image: ghcr.io/abdulbasitsaid/zainstreat-api:latest
+    build: !reset null
+    working_dir: !reset null
+    volumes: !reset []
+    command: !reset null
+    ports: !reset []
+
+  web:
+    image: ghcr.io/abdulbasitsaid/zainstreat-web:latest
+    working_dir: !reset null
+    volumes: !reset []
+    command: !reset null
+    ports: !reset []
+
+  caddy:
+    image: caddy:2-alpine
+    env_file:
+      - .env
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - web
+      - api
+
+volumes:
+  caddy_data:
+  caddy_config:
