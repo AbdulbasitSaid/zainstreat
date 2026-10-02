@@ -104,6 +104,43 @@ completing all task groups in `plan.md`.
       accidental `motion/react` import inside a Server Component, which
       would otherwise fail the build).
 
+## Tailwind CSS v4 migration (addendum)
+
+- [x] `pnpm lint` and `pnpm build` (inside `apps/web`) both succeed with no
+      `@typescript-eslint/no-explicit-any` violations and no TypeScript
+      errors.
+- [x] All 6×2 locale routes (`/`, `about`, `services`, `contact`, `terms`,
+      `food-regulations` under both `/en` and `/nl`) return `200` via
+      `pnpm start` (or `node .next/standalone/server.js`).
+- [x] No `@picocss/pico` CSS ships in the built output — confirmed zero
+      `--pico-*` properties in the generated stylesheet, and zero
+      occurrences of "pico" in rendered page HTML.
+- [x] Sample `@theme`-generated utilities exist in the built CSS
+      (`bg-primary`, `rounded-card`, `ease-out-expo`, `animate-marquee`)
+      and the `@theme` tokens resolve to the correct README §3 values
+      (spot-checked `--container-brand`, `--color-whatsapp-dark`).
+- [x] `<html lang="en">`/`<html lang="nl">` still correct on every route
+      (confirmed via page source).
+- [x] Decorative shapes and image slots still appear only on Home/About
+      (hero + about-preview) and Services/Contact have none — unchanged
+      from before this migration (pre-existing, not a regression).
+- [x] Contact page's submit button still renders `disabled` with the
+      "not connected yet" `<Notice>` visible; footer newsletter form
+      fields still render `disabled`.
+- [ ] **Manual — not checked here** (no connected browser this session):
+      hamburger open/close animation and the new animated-X glyph;
+      visible focus-visible ring on every form field and the previously
+      unstyled footer newsletter input (the accessibility fix); keyboard-
+      only tab order through the redesigned nav; resize behavior exactly
+      at 768/769px (the `min-[769px]:!h-auto`/`!opacity-100` Tailwind
+      important-modifier rewrite of the old desktop `!important` override);
+      `prefers-reduced-motion: reduce` emulation; WCAG AA contrast on the
+      new/changed interactive states (focus rings, active-route nav
+      highlight); narrow (360px) and wide (1920px+) viewport layout; Dutch
+      copy length not breaking the tightened nav/button spacing. Re-run
+      these the same way the original Phase 5 checklist above specifies,
+      against the redesigned markup.
+
 ## Definition of done
 
 Phase 5 is complete when every box above is checked: Home, About,
@@ -111,9 +148,10 @@ Services, Contact (structural shell, no working submission), Terms, and
 Food Regulations all render correctly in both locales under
 locale-prefixed routes; a shared header (wordmark logo, nav, language
 toggle, Order Now CTA, working mobile hamburger) and footer render on
-every public page; the brand palette from README §3 is wired through Pico
-CSS custom properties rather than hardcoded colors scattered through
-components; all placeholder content (logo, contact details, Terms
+every public page; the brand palette from README §3 is wired through
+Tailwind CSS v4's `@theme` design tokens (`apps/web/app/globals.css`)
+rather than hardcoded colors scattered through components; all placeholder
+content (logo, contact details, Terms
 wording, Dutch translations) is visibly flagged rather than presented as
 final; no `apps/api` or deployment surface was touched; and
 `specs/roadmap.md`/`specs/tech-stack.md` reflect what was actually built.

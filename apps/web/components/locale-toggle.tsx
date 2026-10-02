@@ -11,11 +11,12 @@ export function LocaleToggle() {
   const router = useRouter();
 
   return (
-    <label>
-      {t("label")}:{" "}
+    <label className="inline-flex items-center gap-2 text-sm font-medium text-text">
+      {t("label")}
       <select
         value={locale}
         onChange={(e) => router.replace(pathname, { locale: e.target.value })}
+        className="rounded-full border border-text/20 bg-transparent px-3 py-1.5 text-sm text-text focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-accent focus-visible:outline-offset-2"
       >
         {routing.locales.map((l) => (
           <option key={l} value={l}>

@@ -78,11 +78,12 @@ the user directly; all four were resolved to the option below.
 Additional implementation decisions (not genuine forks — sensible,
 reversible defaults, not put to the user):
 
-5. **Pico CSS custom-property remapping, not a rewrite.** Brand colors
-   (README §3) are layered on top of the existing Pico import via CSS
-   custom properties, remapping the subset Pico itself reads
-   (`--pico-primary*`) so built-in Pico components (buttons, links, form
-   focus rings) inherit the brand with no per-component overrides.
+5. **Pico CSS custom-property remapping, not a rewrite.** *(Superseded —
+   see "Addendum — Tailwind CSS v4 migration" below; kept here for
+   history.)* Brand colors (README §3) are layered on top of the existing
+   Pico import via CSS custom properties, remapping the subset Pico itself
+   reads (`--pico-primary*`) so built-in Pico components (buttons, links,
+   form focus rings) inherit the brand with no per-component overrides.
 
 6. **`next/font/google` self-hosted pairing** — a strong display face for
    headings, a clean sans face for body copy (README §34). Exact typeface
@@ -205,3 +206,58 @@ Decisions (confirmed with the user):
   reveals, to avoid converting more server-rendered markup into client
   components than necessary. Flagged as a possible follow-up, not silently
   dropped.
+
+## Addendum — Tailwind CSS v4 migration
+
+After the brand system and motion/animation work above shipped, the user
+found the UI "not coming out well" under Pico and asked to replace it with
+Tailwind CSS before this phase merges, superseding Decision 5. This wasn't
+only a tooling swap: Pico's classless model was already being fought —
+the footer newsletter input stripped Pico's input chrome with `!important`
+overrides and shipped with **no replacement focus-visible style at all** (a
+genuine WCAG 2.4.7 gap, not a style preference), and a single blanket
+`a[role="button"], button { ... }` tag-selector rule styled every button on
+the page indiscriminately. Decisions (confirmed with the user):
+
+- **Scope: framework swap *and* a real redesign pass**, not a 1:1 utility
+  reproduction, specifically on nav/header/hamburger, forms, buttons/CTAs,
+  and overall layout/spacing/cards. The brand palette and the two
+  `next/font/google` typefaces (Work Sans body / Fraunces display) are
+  preserved exactly — the freedom granted is for layout, spacing, component
+  shapes, and interaction patterns, not colors or fonts.
+- **Tailwind CSS v4, CSS-first.** `apps/web/app/globals.css` now does
+  `@import "tailwindcss";` followed by an `@theme` block carrying the full
+  README §3 brand palette plus layout/motion tokens as native Tailwind
+  design tokens (`bg-primary`, `rounded-card`, `max-w-brand`, `py-section`,
+  `ease-out-expo`, `animate-marquee`, `animate-float-rotate`) — no
+  `tailwind.config.ts`; `apps/web/postcss.config.mjs` registers
+  `@tailwindcss/postcss`. `next/font/google`'s own `--font-display`/
+  `--font-body` custom properties are deliberately kept outside `@theme`
+  (that namespace would collide with Tailwind's own `--font-*` tokens) and
+  wired in `@layer base` exactly as before.
+- **New shared components replace most of the old global CSS classes**:
+  `components/button.tsx` (`<Button>`/`<ButtonLink>`, 4 variants, replacing
+  the blanket button tag-selector rule and several ad hoc overrides),
+  `components/split-row.tsx` (the alternating text/image layout, folding in
+  the old `.section-band` tint as a boolean prop), `components/
+  check-list.tsx`, `components/notice.tsx`, `components/page-hero.tsx`, and
+  `components/eyebrow.tsx`. `.container` and `.field` remain the only
+  named classes, kept in `@layer components` since both apply identically
+  across every call site with no conditional logic.
+- **Accessibility fix riding along with the redesign**: the footer
+  newsletter input's missing focus-visible state (see above) now gets the
+  same visible accent-colored focus ring as every other form field.
+- **Nav/header mechanics are unchanged** — `aria-expanded`/`aria-controls`/
+  `aria-label`/`inert`/the `useSyncExternalStore` desktop-query check/the
+  pathname-close effect all carry over verbatim; only the hamburger's
+  visuals (now an animated glyph-to-X), the mobile panel's surface
+  treatment, and a new active-route highlight changed. The old desktop
+  `!important` height/opacity override (needed because Motion drives those
+  same properties via inline style) is now Tailwind's `!`-prefixed
+  important modifier — the one easy-to-drop-by-accident mechanical detail
+  carried over from the original implementation.
+- **`.container` gained explicit centering/padding** (`margin-inline: auto`
+  plus responsive `padding-inline`) that Pico's own built-in `.container`
+  utility class had been silently supplying underneath the brand override
+  (the project's own `.container` rule only ever set `max-width`); removing
+  Pico removed that free centering, so it's now set explicitly.

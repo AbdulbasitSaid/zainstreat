@@ -460,3 +460,57 @@ already exist).
 10.7. `specs/tech-stack.md` and this phase's `requirement.md`/`validation.md`
       updated to document the decision and new checklist items (done as
       part of this addendum).
+
+## Group 11 — Tailwind CSS v4 migration (addendum)
+
+Added after Group 10 shipped — see `requirement.md`'s "Addendum —
+Tailwind CSS v4 migration". Depends on Groups 1–10 (every page/component
+this migration touches already exists).
+
+11.1. `apps/web/package.json` — remove `@picocss/pico`; add `tailwindcss`
+      and `@tailwindcss/postcss` as devDependencies
+      (`pnpm remove @picocss/pico && pnpm add -D tailwindcss
+      @tailwindcss/postcss`).
+
+11.2. New `apps/web/postcss.config.mjs` registering `@tailwindcss/postcss`.
+      No `tailwind.config.ts` (v4's automatic content detection covers this
+      codebase — no dynamic/interpolated class-name strings anywhere).
+
+11.3. `apps/web/app/globals.css` rewritten: `@import "tailwindcss"` replaces
+      the Pico import; `@theme` carries the full brand palette, `--radius-
+      card`, `--container-brand`, `--spacing-section`, `--ease-out-expo`,
+      and `--animate-marquee`/`--animate-float-rotate` (paired with the
+      existing top-level `@keyframes`); plain `:root` keeps `color-scheme`
+      and the `--transition-*` duration tokens (no matching Tailwind
+      namespace); `@layer base` keeps the font-family wiring, add a `main
+      h1`/`main p` base sizing rule (Tailwind's Preflight reset removes the
+      browser defaults Pico used to supply), and the reduced-motion safety
+      net; `@layer components` now only holds `.container` (gained explicit
+      `margin-inline: auto`/`padding-inline`, previously supplied silently
+      by Pico's own `.container` utility underneath the brand override) and
+      `.field` (shared form-control treatment).
+
+11.4. New components in `apps/web/components/`: `button.tsx`
+      (`<Button>`/`<ButtonLink>`, variants `primary`/`secondary`/`outline`/
+      `invert`), `split-row.tsx` (`<SplitRow media content reverse? tinted?
+      decoration?>`), `check-list.tsx`, `notice.tsx`, `page-hero.tsx`,
+      `eyebrow.tsx` — replacing the corresponding global CSS classes.
+
+11.5. Rewritten in place (Tailwind utilities, no behavior change unless
+      noted): `logo.tsx`, `image-slot.tsx`, `decorative-shape.tsx`,
+      `utility-bar.tsx`, `locale-toggle.tsx` (needed new explicit styling
+      Tailwind's Preflight doesn't supply for free the way Pico did),
+      `site-footer.tsx` (newsletter input gains a real focus-visible ring —
+      see requirement.md's accessibility-fix note), and `site-header.tsx`
+      (animated hamburger glyph, elevated mobile panel, active-route
+      highlight via `aria-current`; `aria-expanded`/`aria-controls`/
+      `inert`/the desktop-query hook/pathname-close effect all unchanged).
+
+11.6. All 6 page files (`app/[locale]/{page,about,services,contact,terms,
+      food-regulations}.tsx`) rewritten to use the new shared components
+      and inline Tailwind utilities in place of the removed global classes.
+      `app/[locale]/layout.tsx` untouched (font wiring unaffected).
+
+11.7. `specs/tech-stack.md` and this phase's `requirement.md`/`validation.md`
+      updated to document the decision and new checklist items (done as
+      part of this addendum).

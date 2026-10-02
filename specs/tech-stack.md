@@ -31,21 +31,29 @@ as containers on one AWS Lightsail VPS, fronted by a reverse proxy.
 - **Next.js (App Router), React, TypeScript** — server-rendered pages for
   SEO (README §33) on public routes, with client components for the cart
   and admin interactivity.
-- **Pico CSS** — a classless/semantic-HTML CSS framework that matches the
-  brand's visual direction (rounded cards, soft corners, subtle borders —
-  README §34) out of the box, with minimal markup overhead. Brand color
-  tokens (README §3) are wired up via Pico's CSS custom properties
-  (`--pico-primary`, etc.) rather than a utility-class theme. Concretely
-  (Phase 5): a brand override block appended to `apps/web/app/globals.css`
-  after the existing `@picocss/pico/css/pico.min.css` import, defining the
-  README §3 palette as `--color-*` custom properties and remapping the
-  subset Pico itself reads (`--pico-primary*`) onto them so built-in Pico
-  components inherit the brand automatically; `color-scheme: light` is
-  pinned explicitly (no dark-mode toggle — white background + food
-  photography is the brand direction, README §34). Typography pairs a
-  self-hosted `next/font/google` display face for headings with a sans
-  face for body copy, per README §34's "strong display heading / clean
-  sans-serif body" direction.
+- **Tailwind CSS v4** (replaced Pico CSS — see
+  `specs/2026-10-02-phase-5-public-static-pages/requirement.md`'s
+  "Addendum — Tailwind CSS v4 migration") — CSS-first configuration via an
+  `@theme` block directly in `apps/web/app/globals.css` (no
+  `tailwind.config.ts`), with the `@tailwindcss/postcss` plugin
+  (`apps/web/postcss.config.mjs`). The README §3 brand palette, card
+  radius, container width, section rhythm, and easing/animation tokens are
+  all defined as native Tailwind design tokens (`bg-primary`, `rounded-
+  card`, `max-w-brand`, `py-section`, `ease-out-expo`, `animate-marquee`)
+  rather than raw custom properties aliased onto a third-party framework's
+  token names. A handful of repeated multi-property patterns (the button
+  treatment, the alternating text/image layout, the form-control look) are
+  small shared React components (`apps/web/components/{button,split-row,
+  check-list,notice,page-hero,eyebrow}.tsx`) rather than global CSS
+  classes — `.container` and `.field` are the only names still kept in
+  `@layer components`, since both apply identically everywhere with no
+  conditional logic. `color-scheme: light` is still pinned explicitly (no
+  dark-mode toggle — white background + food photography is the brand
+  direction, README §34). Typography is unchanged: a self-hosted
+  `next/font/google` display face for headings paired with a sans face for
+  body copy (README §34), deliberately kept outside the Tailwind `@theme`
+  namespace since `next/font/google` already owns those exact CSS custom
+  property names.
 - **`next/image`** for image optimization, lazy loading, and modern formats
   (README §33 performance requirements).
 - **Strict TypeScript, no `any`:** `tsconfig.json`'s `strict: true` rejects
@@ -57,6 +65,17 @@ as containers on one AWS Lightsail VPS, fronted by a reverse proxy.
 _Why not Astro for the marketing pages:_ a single Next.js app is simpler to
 build, deploy, and maintain than two separate frontends, and Next.js still
 meets the SEO/SSR requirements in README §33.
+
+_Why Tailwind now, superseding Pico:_ Pico's classless model fit raw
+semantic HTML, but this codebase is React-component-heavy (most views are
+already own-built components, not bare tags), and a later redesign pass on
+nav/forms/buttons/layout needed real per-component control Pico wasn't
+giving without a fight — the footer newsletter input was already stripping
+Pico's input chrome with `!important` overrides and had no replacement
+focus-visible style at all. Tailwind v4's CSS-first `@theme` keeps the
+same token-driven approach the team already liked about the Pico-remapping
+setup, just as native Tailwind utilities instead of custom properties
+aliased onto someone else's token names.
 
 - **Motion** (`motion`, formerly Framer Motion) for scroll-triggered reveals,
   gesture/hover-driven animation, and the mobile nav/route transitions, plus
@@ -235,7 +254,7 @@ runners absorb that cost for free, and the box's job shrinks to just
 
 | Concern | Choice |
 |---|---|
-| Frontend | Next.js (App Router) + React + TypeScript + Pico CSS |
+| Frontend | Next.js (App Router) + React + TypeScript + Tailwind CSS v4 |
 | Animation | Motion (scroll/gesture/transitions) + Lenis (smooth scroll) + plain CSS (hover/focus/decorative) |
 | i18n | next-intl (locale-prefixed `/en`, `/nl` routing) |
 | Backend API | Rust + Axum + sqlx + serde |

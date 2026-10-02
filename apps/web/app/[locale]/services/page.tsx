@@ -1,74 +1,85 @@
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
-import { Reveal } from "@/components/reveal";
 import { ImageSlot } from "@/components/image-slot";
+import { SplitRow } from "@/components/split-row";
+import { PageHero } from "@/components/page-hero";
+import { ButtonLink } from "@/components/button";
+
+function SplitRowIndex({ children }: { children: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className="mb-2 block text-[clamp(2.25rem,4vw,3.25rem)] leading-none font-bold text-accent-light"
+    >
+      {children}
+    </span>
+  );
+}
 
 export default function ServicesPage() {
   const t = useTranslations("ServicesPage");
+  const supportingClass = "max-w-[48ch] text-[clamp(1.05rem,1.5vw,1.25rem)] text-text-muted";
 
   return (
     <main className="container">
-      <section className="page-hero">
-        <Reveal>
-          <h1 className="hero-heading">
-            {t.rich("heading", { em: (chunks) => <em>{chunks}</em> })}
-          </h1>
-        </Reveal>
-      </section>
+      <PageHero>
+        <h1 className="text-[clamp(2.5rem,5vw,4.25rem)]">
+          {t.rich("heading", { em: (chunks) => <em>{chunks}</em> })}
+        </h1>
+      </PageHero>
 
-      <section>
-        <Reveal>
-          <div className="split-row">
-            <div>
-              <span className="split-row-index" aria-hidden="true">01</span>
-              <h2>{t("mealsHeading")}</h2>
-              <p className="hero-supporting">{t("mealsCopy")}</p>
-            </div>
-            <ImageSlot label={t("mealsHeading")} />
+      <SplitRow
+        media={<ImageSlot label={t("mealsHeading")} />}
+        content={
+          <div>
+            <SplitRowIndex>01</SplitRowIndex>
+            <h2>{t("mealsHeading")}</h2>
+            <p className={supportingClass}>{t("mealsCopy")}</p>
           </div>
-        </Reveal>
-      </section>
+        }
+      />
 
-      <section className="section-band">
-        <Reveal>
-          <div className="split-row split-row--reverse">
-            <ImageSlot label={t("snacksHeading")} />
-            <div>
-              <span className="split-row-index" aria-hidden="true">02</span>
-              <h2>{t("snacksHeading")}</h2>
-              <p className="hero-supporting">{t("snacksCopy")}</p>
-            </div>
+      <SplitRow
+        tinted
+        reverse
+        media={<ImageSlot label={t("snacksHeading")} />}
+        content={
+          <div>
+            <SplitRowIndex>02</SplitRowIndex>
+            <h2>{t("snacksHeading")}</h2>
+            <p className={supportingClass}>{t("snacksCopy")}</p>
           </div>
-        </Reveal>
-      </section>
+        }
+      />
 
-      <section>
-        <Reveal>
-          <div className="split-row">
-            <div>
-              <span className="split-row-index" aria-hidden="true">03</span>
-              <h2>{t("cateringHeading")}</h2>
-              <p className="hero-supporting">{t("cateringCopy")}</p>
-              <Link href="/contact" role="button">{t("requestCateringQuote")}</Link>
-            </div>
-            <ImageSlot label={t("cateringHeading")} />
+      <SplitRow
+        media={<ImageSlot label={t("cateringHeading")} />}
+        content={
+          <div>
+            <SplitRowIndex>03</SplitRowIndex>
+            <h2>{t("cateringHeading")}</h2>
+            <p className={supportingClass}>{t("cateringCopy")}</p>
+            <ButtonLink href="/contact" className="mt-4">
+              {t("requestCateringQuote")}
+            </ButtonLink>
           </div>
-        </Reveal>
-      </section>
+        }
+      />
 
-      <section className="section-band">
-        <Reveal>
-          <div className="split-row split-row--reverse">
-            <ImageSlot label={t("eventRentalsHeading")} />
-            <div>
-              <span className="split-row-index" aria-hidden="true">04</span>
-              <h2>{t("eventRentalsHeading")}</h2>
-              <p className="hero-supporting">{t("eventRentalsCopy")}</p>
-              <Link href="/contact" role="button">{t("requestQuote")}</Link>
-            </div>
+      <SplitRow
+        tinted
+        reverse
+        media={<ImageSlot label={t("eventRentalsHeading")} />}
+        content={
+          <div>
+            <SplitRowIndex>04</SplitRowIndex>
+            <h2>{t("eventRentalsHeading")}</h2>
+            <p className={supportingClass}>{t("eventRentalsCopy")}</p>
+            <ButtonLink href="/contact" className="mt-4">
+              {t("requestQuote")}
+            </ButtonLink>
           </div>
-        </Reveal>
-      </section>
+        }
+      />
     </main>
   );
 }

@@ -9,7 +9,7 @@ export function DecorativeShape({
 }) {
   return (
     <div
-      className={`decorative-shape decorative-shape--circle ${className}`}
+      className={`absolute z-0 rounded-full bg-accent-light opacity-60 pointer-events-none motion-safe:animate-float-rotate ${className}`.trim()}
       style={style}
       aria-hidden="true"
     />
