@@ -5,7 +5,7 @@ sanity-checked before moving to the next.
 
 ## Group 0 — Lightsail instance
 
-0.1. Create a Lightsail instance: Ubuntu LTS (24.04) blueprint, 2 GB
+0.1. Create a Lightsail instance: Amazon Linux 2023 blueprint, 2 GB
      RAM / 1 vCPU / 60 GB SSD plan, region `eu-central-1` (Frankfurt,
      AZ `a`).
 
@@ -26,11 +26,13 @@ sanity-checked before moving to the next.
 
 Depends on: Group 0.
 
-1.1. SSH in as admin. Update packages (`apt update && apt upgrade -y`).
+1.1. SSH in as admin (`ec2-user`). Update packages (`sudo dnf
+     update -y`).
 
 1.2. Install Docker Engine + the Compose plugin per Docker's official
-     Ubuntu install steps (not the distro-packaged `docker.io`, to get a
-     current Compose v2).
+     Amazon Linux / CentOS install steps (not the distro-packaged
+     `docker`, to get a current Compose v2), and enable/start the
+     `docker` service.
 
 1.3. `git clone` this repository onto the instance (read-only deploy
      checkout, e.g. `/opt/zainstreat`) — only `docker-compose.yml`,

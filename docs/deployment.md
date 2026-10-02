@@ -1,7 +1,8 @@
 # Deployment
 
-Production runs on a single AWS Lightsail instance (Ubuntu LTS, 2 GB RAM,
-`eu-central-1`) reachable at `zainstreat.com` / `api.zainstreat.com`.
+Production runs on a single AWS Lightsail instance (Amazon Linux 2023,
+2 GB RAM, `eu-central-1`) reachable at `zainstreat.com` /
+`api.zainstreat.com`.
 Images are built on GitHub's runners, pushed to a private GHCR registry,
 and pulled by the server — the server never builds anything itself.
 
@@ -29,8 +30,8 @@ The workflow above only works once the following exists. None of it is
 created by code in this repo — see `specs/2026-10-01-phase-2-aws-deployment/
 plan.md` for full step-by-step detail; summarized here:
 
-- **Lightsail instance** (`plan.md` Group 0): Ubuntu LTS, 2 GB plan,
-  `eu-central-1`, a static IP attached, firewall restricted to
+- **Lightsail instance** (`plan.md` Group 0): Amazon Linux 2023, 2 GB
+  plan, `eu-central-1`, a static IP attached, firewall restricted to
   `22`/`80`/`443`, automatic daily snapshot add-on enabled.
 - **Server bootstrap** (`plan.md` Group 1): Docker Engine + Compose
   plugin installed (Docker's official steps, not `docker.io`), this repo
