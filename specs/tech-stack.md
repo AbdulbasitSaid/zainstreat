@@ -38,6 +38,11 @@ as containers on one AWS Lightsail VPS, fronted by a reverse proxy.
   (`--pico-primary`, etc.) rather than a utility-class theme.
 - **`next/image`** for image optimization, lazy loading, and modern formats
   (README §33 performance requirements).
+- **Strict TypeScript, no `any`:** `tsconfig.json`'s `strict: true` rejects
+  implicit `any`; `eslint.config.mjs` additionally sets
+  `@typescript-eslint/no-explicit-any` to `error` so explicit `any`
+  annotations are rejected too. Use precise types, `unknown` with a type
+  guard/narrowing, or a generic instead.
 
 _Why not Astro for the marketing pages:_ a single Next.js app is simpler to
 build, deploy, and maintain than two separate frontends, and Next.js still
