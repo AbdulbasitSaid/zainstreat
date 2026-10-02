@@ -84,8 +84,11 @@ real environment instead of one big-bang deploy at the end (per
 
 ## Phase 5 — Public Static Pages
 
-- Home, About, Contact (static shell), Terms & Conditions, Food Regulations
-  pages — no dynamic data yet.
+- Home, About, Services, Contact (static shell), Terms & Conditions, Food
+  Regulations pages — no dynamic data yet.
+- Services page (Meals, Snacks, Catering, Event Rentals detail sections
+  per README §12, each with a "Request a Quote" CTA linking to Contact —
+  the enquiry form itself is Phase 12's job).
 - Brand system applied: color tokens, typography, logo placement, base
   layout/navigation (desktop + mobile hamburger).
 

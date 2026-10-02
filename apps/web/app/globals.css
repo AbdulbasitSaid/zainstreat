@@ -1,1 +1,152 @@
-@import "@picocss/pico/css/pico.min.css";
+@import "tailwindcss";
+
+@theme {
+  /* Brand palette (README §3) */
+  --color-primary: #A7041B;
+  --color-primary-dark: #71013B;
+  --color-primary-light: #E2073E;
+  --color-accent: #F93173;
+  --color-accent-light: #F4B7C7;
+  --color-background: #FFFFFF;
+  --color-background-soft: #FAE8EA;
+  --color-cream: #FBF4E9;
+  --color-card: #F2EDE3;
+  --color-text: #2B1114;
+  --color-text-muted: #55343A;
+  --color-text-light: #FFFFFF;
+  --color-whatsapp: #1DA332;
+  --color-whatsapp-dark: #0C7026;
+  --color-on-dark-link: #EAD9E2;
+  --color-on-dark-body: #E3CCD8;
+  --color-on-dark-label: #D4B3C4;
+  --color-on-dark-faint: #CDA6BA;
+
+  /* Layout rhythm */
+  --container-brand: 1280px;
+  --spacing-section: clamp(3rem, 6vw, 6.5rem);
+  --radius-card: 1.25rem;
+
+  /* Motion */
+  --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-marquee: marquee-scroll 26s linear infinite;
+  --animate-float-rotate: float-rotate 12s ease-in-out infinite;
+}
+
+@keyframes marquee-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes float-rotate {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-12px) rotate(8deg);
+  }
+}
+
+:root {
+  color-scheme: light; /* force light theme — food photography on a white
+    background is the brand direction (README §3, §34); don't let a
+    visitor's OS dark-mode setting invert it. Do not add a dark-mode
+    toggle component in this phase. */
+
+  /* Motion durations — no matching Tailwind v4 theme namespace, used via
+     transition-duration: var(--transition-*) or duration-[var(--transition-*)] */
+  --transition-fast: 150ms;
+  --transition-base: 250ms;
+  --transition-slow: 450ms;
+}
+
+@layer base {
+  body {
+    font-family: var(--font-body), sans-serif;
+    color: var(--color-text);
+    background: var(--color-cream);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display), serif;
+    letter-spacing: -0.01em;
+    line-height: 1.1;
+  }
+  h1 em, h2 em {
+    font-style: italic;
+    font-weight: 600;
+    color: var(--color-primary);
+  }
+  main h1 {
+    font-size: clamp(2.25rem, 4.5vw, 3.25rem);
+    margin-bottom: 1rem;
+  }
+  main section h2 {
+    font-size: clamp(1.85rem, 3.2vw, 2.75rem);
+    margin-bottom: 0.75rem;
+  }
+  main p {
+    margin-bottom: 1rem;
+  }
+  main p:last-child {
+    margin-bottom: 0;
+  }
+
+  main section {
+    padding-block: var(--spacing-section);
+  }
+  main section:first-child {
+    padding-top: clamp(2.5rem, 5vw, 4rem);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  .container {
+    max-width: var(--container-brand);
+    margin-inline: auto;
+    padding-inline: 1.25rem;
+  }
+  @media (min-width: 769px) {
+    .container {
+      padding-inline: 2rem;
+    }
+  }
+
+  .field {
+    display: block;
+    width: 100%;
+    border-radius: 0.9rem;
+    border: 1.5px solid rgba(43, 17, 20, 0.14);
+    background: var(--color-background);
+    color: var(--color-text);
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+    transition: border-color var(--transition-fast) var(--ease-out-expo),
+      box-shadow var(--transition-fast) var(--ease-out-expo);
+  }
+  .field::placeholder {
+    color: var(--color-text-muted);
+    opacity: 0.7;
+  }
+  .field:focus-visible {
+    outline: none;
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px rgba(249, 49, 115, 0.25);
+  }
+}

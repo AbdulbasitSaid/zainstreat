@@ -84,7 +84,7 @@ The website palette is derived from the supplied logo.
 
 | Token | Color | Hex | Usage |
 |---|---|---|---|
-| `primary-dark` | Deep Burgundy | `#5E0407` | Dark sections, footer, headings |
+| `primary-dark` | Deep Wine | `#71013B` | Dark sections, footer, headings |
 | `primary` | Primary Crimson | `#A7041B` | Primary buttons, links, key UI |
 | `primary-light` | Bright Crimson | `#E2073E` | Secondary CTA, highlights |
 | `accent` | Hot Pink | `#F93173` | Small accents, decorative elements |
@@ -101,7 +101,7 @@ The website palette is derived from the supplied logo.
 :root {
   /* Brand */
   --color-primary: #A7041B;
-  --color-primary-dark: #5E0407;
+  --color-primary-dark: #71013B;
   --color-primary-light: #E2073E;
 
   /* Accent */
@@ -111,7 +111,7 @@ The website palette is derived from the supplied logo.
   /* Background */
   --color-background: #FFFFFF;
   --color-background-soft: #FAE8EA;
-  --color-background-dark: #5E0407;
+  --color-background-dark: #71013B;
 
   /* Text */
   --color-text: #2B1114;
