@@ -129,3 +129,27 @@ reversible defaults, not put to the user):
   link to `/contact`, which itself has no working form submission yet —
   by design (Phase 12 builds the real enquiry workflow), but worth noting
   so it isn't mistaken for an oversight during review.
+
+## Addendum — real brand assets supplied
+
+Before this phase merged, the real logo and a professional marketing
+banner were supplied, resolving part of Decisions 1 and 3 above:
+
+- **Decision 1 (logo) resolved.** The real circular logo asset now ships
+  at `apps/web/public/logo.jpg` and renders via `<Logo>`
+  (`apps/web/components/logo.tsx`), replacing the text wordmark. Also used
+  for `apps/web/app/icon.png` (favicon).
+- **Color accuracy.** Pixel-sampling the logo and banner confirmed
+  README's `--color-primary` (`#A7041B`) and `--color-accent` (`#F93173`)
+  already matched the real logo closely. The banner's sampled dark color
+  (`#71013B`, a wine/magenta) differed from README's documented
+  `--color-primary-dark` (`#5E0407`, a brownish red); the user chose to
+  adopt the banner's value. README §3 and `globals.css` were updated to
+  `#71013B`.
+- **Decision 3 (contact details) partially resolved.** Phone and WhatsApp
+  number (`+31 6 30545277`, used for both) and an Instagram handle
+  (`@zain_treats`) are now real and shown on the Contact page and the
+  homepage's WhatsApp CTA. A TikTok handle (`@Zain's Treats.nl`) is shown
+  as text only — not linked, since its URL-safe handle isn't known.
+  Business address and opening hours remain genuinely unknown and still
+  show `[to be added]`-style placeholders.

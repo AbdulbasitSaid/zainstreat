@@ -9,11 +9,13 @@ export default function ContactPage() {
 
       <section>
         <ul>
-          <li>{t("phoneLabel")}: {t("phonePlaceholder")}</li>
+          <li>{t("phoneLabel")}: <a href="tel:+31630545277">{t("phoneValue")}</a></li>
           <li>{t("emailLabel")}: {t("emailPlaceholder")}</li>
-          <li>{t("whatsappLabel")}: {t("whatsappPlaceholder")}</li>
+          <li>{t("whatsappLabel")}: <a href="https://wa.me/31630545277" target="_blank" rel="noopener noreferrer">{t("whatsappValue")}</a></li>
           <li>{t("addressLabel")}: {t("addressPlaceholder")}</li>
           <li>{t("hoursLabel")}: {t("hoursPlaceholder")}</li>
+          <li>{t("instagramLabel")}: <a href="https://instagram.com/zain_treats" target="_blank" rel="noopener noreferrer">{t("instagramHandle")}</a></li>
+          <li>{t("tiktokLabel")}: {t("tiktokHandle")}</li>
         </ul>
       </section>
 

@@ -13,7 +13,7 @@ export default function Home() {
           <Link href="/contact" role="button">{t("orderNow")}</Link>{" "}
           <Link href="/contact" role="button" className="secondary">{t("bookCatering")}</Link>{" "}
           <a
-            href="https://wa.me/"
+            href="https://wa.me/31630545277"
             role="button"
             className="outline"
             style={{ borderColor: "var(--color-whatsapp)", color: "var(--color-whatsapp)" }}

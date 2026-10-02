@@ -8,7 +8,7 @@
 
   /* Brand palette (README §3) */
   --color-primary: #A7041B;
-  --color-primary-dark: #5E0407;
+  --color-primary-dark: #71013B;
   --color-primary-light: #E2073E;
   --color-accent: #F93173;
   --color-accent-light: #F4B7C7;
@@ -43,11 +43,11 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .logo {
-  font-family: var(--font-display), serif;
-  font-weight: 700;
-  font-size: 1.25rem;
-  color: var(--color-primary);
-  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+.logo img {
+  border-radius: 50%;
 }
 
 .site-header {
