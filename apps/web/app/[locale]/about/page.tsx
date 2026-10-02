@@ -24,7 +24,7 @@ export default function AboutPage() {
         </Reveal>
       </section>
 
-      <section>
+      <section className="section-band">
         <Reveal>
           <div className="split-row split-row--reverse">
             <ImageSlot label={t("ourMission")} />

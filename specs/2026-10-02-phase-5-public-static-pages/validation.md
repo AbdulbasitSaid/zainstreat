@@ -67,6 +67,11 @@ completing all task groups in `plan.md`.
 - [ ] Manual contrast spot-check: brand crimson/burgundy text on white
       background and white text on the burgundy footer both read as
       comfortably readable (full WCAG AA audit is Phase 14's job).
+- [ ] Contrast fix follow-up (2026-10-02): the WhatsApp hero button
+      (`--color-whatsapp-dark`), muted body/caption text
+      (`--color-text-muted`), and the footer's link/body/label/note tiers
+      (`--color-on-dark-*`) were re-checked in devtools and all clear
+      WCAG AA (≥4.5:1) — see `apps/web/app/globals.css` `:root` tokens.
 
 ## Motion/animation system (addendum)
 

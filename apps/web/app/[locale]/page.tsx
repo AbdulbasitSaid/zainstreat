@@ -68,7 +68,7 @@ export default function Home() {
                   href="https://wa.me/31630545277"
                   role="button"
                   className="outline"
-                  style={{ borderColor: "var(--color-whatsapp)", color: "var(--color-whatsapp)" }}
+                  style={{ borderColor: "var(--color-whatsapp-dark)", color: "var(--color-whatsapp-dark)" }}
                 >
                   {t("whatsappUs")}
                 </a>
