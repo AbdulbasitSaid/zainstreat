@@ -412,3 +412,51 @@ shipped).
 ## Group 9 — Verification
 
 See `validation.md` for the full pass/fail checklist.
+
+## Group 10 — Motion/animation system (addendum)
+
+Added after the phase's original static shell shipped — see
+`requirement.md`'s "Addendum — motion/animation system". Depends on
+Groups 1–7 (brand tokens, header/footer, layout, and all page routes
+already exist).
+
+10.1. `apps/web/package.json` — add `motion` and `lenis` as dependencies;
+      `pnpm add motion lenis` inside `apps/web`.
+
+10.2. `apps/web/app/globals.css` — add motion tokens
+      (`--transition-fast/base/slow`, `--ease-out-expo`) to `:root`; add
+      hover/active/focus-visible CSS for `a[role="button"]`/`button`/links;
+      add `.decorative-shape`/`.decorative-shape--circle`/
+      `@keyframes float-rotate`; add `.image-slot`; add the
+      `prefers-reduced-motion: reduce` blanket safety net; update
+      `#primary-navigation`'s base/desktop rules for the `inert`-based
+      hamburger (see 10.4).
+
+10.3. New components in `apps/web/components/`:
+      - `motion-provider.tsx` (`"use client"`) — mounts/tears down Lenis,
+        no-ops under reduced motion.
+      - `reveal.tsx` (`"use client"`) — `<Reveal stagger?>` scroll-triggered
+        fade-up wrapper.
+      - `decorative-shape.tsx` (server component) — ambient CSS-animated
+        brand circle.
+      - `image-slot.tsx` (server component) — image-placeholder pattern.
+      - `page-transition.tsx` (`"use client"`) — `AnimatePresence`-based
+        route fade, keyed on the locale-aware pathname.
+
+10.4. `apps/web/components/site-header.tsx` — replace the `hidden`
+      attribute on `#primary-navigation` with `inert`, and animate
+      `height`/`opacity` via `motion.ul`'s `animate` prop instead of a
+      mount/unmount, so desktop's always-visible nav isn't broken by
+      conditional mounting.
+
+10.5. `apps/web/app/[locale]/layout.tsx` — mount `<MotionProvider />` and
+      wrap `{children}` in `<PageTransition>`.
+
+10.6. Per-page wiring — wrap existing `<section>`/list/group content in
+      `<Reveal>` (richer treatment + `<DecorativeShape>`/`<ImageSlot>` on
+      Home/About/Services/Contact; calmer bare `<Reveal>` only on Terms/
+      Food Regulations, with a one-line comment marking that as deliberate).
+
+10.7. `specs/tech-stack.md` and this phase's `requirement.md`/`validation.md`
+      updated to document the decision and new checklist items (done as
+      part of this addendum).

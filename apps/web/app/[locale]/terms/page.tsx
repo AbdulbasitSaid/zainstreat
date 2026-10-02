@@ -1,5 +1,7 @@
 import { useTranslations } from "next-intl";
+import { Reveal } from "@/components/reveal";
 
+// Legal page: calm fade-up only — no decorative shapes, no stagger.
 const SECTIONS = [
   "ordering",
   "payment",
@@ -22,10 +24,12 @@ export default function TermsPage() {
       <p className="notice-banner">{t("legalReviewNotice")}</p>
 
       {SECTIONS.map((section) => (
-        <section key={section}>
-          <h2>{t(`${section}Heading`)}</h2>
-          <p>{t(`${section}Copy`)}</p>
-        </section>
+        <Reveal key={section}>
+          <section>
+            <h2>{t(`${section}Heading`)}</h2>
+            <p>{t(`${section}Copy`)}</p>
+          </section>
+        </Reveal>
       ))}
     </main>
   );

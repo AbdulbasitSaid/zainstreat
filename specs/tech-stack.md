@@ -58,6 +58,35 @@ _Why not Astro for the marketing pages:_ a single Next.js app is simpler to
 build, deploy, and maintain than two separate frontends, and Next.js still
 meets the SEO/SSR requirements in README §33.
 
+- **Motion** (`motion`, formerly Framer Motion) for scroll-triggered reveals,
+  gesture/hover-driven animation, and the mobile nav/route transitions, plus
+  **Lenis** for the global smooth-scroll feel (Phase 5 addendum — see
+  `specs/2026-10-02-phase-5-public-static-pages/requirement.md`). Both ship
+  native TypeScript types, so no `any` is needed under the no-`any` rule
+  above. Motion/Lenis usage is confined to small `"use client"` wrapper
+  components (`apps/web/components/{motion-provider,reveal,page-transition}.tsx`)
+  imported into otherwise-server-component pages — Motion throws a build
+  error if imported directly into a Server Component, so this boundary is
+  enforced by the framework, not just convention. `prefers-reduced-motion`
+  is respected at three layers: each animating component's
+  `useReducedMotion()` check, Lenis never initializing under reduced
+  motion, and a blanket CSS safety net in `globals.css`.
+
+_Why Motion + Lenis over GSAP:_ Motion is React-idiomatic (declarative
+`variants`/`whileInView`, hooks-based), which fits this codebase's existing
+component model better than GSAP's imperative, DOM-ref-driven API — and it
+keeps the dependency surface and learning curve smaller for a site this
+size. GSAP's timeline/ScrollTrigger power isn't needed for the reveal/hover/
+transition scope decided here; this can be revisited if a future phase
+needs more elaborate scroll choreography.
+
+_Why not plain CSS alone:_ CSS transitions/`@keyframes` handle hover,
+press, focus, and the ambient decorative shapes fine (and are used for
+exactly those), but can't do scroll-into-view triggering or animate a
+disclosure panel's `height: auto` cleanly — Motion is reserved for those
+two cases only, keeping the CSS/JS split deliberate rather than
+all-or-nothing.
+
 ## Internationalization (i18n)
 
 - **`next-intl@^4.14`** — locale-prefixed routing (`/en/...`, `/nl/...`),
@@ -207,6 +236,7 @@ runners absorb that cost for free, and the box's job shrinks to just
 | Concern | Choice |
 |---|---|
 | Frontend | Next.js (App Router) + React + TypeScript + Pico CSS |
+| Animation | Motion (scroll/gesture/transitions) + Lenis (smooth scroll) + plain CSS (hover/focus/decorative) |
 | i18n | next-intl (locale-prefixed `/en`, `/nl` routing) |
 | Backend API | Rust + Axum + sqlx + serde |
 | Database | PostgreSQL |

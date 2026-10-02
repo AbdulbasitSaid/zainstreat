@@ -5,6 +5,8 @@ import { Fraunces, Work_Sans } from "next/font/google";
 import { routing } from "@/i18n/routing";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { MotionProvider } from "@/components/motion-provider";
+import { PageTransition } from "@/components/page-transition";
 import "../globals.css";
 
 const displayFont = Fraunces({
@@ -41,8 +43,9 @@ export default async function LocaleLayout({
     <html lang={locale} className={`${displayFont.variable} ${bodyFont.variable}`}>
       <body>
         <NextIntlClientProvider>
+          <MotionProvider />
           <SiteHeader />
-          {children}
+          <PageTransition>{children}</PageTransition>
           <SiteFooter />
         </NextIntlClientProvider>
       </body>

@@ -153,3 +153,55 @@ banner were supplied, resolving part of Decisions 1 and 3 above:
   as text only — not linked, since its URL-safe handle isn't known.
   Business address and opening hours remain genuinely unknown and still
   show `[to be added]`-style placeholders.
+
+## Addendum — motion/animation system
+
+After this phase's static shell shipped, the user asked for the public
+pages to feel more "award-winning" — real animation, transitions, and
+hover/click feedback, referencing sites like elevaremarket.com,
+burgerfuel.com, and awwwards.com — rather than the completely static
+baseline this phase originally delivered. This is treated as an extension
+of this phase's own "brand system applied... base layout/navigation" scope
+rather than a new phase, since no new product functionality is involved.
+
+Decisions (confirmed with the user):
+
+- **Scope:** the animated treatment applies to all 6 pages, with Home/
+  About/Services/Contact getting the richer treatment (scroll reveals,
+  decorative shapes, image slots) and Terms/Food Regulations a calmer one
+  (plain fade-up only, no decorative motion) — legal/compliance pages
+  should read as trustworthy and scannable, not flashy.
+- **No real food photography exists yet.** The visual "pop" comes from
+  motion, color, shape, and typography instead. A new `<ImageSlot>`
+  component (`apps/web/components/image-slot.tsx`) extends the existing
+  `[to be added]`-style placeholder pattern (Decision 3 above) to imagery —
+  swapping in a real photo later is a one-line change per call site.
+- **Library choice: Motion (`motion`, formerly Framer Motion) + Lenis**
+  (smooth scroll), not GSAP, not Tailwind — see `specs/tech-stack.md`'s
+  Frontend section for the full rationale. Both are fully typed, so this
+  doesn't conflict with the no-`any` rule.
+- **Decorative motifs are simple CSS-drawn circles for v1**, not a custom
+  SVG illustration — fast, zero asset risk, swappable once real brand
+  illustration/photography exists.
+- **Animated page-to-page route transitions are included** (a fade on
+  navigation, via `apps/web/components/page-transition.tsx`), not deferred.
+- **`prefers-reduced-motion` is respected from the start** (not deferred to
+  the Phase 14 accessibility audit): every animating component checks
+  Motion's `useReducedMotion()`, Lenis never initializes under reduced
+  motion, and a blanket CSS safety net zeroes any remaining
+  animation/transition durations.
+- **The mobile hamburger panel's underlying mechanism changed**: the
+  `hidden` attribute (toggled previously) is replaced with the native
+  `inert` attribute, with Motion animating `height`/`opacity` for the
+  open/close transition instead of a mount/unmount. The desktop
+  `@media (min-width: 769px)` override in `globals.css` was updated
+  accordingly (forces `height`/`opacity` rather than overriding `[hidden]`)
+  so desktop nav visibility is unaffected. `validation.md`'s existing
+  hamburger checklist item is updated to reference `inert` instead of
+  `hidden`.
+- **Per-item stagger inside list/grid groups (e.g. `.trust-indicators`,
+  `.services-overview`) is explicitly out of scope for v1** — each group
+  gets one unified fade-up via `<Reveal>` rather than per-item staggered
+  reveals, to avoid converting more server-rendered markup into client
+  components than necessary. Flagged as a possible follow-up, not silently
+  dropped.

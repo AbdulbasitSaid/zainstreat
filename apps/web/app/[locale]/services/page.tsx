@@ -1,5 +1,7 @@
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
+import { Reveal } from "@/components/reveal";
+import { ImageSlot } from "@/components/image-slot";
 
 export default function ServicesPage() {
   const t = useTranslations("ServicesPage");
@@ -9,25 +11,37 @@ export default function ServicesPage() {
       <h1>{t("heading")}</h1>
 
       <section>
-        <h2>{t("mealsHeading")}</h2>
-        <p>{t("mealsCopy")}</p>
+        <Reveal>
+          <h2>{t("mealsHeading")}</h2>
+          <p>{t("mealsCopy")}</p>
+          <ImageSlot label={t("mealsHeading")} />
+        </Reveal>
       </section>
 
       <section>
-        <h2>{t("snacksHeading")}</h2>
-        <p>{t("snacksCopy")}</p>
+        <Reveal>
+          <h2>{t("snacksHeading")}</h2>
+          <p>{t("snacksCopy")}</p>
+          <ImageSlot label={t("snacksHeading")} />
+        </Reveal>
       </section>
 
       <section>
-        <h2>{t("cateringHeading")}</h2>
-        <p>{t("cateringCopy")}</p>
-        <Link href="/contact" role="button">{t("requestCateringQuote")}</Link>
+        <Reveal>
+          <h2>{t("cateringHeading")}</h2>
+          <p>{t("cateringCopy")}</p>
+          <ImageSlot label={t("cateringHeading")} />
+          <Link href="/contact" role="button">{t("requestCateringQuote")}</Link>
+        </Reveal>
       </section>
 
       <section>
-        <h2>{t("eventRentalsHeading")}</h2>
-        <p>{t("eventRentalsCopy")}</p>
-        <Link href="/contact" role="button">{t("requestQuote")}</Link>
+        <Reveal>
+          <h2>{t("eventRentalsHeading")}</h2>
+          <p>{t("eventRentalsCopy")}</p>
+          <ImageSlot label={t("eventRentalsHeading")} />
+          <Link href="/contact" role="button">{t("requestQuote")}</Link>
+        </Reveal>
       </section>
     </main>
   );

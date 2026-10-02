@@ -31,8 +31,9 @@ completing all task groups in `plan.md`.
 - [ ] Resize the viewport below 768px (or use browser devtools device
       emulation): the nav list disappears, a hamburger button appears.
 - [ ] Clicking the hamburger toggles `aria-expanded` (`false` → `true`) and
-      reveals the nav list (`#primary-navigation` loses its `hidden`
-      attribute) — confirmed via devtools, not just visually.
+      reveals the nav list (`#primary-navigation` loses its `inert`
+      attribute and animates open) — confirmed via devtools, not just
+      visually.
 - [ ] Navigating to another page while the mobile menu is open
       automatically closes it (no stale open menu after a route change).
 - [ ] Resize back above 769px: the hamburger disappears and the full nav
@@ -58,13 +59,45 @@ completing all task groups in `plan.md`.
       migrations/seed script untouched.
 - [ ] `git diff master --stat` for this branch touches only
       `apps/web/app/**`, `apps/web/components/**`, `apps/web/messages/**`,
-      `apps/web/app/globals.css`, `docs/local-development.md`,
+      `apps/web/app/globals.css`, `apps/web/package.json`,
+      `apps/web/pnpm-lock.yaml`, `docs/local-development.md`,
       `specs/tech-stack.md`, `specs/roadmap.md`, and the new
       `specs/2026-10-02-phase-5-public-static-pages/` folder — nothing in
       `apps/api/**`, `docker-compose*.yml`, or `.github/workflows/**`.
 - [ ] Manual contrast spot-check: brand crimson/burgundy text on white
       background and white text on the burgundy footer both read as
       comfortably readable (full WCAG AA audit is Phase 14's job).
+
+## Motion/animation system (addendum)
+
+- [ ] Chrome DevTools → Rendering → "Emulate CSS prefers-reduced-motion:
+      reduce" (or OS-level Reduce Motion), reload every page: Lenis never
+      initializes, `<Reveal>` content shows instantly (no fade-up delay),
+      the hamburger and route transitions have effectively zero duration,
+      and the decorative shape's float animation is absent.
+- [ ] With no emulation (default motion): each page's `<Reveal>`-wrapped
+      sections fade up as they scroll into view (not pre-visible on load,
+      not stuck invisible after scrolling past them).
+- [ ] Decorative shapes and image slots appear only on Home, About,
+      Services, and Contact — confirmed absent on Terms and Food
+      Regulations via devtools inspection.
+- [ ] Button/CTA/nav/footer links show a visible hover lift and press
+      state, and a visible focus ring when tabbed to.
+- [ ] Hamburger panel animates open/closed smoothly below 768px; resizing
+      back above 769px still always shows the full nav regardless of the
+      toggle's last state (the `inert`-based rework didn't regress this).
+- [ ] Keyboard-only pass still holds: Tab reaches the hamburger, Enter/
+      Space toggles it, Tab continues into the revealed nav links in
+      order, no keyboard trap.
+- [ ] Navigating between pages shows a brief fade transition; scroll
+      position resets to the top of the new page as before.
+- [ ] Scrolling with a mouse wheel/trackpad shows the Lenis smooth-scroll
+      feel; keyboard scrolling (arrow keys, Page Down, Space) and
+      screen-reader scrolling still work natively and aren't degraded.
+- [ ] `pnpm lint` and `pnpm build` both succeed with no
+      `@typescript-eslint/no-explicit-any` violations (confirms no
+      accidental `motion/react` import inside a Server Component, which
+      would otherwise fail the build).
 
 ## Definition of done
 
