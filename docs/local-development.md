@@ -9,6 +9,19 @@
      `MINIO_ROOT_PASSWORD` from `.env`)
 4. `docker compose down` when done.
 
+## Database
+
+- Migrations run automatically on API container startup — no manual step
+  for a normal `docker compose up`.
+- To add a new migration: `cd apps/api && sqlx migrate add -r <name>`.
+- To regenerate the offline query cache after changing a query:
+  `cd apps/api && cargo sqlx prepare` (requires `DATABASE_URL` exported
+  and the dev stack running — see the note above `.env.example`'s
+  Postgres block), then commit `.sqlx/`.
+- To load sample data: `docker compose exec -T postgres psql -U
+  $POSTGRES_USER -d $POSTGRES_DB < apps/api/seed.sql` (or the equivalent
+  run locally against `localhost:$POSTGRES_PORT`).
+
 ## Internationalization (Dutch/English)
 
 The public site is served under locale-prefixed routes (`/en`, `/nl`),
