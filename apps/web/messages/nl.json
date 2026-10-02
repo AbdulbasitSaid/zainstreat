@@ -23,6 +23,7 @@
     "footerNavLabel": "Footer-navigatie"
   },
   "HomePage": {
+    "heroEyebrow": "Catering- en Evenementenspecialisten",
     "heroHeadline": "Heerlijk Eten. Onvergetelijke Momenten. Uitstekende Service.",
     "heroSupporting": "Verse halal maaltijden, heerlijke snacks, professionele catering en evenementendiensten voor jouw bijzondere momenten.",
     "orderNow": "Nu Bestellen",
@@ -36,6 +37,7 @@
     "servicesSnacks": "Snacks",
     "servicesCatering": "Catering",
     "servicesEventRentals": "Evenementenverhuur",
+    "whyChooseUsEyebrow": "Onze Belofte",
     "whyChooseUs": "Waarom Voor Ons Kiezen",
     "cateringCtaHeadline": "Een evenement plannen? Laat ons de catering verzorgen.",
     "requestCateringQuote": "Vraag Cateringofferte Aan",

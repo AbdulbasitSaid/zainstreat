@@ -20,20 +20,26 @@ export default function Home() {
           style={{ width: "120px", height: "120px", bottom: "-30px", left: "-30px" }}
         />
         <Reveal>
-          <h1>{t("heroHeadline")}</h1>
-          <p>{t("heroSupporting")}</p>
-          <p>
-            <Link href="/contact" role="button">{t("orderNow")}</Link>{" "}
-            <Link href="/contact" role="button" className="secondary">{t("bookCatering")}</Link>{" "}
-            <a
-              href="https://wa.me/31630545277"
-              role="button"
-              className="outline"
-              style={{ borderColor: "var(--color-whatsapp)", color: "var(--color-whatsapp)" }}
-            >
-              {t("whatsappUs")}
-            </a>
-          </p>
+          <div className="split-row">
+            <div>
+              <span className="eyebrow">{t("heroEyebrow")}</span>
+              <h1 className="hero-heading">{t("heroHeadline")}</h1>
+              <p className="hero-supporting">{t("heroSupporting")}</p>
+              <div className="hero-actions">
+                <Link href="/contact" role="button">{t("orderNow")}</Link>
+                <Link href="/contact" role="button" className="secondary">{t("bookCatering")}</Link>
+                <a
+                  href="https://wa.me/31630545277"
+                  role="button"
+                  className="outline"
+                  style={{ borderColor: "var(--color-whatsapp)", color: "var(--color-whatsapp)" }}
+                >
+                  {t("whatsappUs")}
+                </a>
+              </div>
+            </div>
+            <ImageSlot label={t("heroHeadline")} />
+          </div>
         </Reveal>
       </section>
 
@@ -71,8 +77,9 @@ export default function Home() {
         </Reveal>
       </section>
 
-      <section className="container">
+      <section className="container" style={{ textAlign: "center" }}>
         <Reveal>
+          <span className="eyebrow">{t("whyChooseUsEyebrow")}</span>
           <h2>{t("whyChooseUs")}</h2>
         </Reveal>
       </section>
@@ -91,9 +98,13 @@ export default function Home() {
 
       <section className="container">
         <Reveal>
-          <p>{t("aboutPreview")}</p>
-          <ImageSlot label={t("aboutPreview")} />
-          <Link href="/about">{t("learnMore")}</Link>
+          <div className="split-row">
+            <ImageSlot label={t("aboutPreview")} />
+            <div>
+              <p className="hero-supporting">{t("aboutPreview")}</p>
+              <Link href="/about" role="button" className="outline">{t("learnMore")}</Link>
+            </div>
+          </div>
         </Reveal>
       </section>
     </main>

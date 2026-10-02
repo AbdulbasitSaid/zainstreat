@@ -13,22 +13,31 @@ export default function AboutPage() {
           style={{ width: "160px", height: "160px", top: "-30px", right: "-40px" }}
         />
         <Reveal>
-          <h1>{t("whoWeAre")}</h1>
-          <ImageSlot label={t("whoWeAre")} />
+          <div className="split-row">
+            <div>
+              <h1 className="hero-heading">{t("whoWeAre")}</h1>
+            </div>
+            <ImageSlot label={t("whoWeAre")} />
+          </div>
         </Reveal>
       </section>
 
       <section>
         <Reveal>
-          <h2>{t("ourMission")}</h2>
-          <p>{t("missionCopy")}</p>
+          <div className="split-row split-row--reverse">
+            <ImageSlot label={t("ourMission")} />
+            <div>
+              <h2>{t("ourMission")}</h2>
+              <p className="hero-supporting">{t("missionCopy")}</p>
+            </div>
+          </div>
         </Reveal>
       </section>
 
       <section>
         <Reveal>
           <h2>{t("ourValues")}</h2>
-          <ul>
+          <ul className="check-grid">
             <li>{t("value1")}</li>
             <li>{t("value2")}</li>
             <li>{t("value3")}</li>
@@ -42,7 +51,7 @@ export default function AboutPage() {
       <section>
         <Reveal>
           <h2>{t("whatWeOffer")}</h2>
-          <ul>
+          <ul className="check-grid">
             <li>{t("offer1")}</li>
             <li>{t("offer2")}</li>
             <li>{t("offer3")}</li>

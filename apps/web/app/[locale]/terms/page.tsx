@@ -19,7 +19,7 @@ export default function TermsPage() {
   const t = useTranslations("TermsPage");
 
   return (
-    <main className="container">
+    <main className="container legal-content">
       <h1>{t("heading")}</h1>
       <p className="notice-banner">{t("legalReviewNotice")}</p>
 

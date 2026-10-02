@@ -6,39 +6,36 @@ export default function ContactPage() {
 
   return (
     <main className="container">
-      <h1>{t("heading")}</h1>
+      <h1 className="hero-heading" style={{ textAlign: "center" }}>{t("heading")}</h1>
 
       <Reveal>
-        <section>
-          <ul>
-            <li>{t("phoneLabel")}: <a href="tel:+31630545277">{t("phoneValue")}</a></li>
-            <li>{t("emailLabel")}: {t("emailPlaceholder")}</li>
-            <li>{t("whatsappLabel")}: <a href="https://wa.me/31630545277" target="_blank" rel="noopener noreferrer">{t("whatsappValue")}</a></li>
-            <li>{t("addressLabel")}: {t("addressPlaceholder")}</li>
-            <li>{t("hoursLabel")}: {t("hoursPlaceholder")}</li>
-            <li>{t("instagramLabel")}: <a href="https://instagram.com/zain_treats" target="_blank" rel="noopener noreferrer">{t("instagramHandle")}</a></li>
-            <li>{t("tiktokLabel")}: {t("tiktokHandle")}</li>
-          </ul>
-        </section>
+        <div className="contact-grid">
+          <section>
+            <ul className="contact-details">
+              <li>{t("phoneLabel")}: <a href="tel:+31630545277">{t("phoneValue")}</a></li>
+              <li>{t("emailLabel")}: {t("emailPlaceholder")}</li>
+              <li>{t("whatsappLabel")}: <a href="https://wa.me/31630545277" target="_blank" rel="noopener noreferrer">{t("whatsappValue")}</a></li>
+              <li>{t("addressLabel")}: {t("addressPlaceholder")}</li>
+              <li>{t("hoursLabel")}: {t("hoursPlaceholder")}</li>
+              <li>{t("instagramLabel")}: <a href="https://instagram.com/zain_treats" target="_blank" rel="noopener noreferrer">{t("instagramHandle")}</a></li>
+              <li>{t("tiktokLabel")}: {t("tiktokHandle")}</li>
+            </ul>
+          </section>
 
-        <section>
-          <div
-            aria-label={t("mapPlaceholderLabel")}
-            style={{
-              background: "var(--color-background-soft)",
-              minHeight: "240px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            {t("mapPlaceholderLabel")}
-          </div>
-        </section>
+          <section>
+            <div
+              aria-label={t("mapPlaceholderLabel")}
+              className="image-slot"
+              style={{ minHeight: "240px" }}
+            >
+              {t("mapPlaceholderLabel")}
+            </div>
+          </section>
+        </div>
       </Reveal>
 
       <Reveal>
-        <section>
+        <section style={{ maxWidth: "640px", marginInline: "auto" }}>
           <form>
             <label htmlFor="contact-name">{t("formName")}</label>
             <input id="contact-name" name="name" type="text" />

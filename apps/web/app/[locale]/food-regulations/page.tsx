@@ -14,7 +14,7 @@ export default function FoodRegulationsPage() {
   const t = useTranslations("FoodRegulationsPage");
 
   return (
-    <main className="container">
+    <main className="container legal-content">
       <h1>{t("heading")}</h1>
 
       <Reveal>

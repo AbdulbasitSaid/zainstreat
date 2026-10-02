@@ -23,6 +23,7 @@
     "footerNavLabel": "Footer navigation"
   },
   "HomePage": {
+    "heroEyebrow": "Catering & Event Specialists",
     "heroHeadline": "Great Food. Memorable Moments. Exceptional Service.",
     "heroSupporting": "Fresh halal meals, delicious snacks, professional catering, and event services made for your special moments.",
     "orderNow": "Order Now",
@@ -36,6 +37,7 @@
     "servicesSnacks": "Snacks",
     "servicesCatering": "Catering",
     "servicesEventRentals": "Event Rentals",
+    "whyChooseUsEyebrow": "Our Promise",
     "whyChooseUs": "Why Choose Us",
     "cateringCtaHeadline": "Planning an event? Let us handle the catering.",
     "requestCateringQuote": "Request Catering Quote",
