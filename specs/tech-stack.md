@@ -35,7 +35,17 @@ as containers on one AWS Lightsail VPS, fronted by a reverse proxy.
   brand's visual direction (rounded cards, soft corners, subtle borders —
   README §34) out of the box, with minimal markup overhead. Brand color
   tokens (README §3) are wired up via Pico's CSS custom properties
-  (`--pico-primary`, etc.) rather than a utility-class theme.
+  (`--pico-primary`, etc.) rather than a utility-class theme. Concretely
+  (Phase 5): a brand override block appended to `apps/web/app/globals.css`
+  after the existing `@picocss/pico/css/pico.min.css` import, defining the
+  README §3 palette as `--color-*` custom properties and remapping the
+  subset Pico itself reads (`--pico-primary*`) onto them so built-in Pico
+  components inherit the brand automatically; `color-scheme: light` is
+  pinned explicitly (no dark-mode toggle — white background + food
+  photography is the brand direction, README §34). Typography pairs a
+  self-hosted `next/font/google` display face for headings with a sans
+  face for body copy, per README §34's "strong display heading / clean
+  sans-serif body" direction.
 - **`next/image`** for image optimization, lazy loading, and modern formats
   (README §33 performance requirements).
 - **Strict TypeScript, no `any`:** `tsconfig.json`'s `strict: true` rejects
