@@ -15,9 +15,11 @@ export default function AboutPage() {
         <Reveal>
           <div className="split-row">
             <div>
-              <h1 className="hero-heading">{t("whoWeAre")}</h1>
+              <h1 className="hero-heading">
+                {t.rich("whoWeAre", { em: (chunks) => <em>{chunks}</em> })}
+              </h1>
             </div>
-            <ImageSlot label={t("whoWeAre")} />
+            <ImageSlot label={t.markup("whoWeAre", { em: (chunks) => chunks })} />
           </div>
         </Reveal>
       </section>

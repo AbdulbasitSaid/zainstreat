@@ -6,7 +6,9 @@ export default function ContactPage() {
 
   return (
     <main className="container">
-      <h1 className="hero-heading" style={{ textAlign: "center" }}>{t("heading")}</h1>
+      <h1 className="hero-heading" style={{ textAlign: "center" }}>
+        {t.rich("heading", { em: (chunks) => <em>{chunks}</em> })}
+      </h1>
 
       <Reveal>
         <div className="contact-grid">

@@ -20,11 +20,18 @@
     "terms": "Terms & Conditions",
     "foodRegulations": "Food Regulations",
     "copyright": "© {year} Zain's Treat n More. All rights reserved.",
-    "footerNavLabel": "Footer navigation"
+    "footerNavLabel": "Footer navigation",
+    "footerExploreHeading": "Explore",
+    "footerSupportHeading": "Support",
+    "newsletterHeading": "Stay in the <em>Loop</em>",
+    "newsletterPlaceholder": "Email",
+    "newsletterComingSoon": "Sign-ups aren't connected yet — follow us on Instagram or WhatsApp in the meantime.",
+    "instagramLabel": "Instagram",
+    "whatsappLabel": "WhatsApp"
   },
   "HomePage": {
     "heroEyebrow": "Catering & Event Specialists",
-    "heroHeadline": "Great Food. Memorable Moments. Exceptional Service.",
+    "heroHeadline": "Great Food. <em>Memorable</em> Moments. Exceptional Service.",
     "heroSupporting": "Fresh halal meals, delicious snacks, professional catering, and event services made for your special moments.",
     "orderNow": "Order Now",
     "bookCatering": "Book Catering",
@@ -38,14 +45,18 @@
     "servicesCatering": "Catering",
     "servicesEventRentals": "Event Rentals",
     "whyChooseUsEyebrow": "Our Promise",
-    "whyChooseUs": "Why Choose Us",
+    "whyChooseUs": "Why <em>Choose</em> Us",
     "cateringCtaHeadline": "Planning an event? Let us handle the catering.",
     "requestCateringQuote": "Request Catering Quote",
     "aboutPreview": "At Zain's Treat n More, we believe every occasion deserves great food and exceptional service — freshly prepared meals, delicious snacks, professional catering, and event rentals, made with 100% halal, hygienically prepared, fresh ingredients.",
-    "learnMore": "Learn More"
+    "learnMore": "Learn More",
+    "trustHalalDesc": "Every dish prepared to halal standards",
+    "trustFreshDesc": "Made fresh for every order",
+    "trustHygienicDesc": "Clean, careful kitchen practices",
+    "trustReliableDesc": "On time, every time"
   },
   "AboutPage": {
-    "whoWeAre": "Who We Are",
+    "whoWeAre": "Who We <em>Are</em>",
     "ourMission": "Our Mission",
     "missionCopy": "To provide delicious, hygienically prepared halal food and dependable catering services while helping customers create memorable occasions.",
     "ourValues": "Our Values",
@@ -63,7 +74,7 @@
     "offer5": "Meal delivery"
   },
   "ServicesPage": {
-    "heading": "Our Services",
+    "heading": "Our <em>Services</em>",
     "mealsHeading": "Meals",
     "mealsCopy": "Freshly prepared meals for individuals, families, and groups.",
     "snacksHeading": "Snacks",
@@ -76,7 +87,7 @@
     "requestQuote": "Request a Quote"
   },
   "ContactPage": {
-    "heading": "Contact Us",
+    "heading": "Contact <em>Us</em>",
     "phoneLabel": "Phone",
     "phoneValue": "+31 6 30545277",
     "emailLabel": "Email",
@@ -146,5 +157,11 @@
     "allergenWheat": "Wheat/gluten",
     "allergenNuts": "Nuts",
     "allergenSoy": "Soy"
+  },
+  "UtilityBar": {
+    "halal": "100% Halal",
+    "fresh": "Freshly Prepared Daily",
+    "catering": "Catering & Event Rentals",
+    "whatsapp": "WhatsApp Ordering"
   }
 }

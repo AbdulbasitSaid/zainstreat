@@ -20,11 +20,18 @@
     "terms": "Algemene Voorwaarden",
     "foodRegulations": "Voedselvoorschriften",
     "copyright": "© {year} Zain's Treat n More. Alle rechten voorbehouden.",
-    "footerNavLabel": "Footer-navigatie"
+    "footerNavLabel": "Footer-navigatie",
+    "footerExploreHeading": "Ontdek",
+    "footerSupportHeading": "Ondersteuning",
+    "newsletterHeading": "Blijf op de <em>Hoogte</em>",
+    "newsletterPlaceholder": "E-mail",
+    "newsletterComingSoon": "Aanmelden is nog niet actief — volg ons ondertussen op Instagram of WhatsApp.",
+    "instagramLabel": "Instagram",
+    "whatsappLabel": "WhatsApp"
   },
   "HomePage": {
     "heroEyebrow": "Catering- en Evenementenspecialisten",
-    "heroHeadline": "Heerlijk Eten. Onvergetelijke Momenten. Uitstekende Service.",
+    "heroHeadline": "Heerlijk Eten. <em>Onvergetelijke</em> Momenten. Uitstekende Service.",
     "heroSupporting": "Verse halal maaltijden, heerlijke snacks, professionele catering en evenementendiensten voor jouw bijzondere momenten.",
     "orderNow": "Nu Bestellen",
     "bookCatering": "Catering Boeken",
@@ -38,14 +45,18 @@
     "servicesCatering": "Catering",
     "servicesEventRentals": "Evenementenverhuur",
     "whyChooseUsEyebrow": "Onze Belofte",
-    "whyChooseUs": "Waarom Voor Ons Kiezen",
+    "whyChooseUs": "Waarom Voor Ons <em>Kiezen</em>",
     "cateringCtaHeadline": "Een evenement plannen? Laat ons de catering verzorgen.",
     "requestCateringQuote": "Vraag Cateringofferte Aan",
     "aboutPreview": "Bij Zain's Treat n More geloven we dat elke gelegenheid heerlijk eten en uitstekende service verdient — vers bereide maaltijden, heerlijke snacks, professionele catering en evenementenverhuur, gemaakt met 100% halal, hygiënisch bereide, verse ingrediënten.",
-    "learnMore": "Meer Informatie"
+    "learnMore": "Meer Informatie",
+    "trustHalalDesc": "Elk gerecht bereid volgens halal-normen",
+    "trustFreshDesc": "Vers gemaakt voor elke bestelling",
+    "trustHygienicDesc": "Schone, zorgvuldige keukenpraktijken",
+    "trustReliableDesc": "Altijd op tijd"
   },
   "AboutPage": {
-    "whoWeAre": "Wie Wij Zijn",
+    "whoWeAre": "Wie Wij <em>Zijn</em>",
     "ourMission": "Onze Missie",
     "missionCopy": "Heerlijk, hygiënisch bereid halal eten en betrouwbare cateringdiensten leveren, terwijl we klanten helpen onvergetelijke momenten te creëren.",
     "ourValues": "Onze Waarden",
@@ -63,7 +74,7 @@
     "offer5": "Maaltijdbezorging"
   },
   "ServicesPage": {
-    "heading": "Onze Diensten",
+    "heading": "Onze <em>Diensten</em>",
     "mealsHeading": "Maaltijden",
     "mealsCopy": "Vers bereide maaltijden voor individuen, gezinnen en groepen.",
     "snacksHeading": "Snacks",
@@ -76,7 +87,7 @@
     "requestQuote": "Vraag Offerte Aan"
   },
   "ContactPage": {
-    "heading": "Neem Contact Op",
+    "heading": "Neem <em>Contact</em> Op",
     "phoneLabel": "Telefoon",
     "phoneValue": "+31 6 30545277",
     "emailLabel": "E-mail",
@@ -146,5 +157,11 @@
     "allergenWheat": "Tarwe/gluten",
     "allergenNuts": "Noten",
     "allergenSoy": "Soja"
+  },
+  "UtilityBar": {
+    "halal": "100% Halal",
+    "fresh": "Dagelijks Vers Bereid",
+    "catering": "Catering & Evenementenverhuur",
+    "whatsapp": "Bestellen via WhatsApp"
   }
 }

@@ -3,6 +3,7 @@ import { NextIntlClientProvider, hasLocale } from "next-intl";
 import { notFound } from "next/navigation";
 import { Fraunces, Work_Sans } from "next/font/google";
 import { routing } from "@/i18n/routing";
+import { UtilityBar } from "@/components/utility-bar";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { MotionProvider } from "@/components/motion-provider";
@@ -44,6 +45,7 @@ export default async function LocaleLayout({
       <body>
         <NextIntlClientProvider>
           <MotionProvider />
+          <UtilityBar />
           <SiteHeader />
           <PageTransition>{children}</PageTransition>
           <SiteFooter />
