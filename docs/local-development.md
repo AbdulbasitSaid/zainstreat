@@ -29,10 +29,12 @@ powered by `next-intl`. Conventions for adding UI copy in future phases:
 
 - Translation strings live in `apps/web/messages/en.json` and
   `apps/web/messages/nl.json`, keyed by `PageName.keyName` (e.g.
-  `HomePage.title`). Add a key to both files together — never ship an
-  English-only key.
-- `apps/web/components/locale-toggle.tsx` is a placeholder control
-  currently rendered on the hello page; once a real header/nav exists
-  (Phase 5), relocate it there instead of adding a second toggle.
+  `HomePage.heroHeadline`). Add a key to both files together — never ship
+  an English-only key. `SiteHeader`, `SiteFooter`, and one `PageName`
+  namespace per route (e.g. `AboutPage`, `ServicesPage`, `ContactPage`)
+  are the established message-key groups going forward (Phase 5).
+- `apps/web/components/locale-toggle.tsx` now renders inside
+  `site-header.tsx` (Phase 5), closing the forward-reference this doc
+  previously left open. Don't add a second toggle elsewhere.
 - The admin dashboard and the Rust API (`apps/api`) are out of scope for
   translation — they stay English-only.
