@@ -3,6 +3,7 @@ apps/web/node_modules/
 apps/web/.next/
 apps/web/.pnpm-store/
 apps/web/next-env.d.ts
+apps/web/tsconfig.tsbuildinfo
 
 # Rust / api
 apps/api/target/
@@ -13,3 +14,6 @@ apps/api/target/
 
 # OS
 .DS_Store
+
+# Claude Code (personal, not shared)
+.claude/settings.local.json
