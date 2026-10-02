@@ -58,33 +58,50 @@ real environment instead of one big-bang deploy at the end (per
   admin, pull a previous image tag and `up -d`, or re-run a prior
   successful Actions run).
 
-## Phase 3 — Data Model
+## Phase 3 — Internationalization (Dutch/English)
+
+- `next-intl` wired into `apps/web` with locale-prefixed routing
+  (`/en/...`, `/nl/...`), English as the default/fallback locale.
+- Middleware (`apps/web/proxy.ts`) auto-detects the visitor's browser
+  language (`Accept-Language`) on first visit with no stored preference,
+  redirecting to the matching locale; a manual toggle always overrides
+  this, persisted via the `NEXT_LOCALE` cookie so it sticks across visits.
+- Translation message files (`messages/en.json`, `messages/nl.json`)
+  established as the convention every later phase's UI copy will extend.
+- The existing hello page (`app/page.tsx`) migrated under `app/[locale]/`
+  and its hardcoded strings moved into the message files, as the first
+  real usage example — plus a minimal placeholder language-toggle control
+  on that page (no real header/nav exists until Phase 5).
+- Scope: public-facing site only. The admin dashboard (Phase 9/10) and the
+  Rust API (`apps/api`) remain English-only.
+
+## Phase 4 — Data Model
 
 - Postgres migrations for `users`, `categories`, `menu_items`, `orders`,
   `order_items` (per `tech-stack.md` / README §31).
 - Soft-delete columns (`deleted_at`) on `categories` and `menu_items`.
 - Seed script with a few sample categories/menu items for local development.
 
-## Phase 4 — Public Static Pages
+## Phase 5 — Public Static Pages
 
 - Home, About, Contact (static shell), Terms & Conditions, Food Regulations
   pages — no dynamic data yet.
 - Brand system applied: color tokens, typography, logo placement, base
   layout/navigation (desktop + mobile hamburger).
 
-## Phase 5 — Menu Browsing (Read-Only)
+## Phase 6 — Menu Browsing (Read-Only)
 
 - API: list categories, list available menu items (with category filter).
 - Menu page: category filtering, item cards (name, description, price,
   image), empty-category state, unavailable-item state.
 
-## Phase 6 — Cart
+## Phase 7 — Cart
 
 - Client-side cart: add item, change quantity, remove item, subtotal.
 - Empty-cart state and "continue shopping" / "proceed to order" actions.
 - Unavailable items cannot be added to the cart.
 
-## Phase 7 — Order Submission
+## Phase 8 — Order Submission
 
 - Customer details form (name, phone, email, pickup/delivery, notes).
 - Order review step.
@@ -92,21 +109,21 @@ real environment instead of one big-bang deploy at the end (per
   name/price at the time of the order (not a live reference to `menu_items`).
 - Order confirmation page showing the order number and next steps.
 
-## Phase 8 — Admin Auth
+## Phase 9 — Admin Auth
 
 - Login page.
 - API: argon2 password verification, session creation via
   `tower-sessions` (Postgres-backed), logout.
 - Middleware protecting all `/admin` routes and admin API endpoints.
 
-## Phase 9 — Admin: Orders
+## Phase 10 — Admin: Orders
 
 - Dashboard shell (nav: Dashboard, Orders, Menu, Categories, Settings).
 - Order list (ID, customer, total, status) and order detail view (items,
   quantities, totals, delivery/pickup info, notes).
 - Update order status.
 
-## Phase 10 — Admin: Menu & Categories
+## Phase 11 — Admin: Menu & Categories
 
 - Add / edit menu item (name, description, price, category, image,
   available, featured).
@@ -114,25 +131,29 @@ real environment instead of one big-bang deploy at the end (per
 - Availability toggle (available/unavailable).
 - Category management: add, rename, archive.
 
-## Phase 11 — Catering & Contact Workflows
+## Phase 12 — Catering & Contact Workflows
 
 - Catering/event enquiry form (name, phone, email, event type, date,
   guests, location, services required, message) — separate from the food
   cart, per the non-negotiable rule in `mission.md`.
 - General contact form (name, email, phone, subject, message).
-- Submissions persisted and, once Phase-13 email is wired in, forwarded by
+- Submissions persisted and, once Phase-14 email is wired in, forwarded by
   email to the business.
 
-## Phase 12 — WhatsApp CTAs
+## Phase 13 — WhatsApp CTAs
 
 - `wa.me` deep links placed in header, hero, contact page, and footer
   (per `tech-stack.md`).
 
-## Phase 13 — Polish & Non-Functional Requirements
+## Phase 14 — Polish & Non-Functional Requirements
 
 - SEO: page titles, meta descriptions, Open Graph tags, semantic HTML,
   clean URLs (`/`, `/about`, `/services`, `/menu`, `/order`, `/contact`,
   `/terms`, `/food-regulations`).
+  (Note: since Phase 3 introduced locale-prefixed routing, every URL above
+  actually lives under `/en/...` or `/nl/...` — e.g. `/en/menu`, `/nl/menu`.
+  This is a necessary small addendum to this phase's own requirement.md
+  when it's written.)
 - Accessibility: keyboard navigation, visible focus states, form labels,
   alt text, sufficient contrast.
 - Image optimization pass (formats, lazy loading).
@@ -141,7 +162,7 @@ real environment instead of one big-bang deploy at the end (per
 - Wire in email sending (order confirmations, contact/catering
   notifications) via `lettre` + transactional email provider.
 
-## Phase 14 — Production Hardening & Final Rollout
+## Phase 15 — Production Hardening & Final Rollout
 
 The AWS Lightsail instance, DNS, TLS, backups, production Dockerfiles, and
 the GitHub Actions CI/CD pipeline already exist from Phase 2 — this phase

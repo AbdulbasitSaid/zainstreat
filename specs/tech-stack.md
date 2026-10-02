@@ -43,6 +43,21 @@ _Why not Astro for the marketing pages:_ a single Next.js app is simpler to
 build, deploy, and maintain than two separate frontends, and Next.js still
 meets the SEO/SSR requirements in README §33.
 
+## Internationalization (i18n)
+
+- **`next-intl@^4.14`** — locale-prefixed routing (`/en/...`, `/nl/...`),
+  server/client translation hooks, and a `proxy.ts`-based middleware that
+  auto-detects the visitor's locale from `Accept-Language` and persists an
+  explicit override via a `NEXT_LOCALE` cookie.
+
+Chosen over hand-rolled `Accept-Language` parsing or `next-i18next` (a
+Pages-Router-era library retrofitted onto the App Router): `next-intl` has
+first-class App Router + Server Component support and ships the exact
+locale-prefix + auto-detect + cookie-override middleware this project
+needs, with no custom redirect logic to build and maintain. Scope is the
+public-facing site only — the admin dashboard and the Rust API stay
+English-only (see `roadmap.md` Phase 3).
+
 ## Backend API
 
 - **Rust + Axum** — the HTTP framework for the API service.
@@ -164,6 +179,7 @@ runners absorb that cost for free, and the box's job shrinks to just
 | Concern | Choice |
 |---|---|
 | Frontend | Next.js (App Router) + React + TypeScript + Pico CSS |
+| i18n | next-intl (locale-prefixed `/en`, `/nl` routing) |
 | Backend API | Rust + Axum + sqlx + serde |
 | Database | PostgreSQL |
 | Admin auth | argon2 + tower-sessions (Postgres-backed sessions) |
