@@ -69,6 +69,19 @@ English-only (see `roadmap.md` Phase 3).
 - **`sqlx`** — compile-time-checked SQL queries against Postgres (no ORM
   magic, matches the straightforward relational data model in README §31).
 - **`serde`** — JSON (de)serialization for API request/response bodies.
+- **Migrations**: sqlx's built-in migrator — plain numbered `.sql` files
+  under `apps/api/migrations/`, embedded into the binary via
+  `sqlx::migrate!()` and run automatically against the database on API
+  startup. Fits this project's single-VPS, no-manual-approval continuous
+  deployment (see Hosting & Deployment below) with no separate CI/deploy
+  migration step to maintain (see `roadmap.md` Phase 4).
+- **Offline query checking for CI**: `sqlx::query!`/`query_as!` macros
+  need a live database (or a cached query catalog) at compile time, but
+  `apps/api/Dockerfile`'s `cargo build --release` stage has no network
+  access to Postgres. `apps/api/.sqlx/` (generated locally via
+  `cargo sqlx prepare`, committed to the repo) plus
+  `ENV SQLX_OFFLINE=true` in the Dockerfile's build stage lets the Docker
+  build succeed with no live database.
 
 _Why a separate Rust API instead of Next.js API routes:_ decided
 explicitly — keeps business logic (pricing, order integrity, admin auth) in
