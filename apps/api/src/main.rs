@@ -1,4 +1,3 @@
-use api::build_app;
 use sqlx::postgres::PgPoolOptions;
 use tracing_subscriber::EnvFilter;
 
@@ -43,7 +42,17 @@ async fn main() {
         std::process::exit(1);
     }
 
-    let app = build_app(pool);
+    let cookie_secure = std::env::var("COOKIE_SECURE")
+        .map(|v| v == "true")
+        .unwrap_or(false);
+
+    let app = match api::build_app(pool, cookie_secure).await {
+        Ok(app) => app,
+        Err(error) => {
+            tracing::error!(%error, "failed to build application");
+            std::process::exit(1);
+        }
+    };
 
     let port: u16 = std::env::var("PORT")
         .ok()

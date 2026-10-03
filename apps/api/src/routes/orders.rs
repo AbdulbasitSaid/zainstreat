@@ -300,7 +300,7 @@ pub async fn create_order(
             (customer_name, customer_email, customer_phone, delivery_type,
              delivery_address, notes, subtotal, delivery_fee, total)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-        RETURNING id, status, created_at
+        RETURNING id, status, created_at as "created_at: chrono::DateTime<chrono::Utc>"
         "#,
         payload.customer_name,
         payload.customer_email,

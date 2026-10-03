@@ -1,3 +1,4 @@
+pub mod admin;
 pub mod categories;
 pub mod health;
 pub mod menu_items;
@@ -14,4 +15,5 @@ pub fn api_router() -> Router<PgPool> {
         .route("/categories", get(categories::list_categories))
         .route("/menu-items", get(menu_items::list_menu_items))
         .route("/orders", post(orders::create_order))
+        .nest("/admin", admin::admin_router())
 }

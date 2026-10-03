@@ -1,31 +1,9 @@
-use api::build_app;
-use axum::{
-    body::Body,
-    http::{Request, StatusCode},
-};
-use http_body_util::BodyExt;
+mod common;
+
+use axum::http::StatusCode;
+use common::post;
 use serde_json::{json, Value};
 use sqlx::PgPool;
-use tower::ServiceExt;
-
-async fn post(pool: PgPool, uri: &str, body: Value) -> (StatusCode, Value) {
-    let app = build_app(pool);
-    let response = app
-        .oneshot(
-            Request::builder()
-                .method("POST")
-                .uri(uri)
-                .header("content-type", "application/json")
-                .body(Body::from(body.to_string()))
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    let status = response.status();
-    let bytes = response.into_body().collect().await.unwrap().to_bytes();
-    let body: Value = serde_json::from_slice(&bytes).unwrap();
-    (status, body)
-}
 
 fn valid_payload(items: Value) -> Value {
     json!({

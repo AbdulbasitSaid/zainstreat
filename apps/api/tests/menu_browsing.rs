@@ -1,24 +1,8 @@
-use api::build_app;
-use axum::{
-    body::Body,
-    http::{Request, StatusCode},
-};
-use http_body_util::BodyExt;
-use serde_json::Value;
-use sqlx::PgPool;
-use tower::ServiceExt;
+mod common;
 
-async fn get(pool: PgPool, uri: &str) -> (StatusCode, Value) {
-    let app = build_app(pool);
-    let response = app
-        .oneshot(Request::builder().uri(uri).body(Body::empty()).unwrap())
-        .await
-        .unwrap();
-    let status = response.status();
-    let bytes = response.into_body().collect().await.unwrap().to_bytes();
-    let body: Value = serde_json::from_slice(&bytes).unwrap();
-    (status, body)
-}
+use axum::http::StatusCode;
+use common::get;
+use sqlx::PgPool;
 
 #[sqlx::test]
 async fn categories_excludes_soft_deleted(pool: PgPool) {

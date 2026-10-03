@@ -24,11 +24,20 @@ pub enum AppError {
     Database(sqlx::Error),
     Validation(Vec<FieldError>),
     ItemsUnavailable(Vec<UnavailableItem>),
+    Unauthorized,
+    InvalidCredentials,
+    Session(tower_sessions::session::Error),
 }
 
 impl From<sqlx::Error> for AppError {
     fn from(err: sqlx::Error) -> Self {
         Self::Database(err)
+    }
+}
+
+impl From<tower_sessions::session::Error> for AppError {
+    fn from(err: tower_sessions::session::Error) -> Self {
+        Self::Session(err)
     }
 }
 
@@ -70,6 +79,26 @@ impl IntoResponse for AppError {
                 (
                     StatusCode::CONFLICT,
                     Json(json!({ "error": "items_unavailable", "items": items })),
+                )
+                    .into_response()
+            }
+            AppError::Unauthorized => {
+                tracing::warn!("rejected request with no valid admin session");
+                (StatusCode::UNAUTHORIZED, Json(json!({ "error": "unauthorized" }))).into_response()
+            }
+            AppError::InvalidCredentials => {
+                tracing::warn!("admin login failed");
+                (
+                    StatusCode::UNAUTHORIZED,
+                    Json(json!({ "error": "invalid_credentials" })),
+                )
+                    .into_response()
+            }
+            AppError::Session(err) => {
+                tracing::error!(error = ?err, "session store error");
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(json!({ "error": "internal_server_error" })),
                 )
                     .into_response()
             }

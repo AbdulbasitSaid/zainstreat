@@ -26,6 +26,7 @@ services:
     environment:
       RUST_LOG: ${RUST_LOG:-info}
       LOG_FORMAT: ${LOG_FORMAT:-json}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
     restart: unless-stopped
     <<: *default-logging
 

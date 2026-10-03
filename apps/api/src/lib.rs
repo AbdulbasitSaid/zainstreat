@@ -9,12 +9,26 @@ use tower_http::{
     trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer},
     LatencyUnit,
 };
+use tower_sessions::{
+    cookie::{time::Duration, SameSite},
+    Expiry, SessionManagerLayer,
+};
+use tower_sessions_sqlx_store::PostgresStore;
 use tracing::Level;
 
-pub fn build_app(pool: PgPool) -> Router {
-    Router::new()
+pub async fn build_app(pool: PgPool, cookie_secure: bool) -> Result<Router, sqlx::Error> {
+    let session_store = PostgresStore::new(pool.clone());
+    session_store.migrate().await?;
+
+    let session_layer = SessionManagerLayer::new(session_store)
+        .with_secure(cookie_secure)
+        .with_same_site(SameSite::Lax)
+        .with_expiry(Expiry::OnInactivity(Duration::days(7)));
+
+    Ok(Router::new()
         .nest("/api", routes::api_router())
         .route("/health", axum::routing::get(routes::health::health))
+        .layer(session_layer)
         .layer(
             ServiceBuilder::new()
                 .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
@@ -29,5 +43,5 @@ pub fn build_app(pool: PgPool) -> Router {
                 )
                 .layer(PropagateRequestIdLayer::x_request_id()),
         )
-        .with_state(pool)
+        .with_state(pool))
 }
