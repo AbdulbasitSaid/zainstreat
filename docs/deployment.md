@@ -82,4 +82,4 @@ Lightsail's automatic daily instance snapshot add-on is enabled on the
 instance (Lightsail console → instance → **Snapshots**). This is the
 current backup mechanism for the whole box, including the `postgres` and
 `minio` data volumes. Restoring from a snapshot has **not** been tested
-yet — Phase 14 verifies an actual restore once real data exists.
+yet — Phase 16 verifies an actual restore once real data exists.
