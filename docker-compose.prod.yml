@@ -1,9 +1,20 @@
+x-logging: &default-logging
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
 services:
   postgres:
     ports: !reset []
+    restart: unless-stopped
+    <<: *default-logging
 
   minio:
     ports: !reset []
+    restart: unless-stopped
+    <<: *default-logging
 
   api:
     image: ghcr.io/abdulbasitsaid/zainstreat-api:latest
@@ -12,6 +23,11 @@ services:
     volumes: !reset []
     command: !reset null
     ports: !reset []
+    environment:
+      RUST_LOG: ${RUST_LOG:-info}
+      LOG_FORMAT: ${LOG_FORMAT:-json}
+    restart: unless-stopped
+    <<: *default-logging
 
   web:
     image: ghcr.io/abdulbasitsaid/zainstreat-web:latest
@@ -19,6 +35,8 @@ services:
     volumes: !reset []
     command: !reset null
     ports: !reset []
+    restart: unless-stopped
+    <<: *default-logging
 
   caddy:
     image: caddy:2-alpine
@@ -34,6 +52,18 @@ services:
     depends_on:
       - web
       - api
+      - dozzle
+    restart: unless-stopped
+    <<: *default-logging
+
+  dozzle:
+    image: amir20/dozzle:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      DOZZLE_NO_ANALYTICS: "true"
+    restart: unless-stopped
+    <<: *default-logging
 
 volumes:
   caddy_data:

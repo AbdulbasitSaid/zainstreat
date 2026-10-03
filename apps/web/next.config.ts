@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
   agentRules: false,
   images: {
     // Dev seed data's placeholder host. The production/MinIO host gets
-    // added alongside this entry in Phase 12 — don't remove it then.
+    // added alongside this entry in Phase 13 — don't remove it then.
     remotePatterns: [{ protocol: "https", hostname: "placehold.co" }],
     // placehold.co serves image/svg+xml, which next/image's optimizer
     // blocks by default (SVGs can embed scripts). Sandboxed CSP below is

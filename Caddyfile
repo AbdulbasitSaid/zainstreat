@@ -1,4 +1,13 @@
+{
+	log {
+		format json
+	}
+}
+
 {$DOMAIN} {
+	log {
+		format json
+	}
 	reverse_proxy web:3000
 }
 
@@ -7,5 +16,18 @@ www.{$DOMAIN} {
 }
 
 api.{$DOMAIN} {
+	log {
+		format json
+	}
 	reverse_proxy api:8080
+}
+
+logs.{$DOMAIN} {
+	basic_auth {
+		{$DOZZLE_BASIC_AUTH_USER} {$DOZZLE_BASIC_AUTH_HASH}
+	}
+	reverse_proxy dozzle:8080
+	log {
+		format json
+	}
 }

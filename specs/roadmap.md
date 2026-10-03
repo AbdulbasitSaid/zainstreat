@@ -34,7 +34,7 @@ real environment instead of one big-bang deploy at the end (per
   (Next.js standalone build, `node:22-bookworm-slim` runtime) and
   `apps/api/Dockerfile` (`cargo build --release`, copied onto
   `debian:bookworm-slim`). Deliberately basic — not yet hardened
-  (no non-root user, no distroless base); that polish is Phase 15's job.
+  (no non-root user, no distroless base); that polish is Phase 17's job.
 - `.github/workflows/deploy.yml`: on every push to `master`, build the
   `web` and `api` images, push them to a **private** GHCR registry, then
   SSH to the Lightsail box as the `deploy` user and run `docker compose
@@ -52,7 +52,7 @@ real environment instead of one big-bang deploy at the end (per
   a scoped read-only PAT configured once by hand (never committed).
 - Enable Lightsail's automatic daily snapshot add-on — this resolves
   `tech-stack.md`'s previously-open "backup mechanism" item for now (see
-  Phase 15 for verifying an actual restore once real data exists).
+  Phase 17 for verifying an actual restore once real data exists).
 - `docs/deployment.md`: how the CI/CD flow works (push to `master`, watch
   Actions, live), plus a manual/break-glass rollback runbook (SSH as
   admin, pull a previous image tag and `up -d`, or re-run a prior
@@ -72,7 +72,7 @@ real environment instead of one big-bang deploy at the end (per
   and its hardcoded strings moved into the message files, as the first
   real usage example — plus a minimal placeholder language-toggle control
   on that page (no real header/nav exists until Phase 5).
-- Scope: public-facing site only. The admin dashboard (Phase 10/11) and
+- Scope: public-facing site only. The admin dashboard (Phase 11/12) and
   the Rust API (`apps/api`) remain English-only.
 
 ## Phase 4 — Data Model
@@ -88,7 +88,7 @@ real environment instead of one big-bang deploy at the end (per
   Regulations pages — no dynamic data yet.
 - Services page (Meals, Snacks, Catering, Event Rentals detail sections
   per README §12, each with a "Request a Quote" CTA linking to Contact —
-  the enquiry form itself is Phase 13's job).
+  the enquiry form itself is Phase 14's job).
 - Brand system applied: color tokens, typography, logo placement, base
   layout/navigation (desktop + mobile hamburger).
 
@@ -113,13 +113,40 @@ real environment instead of one big-bang deploy at the end (per
 - Full replacement of the Phase 4/6 placeholder menu seed data with the
   real client menu.
 
-## Phase 8 — Cart
+## Phase 8 — Telemetry & Observability
+
+Not an original roadmap phase — inserted after the site's first
+production 502 revealed there was no way to see why. Self-hosted only
+(no external SaaS), consistent with the single-VPS hosting decision in
+`tech-stack.md`.
+
+- `apps/api`: structured logging (`tracing` + `tracing-subscriber`),
+  request-level logging with latency and a request ID
+  (`tower_http::trace::TraceLayer` + `request_id`), and `sqlx::Error`
+  variants mapped to distinct HTTP status codes (404/409/500/503)
+  instead of everything collapsing to a bare 500.
+- Replace the `eprintln!`/panicking `.expect()`/`.unwrap()` calls in
+  `main.rs`/`error.rs` with structured `tracing::error!` logging before a
+  controlled exit, plus a panic hook.
+- Caddy: JSON access/error logs on every site block, so a 502 (upstream
+  unreachable) is timestamped and correlatable with the API's own logs.
+- Dozzle (self-hosted, browser-based log viewer) added to
+  `docker-compose.prod.yml`, reverse-proxied through Caddy and gated by
+  HTTP Basic Auth (it can read every container's logs, so it isn't
+  exposed directly).
+- `restart: unless-stopped` and bounded `json-file` log retention
+  (`max-size`/`max-file`) added to every prod Compose service — a
+  crashed `api` container currently stays down until someone manually
+  SSHes in, which directly compounds a 502.
+- `docs/deployment.md`: new "Viewing production logs" section.
+
+## Phase 9 — Cart
 
 - Client-side cart: add item, change quantity, remove item, subtotal.
 - Empty-cart state and "continue shopping" / "proceed to order" actions.
 - Unavailable items cannot be added to the cart.
 
-## Phase 9 — Order Submission
+## Phase 10 — Order Submission
 
 - Customer details form (name, phone, email, pickup/delivery, notes).
 - Order review step.
@@ -127,21 +154,21 @@ real environment instead of one big-bang deploy at the end (per
   name/price at the time of the order (not a live reference to `menu_items`).
 - Order confirmation page showing the order number and next steps.
 
-## Phase 10 — Admin Auth
+## Phase 11 — Admin Auth
 
 - Login page.
 - API: argon2 password verification, session creation via
   `tower-sessions` (Postgres-backed), logout.
 - Middleware protecting all `/admin` routes and admin API endpoints.
 
-## Phase 11 — Admin: Orders
+## Phase 12 — Admin: Orders
 
 - Dashboard shell (nav: Dashboard, Orders, Menu, Categories, Settings).
 - Order list (ID, customer, total, status) and order detail view (items,
   quantities, totals, delivery/pickup info, notes).
 - Update order status.
 
-## Phase 12 — Admin: Menu & Categories
+## Phase 13 — Admin: Menu & Categories
 
 - Add / edit menu item (name, description, price, category, image,
   available, featured).
@@ -149,21 +176,21 @@ real environment instead of one big-bang deploy at the end (per
 - Availability toggle (available/unavailable).
 - Category management: add, rename, archive.
 
-## Phase 13 — Catering & Contact Workflows
+## Phase 14 — Catering & Contact Workflows
 
 - Catering/event enquiry form (name, phone, email, event type, date,
   guests, location, services required, message) — separate from the food
   cart, per the non-negotiable rule in `mission.md`.
 - General contact form (name, email, phone, subject, message).
-- Submissions persisted and, once Phase-15 email is wired in, forwarded by
+- Submissions persisted and, once Phase-16 email is wired in, forwarded by
   email to the business.
 
-## Phase 14 — WhatsApp CTAs
+## Phase 15 — WhatsApp CTAs
 
 - `wa.me` deep links placed in header, hero, contact page, and footer
   (per `tech-stack.md`).
 
-## Phase 15 — Polish & Non-Functional Requirements
+## Phase 16 — Polish & Non-Functional Requirements
 
 - SEO: page titles, meta descriptions, Open Graph tags, semantic HTML,
   clean URLs (`/`, `/about`, `/services`, `/menu`, `/order`, `/contact`,
@@ -180,7 +207,7 @@ real environment instead of one big-bang deploy at the end (per
 - Wire in email sending (order confirmations, contact/catering
   notifications) via `lettre` + transactional email provider.
 
-## Phase 16 — Production Hardening & Final Rollout
+## Phase 17 — Production Hardening & Final Rollout
 
 The AWS Lightsail instance, DNS, TLS, backups, production Dockerfiles, and
 the GitHub Actions CI/CD pipeline already exist from Phase 2 — this phase
