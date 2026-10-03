@@ -1,0 +1,59 @@
+name: Seed Production Database
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type SEED PRODUCTION to confirm — this TRUNCATEs and reseeds the live menu tables'
+        required: true
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify confirmation phrase
+        run: |
+          if [ "${{ github.event.inputs.confirm }}" != "SEED PRODUCTION" ]; then
+            echo "Confirmation phrase did not match 'SEED PRODUCTION'. Aborting." >&2
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Copy seed.sql to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          source: "apps/api/seed.sql"
+          target: /opt/zainstreat
+          strip_components: 2
+          overwrite: true
+
+      - name: Backup, seed, and verify
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            cd /opt/zainstreat
+            COMPOSE="docker compose -f docker-compose.yml -f docker-compose.prod.yml"
+            TS=$(date +%Y%m%d-%H%M%S)
+
+            mkdir -p backups
+            echo "Backing up to backups/backup-${TS}.sql"
+            $COMPOSE exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB"' > "backups/backup-${TS}.sql"
+            test -s "backups/backup-${TS}.sql"
+            echo "Backup OK ($(wc -l < "backups/backup-${TS}.sql") lines)."
+
+            echo "Seeding..."
+            $COMPOSE exec -T postgres sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < seed.sql
+            rm -f seed.sql
+            echo "Seed applied."
+
+            echo "Verifying..."
+            $COMPOSE exec -T postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SELECT count(*) FROM categories;" -c "SELECT count(*) FROM menu_items;"'

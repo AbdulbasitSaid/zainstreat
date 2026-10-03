@@ -76,6 +76,39 @@ user's).
    docker-compose.prod.yml ps` and `curl -i https://api.zainstreat.com/
    health`.
 
+## Seeding the production database
+
+`apps/api/seed.sql` holds the real client menu (categories, menu items,
+price options — see Phase 7). Since no admin CMS exists yet (Phase 13) to
+edit the live menu any other way, this file is also used to (re)populate
+production. Running it **replaces** all categories/menu items/price
+options (it opens with `TRUNCATE ... CASCADE`), so only run it when that's
+actually intended.
+
+Do this via `.github/workflows/seed-production.yml`, not by hand:
+
+1. GitHub → **Actions** tab → **Seed Production Database** → **Run
+   workflow**.
+2. In the `confirm` input, type exactly `SEED PRODUCTION`. Any other value
+   (or leaving it blank) fails the job immediately before it touches the
+   server.
+3. The job, over the same `deploy`-user SSH credentials `deploy.yml` uses:
+   - `pg_dump`s the current database to
+     `/opt/zainstreat/backups/backup-<timestamp>.sql` on the server (fails
+     the job if the dump comes back empty), covered thereafter by
+     Lightsail's daily snapshot like the rest of the box's data.
+   - Pipes `apps/api/seed.sql` into `psql -v ON_ERROR_STOP=1` against the
+     `postgres` container.
+   - Prints `categories`/`menu_items` row counts to the run log to
+     eyeball against `seed.sql`'s known contents.
+4. Confirm with `curl -i https://api.zainstreat.com/health` and by loading
+   the live menu page in a browser.
+
+To restore a prior backup by hand if a seed went wrong: SSH in as admin,
+`cat /opt/zainstreat/backups/backup-<timestamp>.sql | docker compose -f
+docker-compose.yml -f docker-compose.prod.yml exec -T postgres psql -U
+$POSTGRES_USER -d $POSTGRES_DB`.
+
 ## Viewing production logs
 
 Two ways to check what the running stack is doing, from quickest to most

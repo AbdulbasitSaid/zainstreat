@@ -118,6 +118,15 @@ real query against it.
     Drinks) and menu items (e.g. Jollof Rice, Fried Rice, Chicken Suya,
     Puff Puff, Meat Pie, Chin Chin — in the spirit of README's own
     "Jollof Rice = ₦6,000" example).
+
+    **Update (2026-10-03):** superseded by Phase 7, which replaced this
+    placeholder fixture content with the real client menu. With real menu
+    data (rather than placeholder Naira examples) in `seed.sql`, it is now
+    also run against production — manually once, then via the
+    `.github/workflows/seed-production.yml` CI workflow going forward —
+    since no admin CMS exists yet (Phase 13) to populate the live menu any
+    other way. See `docs/deployment.md`'s "Seeding the production database"
+    section.
 17. **Seed `image_url` values use an external placeholder image service**
     (e.g. `https://placehold.co/...`), not real uploaded photos. Every
     seeded menu item gets a non-null `image_url` so Phase 6 (Menu
@@ -135,7 +144,8 @@ real query against it.
   submission), 10–11 (admin menu/order management).
 - Admin authentication, sessions, `argon2` — Phase 9.
 - Real production data — `seed.sql` is dev-only, never run against the
-  production database.
+  production database. **(Superseded 2026-10-03 — see decision 16's update
+  above.)**
 - The `ZT-000123` order-number display format — computed later (decision
   9), not stored now.
 - Role-based access control / multiple staff accounts — explicitly Future
