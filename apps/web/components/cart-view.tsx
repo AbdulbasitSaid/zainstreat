@@ -38,9 +38,7 @@ export function CartView() {
           <Button variant="secondary" onClick={clearCart}>
             {t("clearCart")}
           </Button>
-          <Button disabled title={t("proceedToOrderComingSoon")}>
-            {t("proceedToOrder")}
-          </Button>
+          <ButtonLink href="/order">{t("proceedToOrder")}</ButtonLink>
         </div>
       </div>
     </div>
