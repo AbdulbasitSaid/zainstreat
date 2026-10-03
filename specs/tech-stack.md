@@ -31,6 +31,10 @@ as containers on one AWS Lightsail VPS, fronted by a reverse proxy.
 - **Next.js (App Router), React, TypeScript** — server-rendered pages for
   SEO (README §33) on public routes, with client components for the cart
   and admin interactivity.
+- `apps/web` performs real data fetching as of Phase 6 (menu browsing) —
+  server components call `apps/api` over HTTP using the server-only
+  `API_BASE_URL` env var (Docker-internal DNS, same convention in dev and
+  prod; see `docs/local-development.md`), always with `cache: "no-store"`.
 - **Tailwind CSS v4** (replaced Pico CSS — see
   `specs/2026-10-02-phase-5-public-static-pages/requirement.md`'s
   "Addendum — Tailwind CSS v4 migration") — CSS-first configuration via an

@@ -131,6 +131,26 @@ MinIO photo-upload feature forward — see "Out of scope" below, unchanged.
 Egusi Soup, Efo Soup, and Small Chops are seeded with `is_featured = true`
 (Chin Chin stays `false`, matching its prior state).
 
+## Addendum — Naira → Euro
+
+Decision 3's price formatting (`apps/web/lib/format.ts`) originally
+hardcoded `₦`/`"en-NG"`, documented in `plan.md` §10.2 as "Naira is a
+business-identity fact, not a translatable string." The user later asked
+for prices in Euros instead, so that no longer holds: `format.ts` now
+hardcodes `€`/`"nl-NL"` (still one fixed format regardless of UI locale —
+only the currency changed, not the "locale-independent" design). `nl-NL`
+was chosen over another euro locale because the business already has a
+Dutch (+31) contact number and `nl` is a first-class UI locale here.
+
+`apps/api/seed.sql`'s fixture prices were also rescaled from Naira-range
+amounts (₦1,000–₦7,000) to realistic euro amounts (€3.00–€15.00) —
+not a literal FX conversion (which would make everything a few cents) —
+keeping the same relative tiering (snacks cheapest, soups/mains pricier,
+Small Chops as the priciest party-platter item). No schema or API change
+was needed: `menu_items.price` was already `NUMERIC(10,2)` with no
+currency column, so this is a pure fixture-data and display-formatting
+change.
+
 ## Out of scope
 
 - Menu/category **management** (create/edit/archive) — Phase 11 (Admin:

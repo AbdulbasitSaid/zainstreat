@@ -1,11 +1,15 @@
-import { useTranslations } from "next-intl";
+import { getTranslations } from "next-intl/server";
 import { Reveal } from "@/components/reveal";
 import { DecorativeShape } from "@/components/decorative-shape";
 import { ImageSlot } from "@/components/image-slot";
 import { SplitRow } from "@/components/split-row";
 import { Eyebrow } from "@/components/eyebrow";
 import { ButtonLink, buttonClasses } from "@/components/button";
+import { MenuItemCard } from "@/components/menu-item-card";
 import { Link } from "@/i18n/navigation";
+import { getMenuItems } from "@/lib/api";
+
+const MAX_FEATURED_ITEMS = 6;
 
 function ShieldCheckIcon() {
   return (
@@ -55,10 +59,15 @@ const CATEGORY_ITEMS = [
   { labelKey: "servicesEventRentals" },
 ] as const;
 
-export default function Home() {
-  const t = useTranslations("HomePage");
+export default async function Home() {
+  const t = await getTranslations("HomePage");
   const heroHeadingClass = "mb-4 text-[clamp(2.5rem,5vw,4.25rem)]";
   const heroSupportingClass = "max-w-[48ch] text-[clamp(1.05rem,1.5vw,1.25rem)] text-text-muted";
+
+  const menuItems = await getMenuItems();
+  const featuredItems = menuItems
+    .filter((item) => item.is_featured && item.is_available)
+    .slice(0, MAX_FEATURED_ITEMS);
 
   return (
     <main>
@@ -111,6 +120,27 @@ export default function Home() {
           </div>
         </Reveal>
       </section>
+
+      {featuredItems.length > 0 && (
+        <section className="container">
+          <Reveal>
+            <div className="mb-10 text-center">
+              <Eyebrow>{t("featuredMenuEyebrow")}</Eyebrow>
+              <h2>{t("featuredMenuHeading")}</h2>
+            </div>
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-6">
+              {featuredItems.map((item) => (
+                <MenuItemCard key={item.id} item={item} />
+              ))}
+            </div>
+            <div className="mt-10 text-center">
+              <ButtonLink href="/menu" variant="outline">
+                {t("viewFullMenu")}
+              </ButtonLink>
+            </div>
+          </Reveal>
+        </section>
+      )}
 
       <section className="container">
         <Reveal>
