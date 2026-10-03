@@ -1,6 +1,5 @@
-use axum::{extract::State, http::StatusCode, response::IntoResponse, routing::get, Json, Router};
-use serde_json::json;
-use sqlx::postgres::{PgPool, PgPoolOptions};
+use api::build_app;
+use sqlx::postgres::PgPoolOptions;
 
 #[tokio::main]
 async fn main() {
@@ -17,9 +16,7 @@ async fn main() {
         .await
         .expect("failed to run database migrations");
 
-    let app = Router::new()
-        .route("/health", get(health))
-        .with_state(pool);
+    let app = build_app(pool);
 
     let port: u16 = std::env::var("PORT")
         .ok()
@@ -33,14 +30,4 @@ async fn main() {
     println!("api listening on 0.0.0.0:{port}");
 
     axum::serve(listener, app).await.unwrap();
-}
-
-async fn health(State(pool): State<PgPool>) -> impl IntoResponse {
-    match sqlx::query!("SELECT 1 AS one").fetch_one(&pool).await {
-        Ok(_) => (StatusCode::OK, Json(json!({ "status": "ok" }))),
-        Err(_) => (
-            StatusCode::SERVICE_UNAVAILABLE,
-            Json(json!({ "status": "db_unreachable" })),
-        ),
-    }
 }

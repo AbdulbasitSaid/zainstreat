@@ -6,6 +6,7 @@
     "home": "Home",
     "about": "Over Ons",
     "services": "Diensten",
+    "menu": "Menu",
     "contact": "Contact",
     "orderNow": "Nu Bestellen",
     "navLabel": "Hoofdnavigatie",
@@ -16,6 +17,7 @@
     "tagline": "Heerlijk Eten. Onvergetelijke Momenten. Uitstekende Service.",
     "about": "Over Ons",
     "services": "Diensten",
+    "menu": "Menu",
     "contact": "Contact",
     "terms": "Algemene Voorwaarden",
     "foodRegulations": "Voedselvoorschriften",
@@ -53,7 +55,20 @@
     "trustHalalDesc": "Elk gerecht bereid volgens halal-normen",
     "trustFreshDesc": "Vers gemaakt voor elke bestelling",
     "trustHygienicDesc": "Schone, zorgvuldige keukenpraktijken",
-    "trustReliableDesc": "Altijd op tijd"
+    "trustReliableDesc": "Altijd op tijd",
+    "featuredMenuEyebrow": "Publieksfavorieten",
+    "featuredMenuHeading": "Proef Ons Uitgelichte Menu",
+    "viewFullMenu": "Bekijk Volledig Menu"
+  },
+  "MenuPage": {
+    "heading": "Ons Menu",
+    "metaTitle": "Menu | Zain's Treat n More",
+    "metaDescription": "Bekijk ons volledige menu met vers bereide halal maaltijden, snacks, drankjes en meer.",
+    "categoryNavLabel": "Menucategorieën",
+    "allCategories": "Alles",
+    "emptyCategory": "Op dit moment is er niets beschikbaar in deze categorie.",
+    "unavailable": "Momenteel niet beschikbaar",
+    "loadError": "We konden het menu nu niet laden. Probeer het later opnieuw."
   },
   "AboutPage": {
     "whoWeAre": "Wie Wij <em>Zijn</em>",

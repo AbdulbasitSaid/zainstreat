@@ -6,6 +6,7 @@
     "home": "Home",
     "about": "About",
     "services": "Services",
+    "menu": "Menu",
     "contact": "Contact",
     "orderNow": "Order Now",
     "navLabel": "Main navigation",
@@ -16,6 +17,7 @@
     "tagline": "Great Food. Memorable Moments. Exceptional Service.",
     "about": "About",
     "services": "Services",
+    "menu": "Menu",
     "contact": "Contact",
     "terms": "Terms & Conditions",
     "foodRegulations": "Food Regulations",
@@ -53,7 +55,20 @@
     "trustHalalDesc": "Every dish prepared to halal standards",
     "trustFreshDesc": "Made fresh for every order",
     "trustHygienicDesc": "Clean, careful kitchen practices",
-    "trustReliableDesc": "On time, every time"
+    "trustReliableDesc": "On time, every time",
+    "featuredMenuEyebrow": "Crowd Favorites",
+    "featuredMenuHeading": "Taste Our Featured Menu",
+    "viewFullMenu": "View Full Menu"
+  },
+  "MenuPage": {
+    "heading": "Our Menu",
+    "metaTitle": "Menu | Zain's Treat n More",
+    "metaDescription": "Browse our full menu of freshly prepared halal meals, snacks, drinks, and more.",
+    "categoryNavLabel": "Menu categories",
+    "allCategories": "All",
+    "emptyCategory": "Nothing available in this category right now.",
+    "unavailable": "Currently unavailable",
+    "loadError": "We couldn't load the menu right now. Please try again shortly."
   },
   "AboutPage": {
     "whoWeAre": "Who We <em>Are</em>",
