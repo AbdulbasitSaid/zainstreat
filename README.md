@@ -84,15 +84,15 @@ The website palette is derived from the supplied logo.
 
 | Token | Color | Hex | Usage |
 |---|---|---|---|
-| `primary-dark` | Deep Wine | `#71013B` | Dark sections, footer, headings |
-| `primary` | Primary Crimson | `#A7041B` | Primary buttons, links, key UI |
-| `primary-light` | Bright Crimson | `#E2073E` | Secondary CTA, highlights |
-| `accent` | Hot Pink | `#F93173` | Small accents, decorative elements |
-| `accent-light` | Soft Pink | `#F4B7C7` | Borders, subtle accents |
+| `primary-dark` | Deep Burgundy | `#4E0C2A` | Dark sections, footer, headings |
+| `primary` | Burgundy | `#72123C` | Primary buttons, links, key UI |
+| `primary-light` | Light Burgundy | `#8A1E4E` | Secondary CTA, highlights |
+| `accent` | Dusty Pink | `#C66C84` | Small accents, decorative elements |
+| `accent-light` | Blush Pink | `#F0AEC0` | Borders, subtle accents |
 | `background-soft` | Very Light Pink | `#FAE8EA` | Section backgrounds |
 | `white` | White | `#FFFFFF` | Main background, cards |
 | `text` | Dark Text | `#2B1114` | Body text |
-| `text-muted` | Muted Brown/Red | `#6F4A4F` | Secondary text |
+| `text-muted` | Muted Brown/Red | `#55343A` | Secondary text |
 | `whatsapp` | WhatsApp Green | `#1DA332` | WhatsApp actions |
 
 ### CSS Variables
@@ -100,22 +100,22 @@ The website palette is derived from the supplied logo.
 ```css
 :root {
   /* Brand */
-  --color-primary: #A7041B;
-  --color-primary-dark: #71013B;
-  --color-primary-light: #E2073E;
+  --color-primary: #72123C;
+  --color-primary-dark: #4E0C2A;
+  --color-primary-light: #8A1E4E;
 
   /* Accent */
-  --color-accent: #F93173;
-  --color-accent-light: #F4B7C7;
+  --color-accent: #C66C84;
+  --color-accent-light: #F0AEC0;
 
   /* Background */
   --color-background: #FFFFFF;
   --color-background-soft: #FAE8EA;
-  --color-background-dark: #71013B;
+  --color-background-dark: #4E0C2A;
 
   /* Text */
   --color-text: #2B1114;
-  --color-text-muted: #6F4A4F;
+  --color-text-muted: #55343A;
   --color-text-light: #FFFFFF;
 
   /* Functional */
