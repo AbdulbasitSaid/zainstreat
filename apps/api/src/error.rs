@@ -15,11 +15,25 @@ impl From<sqlx::Error> for AppError {
 
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
-        eprintln!("database error: {:?}", self.0); // no tracing crate yet
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({ "error": "internal_server_error" })),
-        )
-            .into_response()
+        let (status, code) = match &self.0 {
+            sqlx::Error::RowNotFound => (StatusCode::NOT_FOUND, "not_found"),
+            sqlx::Error::PoolTimedOut | sqlx::Error::PoolClosed | sqlx::Error::Io(_) => {
+                (StatusCode::SERVICE_UNAVAILABLE, "service_unavailable")
+            }
+            sqlx::Error::Database(db_err) => match db_err.code().as_deref() {
+                Some("23505") | Some("23503") => (StatusCode::CONFLICT, "conflict"),
+                Some("23514") => (StatusCode::BAD_REQUEST, "bad_request"),
+                _ => (StatusCode::INTERNAL_SERVER_ERROR, "internal_server_error"),
+            },
+            _ => (StatusCode::INTERNAL_SERVER_ERROR, "internal_server_error"),
+        };
+
+        if status.is_server_error() {
+            tracing::error!(error = ?self.0, %status, "request failed");
+        } else {
+            tracing::warn!(error = ?self.0, %status, "request failed");
+        }
+
+        (status, Json(json!({ "error": code }))).into_response()
     }
 }

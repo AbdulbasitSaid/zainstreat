@@ -232,7 +232,7 @@ alongside, not a replacement for, the online ordering system.
   and runs them. True continuous deployment — no manual approval gate.
 - **Backups:** Lightsail's automatic daily instance snapshots (built-in
   add-on) — no hand-rolled `pg_dump`/`mc mirror` scripts needed. This is
-  provisioned in `roadmap.md` Phase 2; restore is verified in Phase 16
+  provisioned in `roadmap.md` Phase 2; restore is verified in Phase 17
   once real data exists.
 
 _Why self-hosted over a managed PaaS (e.g. Vercel + managed Postgres):_

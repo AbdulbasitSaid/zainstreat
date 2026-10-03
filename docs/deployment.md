@@ -76,10 +76,36 @@ user's).
    docker-compose.prod.yml ps` and `curl -i https://api.zainstreat.com/
    health`.
 
+## Viewing production logs
+
+Two ways to check what the running stack is doing, from quickest to most
+convenient:
+
+1. **Direct SSH** (no setup required): `docker compose -f
+   docker-compose.yml -f docker-compose.prod.yml logs -f api` (swap
+   `api` for `web`/`caddy`/`postgres`/`minio`/`dozzle`; add `--tail=200`
+   for recent history without following). `api` and `caddy` both emit
+   structured JSON log lines (request method/path/status/latency for
+   `api`, access logs for `caddy`) as of Phase 8.
+2. **Dozzle** (browser-based log viewer): `https://logs.<domain>`,
+   gated by HTTP Basic Auth (`DOZZLE_BASIC_AUTH_USER` /
+   `DOZZLE_BASIC_AUTH_HASH` in the server's `.env` — the hash is
+   generated once via `docker run --rm caddy:2-alpine caddy
+   hash-password`, never committed). It lists and tails **every**
+   container's logs, including `postgres` and `minio`, which is exactly
+   why it's access-gated rather than exposed on its own port — the
+   Lightsail firewall only opens `22`/`80`/`443` anyway, so it's only
+   reachable through Caddy.
+
+`RUST_LOG` and `LOG_FORMAT` (`apps/api`'s log level/format) can be tuned
+live by editing the server's `.env` and running `docker compose -f
+docker-compose.yml -f docker-compose.prod.yml restart api` — no image
+rebuild or redeploy needed.
+
 ## Backups
 
 Lightsail's automatic daily instance snapshot add-on is enabled on the
 instance (Lightsail console → instance → **Snapshots**). This is the
 current backup mechanism for the whole box, including the `postgres` and
 `minio` data volumes. Restoring from a snapshot has **not** been tested
-yet — Phase 16 verifies an actual restore once real data exists.
+yet — Phase 17 verifies an actual restore once real data exists.

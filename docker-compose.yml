@@ -56,6 +56,8 @@ services:
       # (those only run at program startup, after compilation) — use the
       # committed `.sqlx/` cache instead, same as the prod Dockerfile.
       SQLX_OFFLINE: "true"
+      RUST_LOG: ${RUST_LOG:-info,api=debug,tower_http=debug,sqlx=warn}
+      LOG_FORMAT: ${LOG_FORMAT:-pretty}
     ports:
       - "${API_PORT:-8080}:8080"
     depends_on:
