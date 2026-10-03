@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO menu_items (id, category_id, name, price, deleted_at) VALUES (1, 1, 'Discontinued', 13.00, now())",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "0a8b6239f7f616b5cd3634cb032933a27ae02249ae8017a6a4cb8596a387273b"
+}
