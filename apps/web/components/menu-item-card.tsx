@@ -1,6 +1,7 @@
 import { useTranslations } from "next-intl";
 import Image from "next/image";
 import { ImageSlot } from "@/components/image-slot";
+import { AddToCartControls } from "@/components/add-to-cart-controls";
 import { formatPrice, formatPriceOrNull } from "@/lib/format";
 import type { MenuItem } from "@/lib/api";
 
@@ -54,6 +55,7 @@ export function MenuItemCard({ item }: { item: MenuItem }) {
             ))}
           </ul>
         )}
+        <AddToCartControls item={item} />
       </div>
     </div>
   );
