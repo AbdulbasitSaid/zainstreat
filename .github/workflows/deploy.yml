@@ -3,9 +3,40 @@ name: Deploy
 on:
   push:
     branches: [master]
+  pull_request:
+    branches: [master]
 
 jobs:
+  test-api:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: zainstreat_test
+          POSTGRES_PASSWORD: zainstreat_test
+          POSTGRES_DB: zainstreat_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U zainstreat_test -d zainstreat_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run API tests
+        working-directory: apps/api
+        env:
+          DATABASE_URL: postgres://zainstreat_test:zainstreat_test@localhost:5432/zainstreat_test
+          SQLX_OFFLINE: "true"
+        run: cargo test
+
   build-and-push:
+    needs: test-api
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -52,6 +83,7 @@ jobs:
 
   deploy:
     needs: build-and-push
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
