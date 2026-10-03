@@ -261,3 +261,35 @@ the page indiscriminately. Decisions (confirmed with the user):
   utility class had been silently supplying underneath the brand override
   (the project's own `.container` rule only ever set `max-width`); removing
   Pico removed that free centering, so it's now set explicitly.
+
+## Addendum — logo revision and burgundy rebrand
+
+The client supplied a revised logo (a new wordmark + chef-hat + rolling-pin
+lockup, on a solid black background) and asked for the brand to shift from
+the crimson/hot-pink palette documented in the addendum above to
+burgundy-primary with white as a prominent color and pink used only as a
+minor accent:
+
+- **Logo replaced.** `apps/web/public/logo.jpg` was removed in favor of
+  `apps/web/public/logo.png`: the new artwork was background-matted to a
+  transparent PNG with `rembg` (AI matting, not a chroma-key/fuzz cutout —
+  the glossy dark-red edges needed real alpha matting to avoid halos), then
+  recolored in HSV space (deep fills hue-shifted to a burgundy ~332°; the
+  brighter pink script/rolling-pin fill desaturated to a muted blush; the
+  near-white highlights pushed to true white). `apps/web/app/icon.png`
+  (favicon) was regenerated from the same recolored artwork, kept
+  transparent (256×256).
+- **No more circular crop.** The new logo is a wide wordmark lockup, not a
+  circular emblem, so `components/logo.tsx` dropped the `rounded-full`
+  48×48 treatment in favor of showing the full lockup at its native aspect
+  ratio (53×48 display size, `width`/`height` on `next/image`).
+- **Brand tokens re-sampled from the recolored logo.** `globals.css`'s
+  `@theme` block and README §3 were both updated: `--color-primary` →
+  `#72123C`, `--color-primary-dark` → `#4E0C2A`, `--color-primary-light` →
+  `#8A1E4E`, `--color-accent` → `#C66C84`, `--color-accent-light` →
+  `#F0AEC0`. `--color-text`/`--color-text-muted` and every other structural
+  token (`--color-background*`, `--color-cream`, `--color-card`,
+  `--color-whatsapp*`, `--color-on-dark-*`) were left untouched — they
+  already read as burgundy-compatible and no component hardcodes a hex
+  value, so every `bg-primary`/`text-accent`/etc. call site picked up the
+  new palette automatically.

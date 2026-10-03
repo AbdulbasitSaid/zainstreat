@@ -2,11 +2,11 @@
 
 @theme {
   /* Brand palette (README §3) */
-  --color-primary: #A7041B;
-  --color-primary-dark: #71013B;
-  --color-primary-light: #E2073E;
-  --color-accent: #F93173;
-  --color-accent-light: #F4B7C7;
+  --color-primary: #72123C;
+  --color-primary-dark: #4E0C2A;
+  --color-primary-light: #8A1E4E;
+  --color-accent: #C66C84;
+  --color-accent-light: #F0AEC0;
   --color-background: #FFFFFF;
   --color-background-soft: #FAE8EA;
   --color-cream: #FBF4E9;
