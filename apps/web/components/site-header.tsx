@@ -7,6 +7,8 @@ import { Link, usePathname } from "@/i18n/navigation";
 import { Logo } from "@/components/logo";
 import { LocaleToggle } from "@/components/locale-toggle";
 import { ButtonLink } from "@/components/button";
+import { CartIcon } from "@/components/cart-icon";
+import { CartBadge } from "@/components/cart-badge";
 
 const NAV_ITEMS = [
   { href: "/", key: "home" },
@@ -97,6 +99,16 @@ export function SiteHeader() {
               </li>
             );
           })}
+          <li className="px-4 py-2 min-[769px]:px-0 min-[769px]:py-0">
+            <Link
+              href="/cart"
+              aria-label={t("cart")}
+              className="relative inline-flex h-10 w-10 items-center justify-center rounded-full text-primary hover:bg-background-soft"
+            >
+              <CartIcon className="h-5 w-5" />
+              <CartBadge />
+            </Link>
+          </li>
           <li className="px-4 py-2 min-[769px]:px-0 min-[769px]:py-0">
             <LocaleToggle />
           </li>

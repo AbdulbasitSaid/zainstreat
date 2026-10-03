@@ -11,7 +11,8 @@
     "orderNow": "Nu Bestellen",
     "navLabel": "Hoofdnavigatie",
     "openMenu": "Menu openen",
-    "closeMenu": "Menu sluiten"
+    "closeMenu": "Menu sluiten",
+    "cart": "Winkelwagen"
   },
   "SiteFooter": {
     "tagline": "Heerlijk Eten. Onvergetelijke Momenten. Uitstekende Service.",
@@ -68,7 +69,23 @@
     "allCategories": "Alles",
     "emptyCategory": "Op dit moment is er niets beschikbaar in deze categorie.",
     "unavailable": "Momenteel niet beschikbaar",
-    "loadError": "We konden het menu nu niet laden. Probeer het later opnieuw."
+    "loadError": "We konden het menu nu niet laden. Probeer het later opnieuw.",
+    "addToCart": "In Winkelwagen",
+    "addToCartOption": "{option} Toevoegen"
+  },
+  "Cart": {
+    "metaTitle": "Winkelwagen | Zain's Treat n More",
+    "metaDescription": "Bekijk je bestelling voordat je afrekent.",
+    "heading": "Jouw Winkelwagen",
+    "empty": "Je winkelwagen is leeg.",
+    "continueShopping": "Verder Winkelen",
+    "subtotal": "Subtotaal",
+    "clearCart": "Winkelwagen Legen",
+    "proceedToOrder": "Doorgaan naar Bestellen",
+    "proceedToOrderComingSoon": "Bestellen komt binnenkort beschikbaar.",
+    "remove": "Verwijderen",
+    "increaseQuantity": "Aantal {name} verhogen",
+    "decreaseQuantity": "Aantal {name} verlagen"
   },
   "AboutPage": {
     "whoWeAre": "Wie Wij <em>Zijn</em>",

@@ -11,7 +11,8 @@
     "orderNow": "Order Now",
     "navLabel": "Main navigation",
     "openMenu": "Open menu",
-    "closeMenu": "Close menu"
+    "closeMenu": "Close menu",
+    "cart": "Cart"
   },
   "SiteFooter": {
     "tagline": "Great Food. Memorable Moments. Exceptional Service.",
@@ -68,7 +69,23 @@
     "allCategories": "All",
     "emptyCategory": "Nothing available in this category right now.",
     "unavailable": "Currently unavailable",
-    "loadError": "We couldn't load the menu right now. Please try again shortly."
+    "loadError": "We couldn't load the menu right now. Please try again shortly.",
+    "addToCart": "Add to Cart",
+    "addToCartOption": "Add {option}"
+  },
+  "Cart": {
+    "metaTitle": "Cart | Zain's Treat n More",
+    "metaDescription": "Review your order before checking out.",
+    "heading": "Your Cart",
+    "empty": "Your cart is empty.",
+    "continueShopping": "Continue Shopping",
+    "subtotal": "Subtotal",
+    "clearCart": "Clear Cart",
+    "proceedToOrder": "Proceed to Order",
+    "proceedToOrderComingSoon": "Order submission is coming soon.",
+    "remove": "Remove",
+    "increaseQuantity": "Increase quantity of {name}",
+    "decreaseQuantity": "Decrease quantity of {name}"
   },
   "AboutPage": {
     "whoWeAre": "Who We <em>Are</em>",
