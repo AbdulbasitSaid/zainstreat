@@ -2,7 +2,8 @@
 
 import { useEffect } from "react";
 import Lenis from "lenis";
-import { useReducedMotion } from "motion/react";
+import { gsap, ScrollTrigger } from "@/lib/gsap";
+import { useReducedMotion } from "@/lib/use-reduced-motion";
 
 export function MotionProvider() {
   const shouldReduceMotion = useReducedMotion();
@@ -11,16 +12,17 @@ export function MotionProvider() {
     if (shouldReduceMotion) return;
 
     const lenis = new Lenis();
-    let frame: number;
+    lenis.on("scroll", ScrollTrigger.update);
 
-    function raf(time: number) {
-      lenis.raf(time);
-      frame = requestAnimationFrame(raf);
+    // gsap.ticker passes seconds; Lenis expects a millisecond timestamp.
+    function onTick(time: number) {
+      lenis.raf(time * 1000);
     }
-    frame = requestAnimationFrame(raf);
+    gsap.ticker.add(onTick);
+    gsap.ticker.lagSmoothing(0);
 
     return () => {
-      cancelAnimationFrame(frame);
+      gsap.ticker.remove(onTick);
       lenis.destroy();
     };
   }, [shouldReduceMotion]);

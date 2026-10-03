@@ -1,5 +1,5 @@
 import { useTranslations } from "next-intl";
-import { ImageSlot } from "@/components/image-slot";
+import { PlaceholderImage } from "@/components/placeholder-image";
 import { SplitRow } from "@/components/split-row";
 import { PageHero } from "@/components/page-hero";
 import { ButtonLink } from "@/components/button";
@@ -28,7 +28,7 @@ export default function ServicesPage() {
       </PageHero>
 
       <SplitRow
-        media={<ImageSlot label={t("mealsHeading")} />}
+        media={<PlaceholderImage label={t("mealsHeading")} />}
         content={
           <div>
             <SplitRowIndex>01</SplitRowIndex>
@@ -41,7 +41,7 @@ export default function ServicesPage() {
       <SplitRow
         tinted
         reverse
-        media={<ImageSlot label={t("snacksHeading")} />}
+        media={<PlaceholderImage label={t("snacksHeading")} />}
         content={
           <div>
             <SplitRowIndex>02</SplitRowIndex>
@@ -52,7 +52,7 @@ export default function ServicesPage() {
       />
 
       <SplitRow
-        media={<ImageSlot label={t("cateringHeading")} />}
+        media={<PlaceholderImage label={t("cateringHeading")} />}
         content={
           <div>
             <SplitRowIndex>03</SplitRowIndex>
@@ -68,7 +68,7 @@ export default function ServicesPage() {
       <SplitRow
         tinted
         reverse
-        media={<ImageSlot label={t("eventRentalsHeading")} />}
+        media={<PlaceholderImage label={t("eventRentalsHeading")} />}
         content={
           <div>
             <SplitRowIndex>04</SplitRowIndex>

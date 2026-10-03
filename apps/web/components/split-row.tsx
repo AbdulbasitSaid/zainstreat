@@ -6,14 +6,12 @@ export function SplitRow({
   content,
   reverse = false,
   tinted = false,
-  decoration,
   className = "",
 }: {
   media: ReactNode;
   content: ReactNode;
   reverse?: boolean;
   tinted?: boolean;
-  decoration?: ReactNode;
   className?: string;
 }) {
   const sectionClasses = tinted
@@ -22,7 +20,6 @@ export function SplitRow({
 
   return (
     <section className={sectionClasses || undefined}>
-      {decoration}
       <Reveal>
         <div className="grid grid-cols-1 items-center gap-8 md:grid-cols-2 md:gap-14">
           {reverse ? (

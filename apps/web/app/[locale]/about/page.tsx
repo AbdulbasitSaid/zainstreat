@@ -1,7 +1,6 @@
 import { useTranslations } from "next-intl";
 import { Reveal } from "@/components/reveal";
-import { DecorativeShape } from "@/components/decorative-shape";
-import { ImageSlot } from "@/components/image-slot";
+import { PlaceholderImage } from "@/components/placeholder-image";
 import { SplitRow } from "@/components/split-row";
 import { CheckList } from "@/components/check-list";
 
@@ -14,22 +13,18 @@ export default function AboutPage() {
   return (
     <main className="container">
       <SplitRow
-        className="relative overflow-hidden"
-        decoration={
-          <DecorativeShape style={{ width: "160px", height: "160px", top: "-30px", right: "-40px" }} />
-        }
         content={
           <h1 className="text-[clamp(2.5rem,5vw,4.25rem)]">
             {t.rich("whoWeAre", { em: (chunks) => <em>{chunks}</em> })}
           </h1>
         }
-        media={<ImageSlot label={t.markup("whoWeAre", { em: (chunks) => chunks })} />}
+        media={<PlaceholderImage label={t.markup("whoWeAre", { em: (chunks) => chunks })} />}
       />
 
       <SplitRow
         tinted
         reverse
-        media={<ImageSlot label={t("ourMission")} />}
+        media={<PlaceholderImage label={t("ourMission")} />}
         content={
           <div>
             <h2>{t("ourMission")}</h2>

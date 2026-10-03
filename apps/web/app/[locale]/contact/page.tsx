@@ -2,7 +2,7 @@ import { useTranslations } from "next-intl";
 import { Reveal } from "@/components/reveal";
 import { SplitRow } from "@/components/split-row";
 import { PageHero } from "@/components/page-hero";
-import { ImageSlot } from "@/components/image-slot";
+import { PlaceholderImage } from "@/components/placeholder-image";
 import { Button } from "@/components/button";
 import { Notice } from "@/components/notice";
 
@@ -21,7 +21,7 @@ export default function ContactPage() {
 
       <SplitRow
         media={
-          <ImageSlot
+          <PlaceholderImage
             label={t("mapPlaceholderLabel")}
             className="min-h-[240px]"
           />
