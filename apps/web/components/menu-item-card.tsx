@@ -1,11 +1,12 @@
 import { useTranslations } from "next-intl";
 import Image from "next/image";
 import { ImageSlot } from "@/components/image-slot";
-import { formatPrice } from "@/lib/format";
+import { formatPrice, formatPriceOrNull } from "@/lib/format";
 import type { MenuItem } from "@/lib/api";
 
 export function MenuItemCard({ item }: { item: MenuItem }) {
   const t = useTranslations("MenuPage");
+  const flatPrice = formatPriceOrNull(item.price);
 
   return (
     <div
@@ -36,9 +37,23 @@ export function MenuItemCard({ item }: { item: MenuItem }) {
         {item.description && (
           <p className="m-0 text-[0.9rem] text-text-muted">{item.description}</p>
         )}
-        <p className="m-0 mt-auto pt-2 text-[1.05rem] font-semibold text-primary">
-          {formatPrice(item.price)}
-        </p>
+        {flatPrice !== null ? (
+          <p className="m-0 mt-auto pt-2 text-[1.05rem] font-semibold text-primary">
+            {flatPrice}
+          </p>
+        ) : (
+          <ul className="m-0 mt-auto flex flex-col gap-0.5 pt-2">
+            {item.price_options.map((option) => (
+              <li
+                key={option.id}
+                className="flex items-baseline justify-between gap-3 text-[0.95rem]"
+              >
+                <span className="text-text-muted">{option.label}</span>
+                <span className="font-semibold text-primary">{formatPrice(option.price)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   );

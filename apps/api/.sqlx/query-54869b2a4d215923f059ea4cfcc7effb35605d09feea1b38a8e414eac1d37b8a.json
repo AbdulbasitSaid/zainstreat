@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO categories (id, name, display_order) VALUES (1, 'Bulk Orders', 2), (2, 'Individual Plates', 1)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "54869b2a4d215923f059ea4cfcc7effb35605d09feea1b38a8e414eac1d37b8a"
+}

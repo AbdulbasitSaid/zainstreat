@@ -20,7 +20,16 @@
   Postgres block), then commit `.sqlx/`.
 - To load sample data: `docker compose exec -T postgres psql -U
   $POSTGRES_USER -d $POSTGRES_DB < apps/api/seed.sql` (or the equivalent
-  run locally against `localhost:$POSTGRES_PORT`).
+  run locally against `localhost:$POSTGRES_PORT`). `seed.sql` opens with a
+  `TRUNCATE ... CASCADE`, so re-running it replaces existing
+  `categories`/`menu_items`/`menu_item_price_options` data (and cascades
+  to `order_items`, since it references `menu_items`) rather than
+  appending to it — safe for dev, never run against a database with real
+  orders.
+- A `menu_items` row has a flat `price` OR one-or-more
+  `menu_item_price_options` rows — never both. This is an
+  application-level invariant only (not a DB constraint); keep it in mind
+  when hand-editing either table directly.
 
 ## Running API tests
 

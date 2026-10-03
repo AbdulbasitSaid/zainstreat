@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT id, category_id, name, description, price, image_url,\n               is_available, is_featured\n        FROM menu_items\n        WHERE deleted_at IS NULL\n          AND ($1::BIGINT IS NULL OR category_id = $1)\n        ORDER BY id\n        ",
+  "query": "\n        SELECT id, category_id, name, description, price, image_url,\n               is_available, is_featured\n        FROM menu_items\n        WHERE deleted_at IS NULL\n          AND ($1::BIGINT IS NULL OR category_id = $1)\n        ORDER BY display_order, id\n        ",
   "describe": {
     "columns": [
       {
@@ -54,11 +54,11 @@
       false,
       false,
       true,
-      false,
+      true,
       true,
       false,
       false
     ]
   },
-  "hash": "f6e0f01926b1a6775e59cc29b14b48fb973c905be869de01befdc92ca3e784c5"
+  "hash": "5f3756fdc940ff562e3224e7c43c529b3488e4469cd4fed8034ad9f8acc83fdf"
 }

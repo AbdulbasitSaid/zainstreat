@@ -9,3 +9,7 @@ export function formatPrice(price: string): string {
     maximumFractionDigits: 2,
   })}`;
 }
+
+export function formatPriceOrNull(price: string | null): string | null {
+  return price === null ? null : formatPrice(price);
+}
