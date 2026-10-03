@@ -47,7 +47,7 @@ services:
       - ./apps/api:/app
       - api_cargo_target:/app/target
       - cargo_registry_cache:/usr/local/cargo/registry
-    command: cargo run
+    command: cargo run --bin api
     environment:
       PORT: ${API_PORT:-8080}
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
@@ -58,6 +58,7 @@ services:
       SQLX_OFFLINE: "true"
       RUST_LOG: ${RUST_LOG:-info,api=debug,tower_http=debug,sqlx=warn}
       LOG_FORMAT: ${LOG_FORMAT:-pretty}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
     ports:
       - "${API_PORT:-8080}:8080"
     depends_on:

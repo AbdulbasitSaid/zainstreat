@@ -58,23 +58,68 @@ Use this if a bad deploy needs to be reverted outside the normal
 push-to-`master` flow. Requires the **admin** SSH key (not the `deploy`
 user's).
 
+`/opt/zainstreat` is owned `deploy:deploy` (`rwxr-x---`) — the admin login
+has no direct access to it, so `cd`/`docker compose` there needs `sudo`
+(see the permissions note under "Creating the first admin account" below;
+same fix applies here).
+
 1. SSH into the server as admin.
 2. Find the previous good commit SHA (GitHub Actions run history, or
-   `git log` on `/opt/zainstreat`).
+   `sudo git log` on `/opt/zainstreat`).
 3. Pull and run that specific tag instead of `latest`, e.g.:
    ```bash
-   cd /opt/zainstreat
-   docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+   cd /opt/zainstreat || sudo -i   # sudo -i first if cd fails with Permission denied
+   sudo docker compose -f docker-compose.yml -f docker-compose.prod.yml \
      pull  # or manually: docker pull ghcr.io/abdulbasitsaid/zainstreat-web:<previous-sha>
    # then re-point the running containers at that tag and:
-   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+   sudo docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
    ```
    The simplest version in practice: re-run a prior **green** Actions run
    from the GitHub Actions UI ("Re-run jobs") — it rebuilds and redeploys
    that exact commit, including re-tagging it `:latest`.
-4. Confirm with `docker compose -f docker-compose.yml -f
+4. Confirm with `sudo docker compose -f docker-compose.yml -f
    docker-compose.prod.yml ps` and `curl -i https://api.zainstreat.com/
    health`.
+
+## Creating the first admin account
+
+`apps/api`'s `create_admin` binary (Phase 11) is the only way to create or
+update an admin login — there is no seed script or admin UI for this, and
+`apps/api/seed.sql` deliberately never touches `users`. Requires the
+**admin** SSH key (not the `deploy` user's), same break-glass distinction
+as above. This is a manual, one-time-per-account operational step —
+**never** run through `deploy.yml`/CI, consistent with the `deploy` user's
+sudo-less, docker-group-only scope.
+
+`/opt/zainstreat` is owned `deploy:deploy` (`rwxr-x---`), so the admin
+login (`ec2-user`, via its `wheel`/sudo membership) has **no** direct
+access to it — `cd`/`ls` there fails with `Permission denied` unless
+prefixed with `sudo`. Don't fix this by adding `ec2-user` to a `deploy`
+group or loosening the directory's mode; just `sudo` each command (or
+`sudo -i` for a root shell) as below.
+
+1. SSH into the server as admin.
+2. Run, from `/opt/zainstreat` (prefix with `sudo`):
+   ```bash
+   sudo docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+     exec api create_admin --email owner@zainstreat.com --name "Zain"
+   ```
+3. Enter the password twice when prompted.
+4. Confirm with `sudo docker compose -f docker-compose.yml -f
+   docker-compose.prod.yml exec postgres psql -U $POSTGRES_USER -d
+   $POSTGRES_DB -c "SELECT email, role FROM users;"`.
+
+### Local/dev equivalent
+
+The dev compose file (`docker-compose.yml` alone) builds `api` from
+`Dockerfile.dev`, a bare `rust:1-slim-bookworm` image that only ever runs
+`cargo run --bin api` — it never compiles `create_admin`, so there's no
+`create_admin` binary on `$PATH` to `exec` into. Run it through cargo
+instead:
+
+```bash
+docker compose exec api cargo run --bin create_admin -- --email owner@zainstreat.com --name "Zain"
+```
 
 ## Seeding the production database
 

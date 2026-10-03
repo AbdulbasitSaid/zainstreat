@@ -163,8 +163,9 @@ one typed, testable service independent of the frontend framework.
 
 - **`argon2`** crate for password hashing (memory-hard, current best
   practice for credential storage).
-- **`tower-sessions`** with a Postgres-backed session store for
-  server-side sessions and secure, httpOnly session cookies.
+- **`tower-sessions`** with a Postgres-backed session store
+  (`tower-sessions-sqlx-store`, `postgres` feature) for server-side
+  sessions and secure, httpOnly session cookies.
 
 This satisfies README §26 (email/password login, secure session, logout)
 entirely within the Rust service — no Node-based auth library (e.g.
@@ -172,6 +173,29 @@ Auth.js/NextAuth) is introduced, since the backend of record is Rust.
 Future items from README §26 (multiple staff accounts, roles, 2FA,
 password reset) extend this same session model later; they are not MVP
 scope.
+
+**Implementation specifics pinned in `roadmap.md` Phase 11** (see
+`specs/2026-10-03-phase-11-admin-auth/requirement.md` for full rationale):
+
+- Session expiry is a **rolling 7-day inactivity window**
+  (`tower_sessions::Expiry::OnInactivity`), not a fixed absolute expiry.
+- The `tower-sessions-sqlx-store` session table is **self-migrated by the
+  crate's own `PostgresStore::migrate()` call at API startup**, not a
+  committed `apps/api/migrations/*.sql` file — a deliberate, scoped
+  exception to this doc's "plain numbered `.sql` files" migration
+  convention, since that table's schema is owned by the crate, not this
+  project.
+- Cookie `Secure` is toggled by a `COOKIE_SECURE` env var (default `false`
+  in `docker-compose.yml`, default `true` in `docker-compose.prod.yml`) —
+  the same per-compose-file-default convention already used for
+  `LOG_FORMAT`. `SameSite=Lax` throughout; no cross-origin cookie
+  configuration is needed since the browser only ever reaches the admin
+  API through `apps/web`'s own same-origin Route Handler proxies, same
+  posture as Phase 10's order-submission proxy.
+- The first (and any later) admin account is created via a CLI subcommand,
+  `apps/api/src/bin/create_admin.rs` — a second binary target in the `api`
+  Cargo package, run manually over SSH (never through CI), not a seeded
+  SQL file or an env-var auto-bootstrap on startup.
 
 ## Object/Image Storage
 

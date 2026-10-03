@@ -15,6 +15,10 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 tower = "0.5"
 tower-http = { version = "0.6", features = ["trace", "request-id"] }
+argon2 = "0.6"
+tower-sessions = "0.14"
+tower-sessions-sqlx-store = { version = "0.15", features = ["postgres"] }
+rpassword = "7"
 
 [dev-dependencies]
 tower = { version = "0.5", features = ["util"] }
