@@ -1,6 +1,7 @@
 pub mod error;
 pub mod routes;
 
+use axum::extract::FromRef;
 use axum::Router;
 use sqlx::PgPool;
 use tower::ServiceBuilder;
@@ -16,7 +17,51 @@ use tower_sessions::{
 use tower_sessions_sqlx_store::PostgresStore;
 use tracing::Level;
 
-pub async fn build_app(pool: PgPool, cookie_secure: bool) -> Result<Router, sqlx::Error> {
+#[derive(Clone)]
+pub struct MediaConfig {
+    pub client: aws_sdk_s3::Client,
+    pub bucket: String,
+    pub public_base_url: String,
+}
+
+#[derive(Clone)]
+pub struct AppState {
+    pub pool: PgPool,
+    pub media: MediaConfig,
+}
+
+impl FromRef<AppState> for PgPool {
+    fn from_ref(state: &AppState) -> PgPool {
+        state.pool.clone()
+    }
+}
+
+impl FromRef<AppState> for MediaConfig {
+    fn from_ref(state: &AppState) -> MediaConfig {
+        state.media.clone()
+    }
+}
+
+/// `tower-sessions-sqlx-store` pulls in sqlx's `time` feature alongside this
+/// crate's own `chrono` feature; with both active, sqlx's compile-time query
+/// macros stop accepting `chrono::DateTime<Utc>` as a *bind parameter* type
+/// for `timestamptz` columns (only `time::OffsetDateTime` is registered) even
+/// though `chrono::DateTime<Utc>` still decodes query *results* fine via an
+/// explicit `as "col: DateTime<Utc>"` override. This converts an
+/// optimistic-concurrency `updated_at` token for binding only — every other
+/// type in this codebase stays chrono.
+pub(crate) fn chrono_to_offset(dt: chrono::DateTime<chrono::Utc>) -> time::OffsetDateTime {
+    time::OffsetDateTime::from_unix_timestamp_nanos(
+        dt.timestamp_nanos_opt().expect("updated_at fits in i64 nanoseconds") as i128,
+    )
+    .expect("valid offset datetime")
+}
+
+pub async fn build_app(
+    pool: PgPool,
+    cookie_secure: bool,
+    media: MediaConfig,
+) -> Result<Router, sqlx::Error> {
     let session_store = PostgresStore::new(pool.clone());
     session_store.migrate().await?;
 
@@ -43,5 +88,5 @@ pub async fn build_app(pool: PgPool, cookie_secure: bool) -> Result<Router, sqlx
                 )
                 .layer(PropagateRequestIdLayer::x_request_id()),
         )
-        .with_state(pool))
+        .with_state(AppState { pool, media }))
 }

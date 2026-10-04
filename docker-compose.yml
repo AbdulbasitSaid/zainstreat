@@ -59,6 +59,11 @@ services:
       RUST_LOG: ${RUST_LOG:-info,api=debug,tower_http=debug,sqlx=warn}
       LOG_FORMAT: ${LOG_FORMAT:-pretty}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      MINIO_BUCKET: ${MINIO_BUCKET:-menu-images}
+      PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:${API_PORT:-8080}}
     ports:
       - "${API_PORT:-8080}:8080"
     depends_on:

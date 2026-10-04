@@ -7,9 +7,17 @@ const nextConfig: NextConfig = {
   output: "standalone",
   agentRules: false,
   images: {
-    // Dev seed data's placeholder host. The production/MinIO host gets
-    // added alongside this entry in Phase 14 — don't remove it then.
-    remotePatterns: [{ protocol: "https", hostname: "placehold.co" }],
+    remotePatterns: [
+      { protocol: "https", hostname: "placehold.co" },
+      // Dev: the API container's published port, same convention default
+      // as API_PORT everywhere else. Prod: api.$DOMAIN, Caddy-fronted
+      // (requirement.md Decision 2) — DOMAIN is passed into the web
+      // service's environment for exactly this (docker-compose.prod.yml).
+      { protocol: "http", hostname: "localhost", port: "8080" },
+      ...(process.env.DOMAIN
+        ? [{ protocol: "https" as const, hostname: `api.${process.env.DOMAIN}` }]
+        : []),
+    ],
     // placehold.co serves image/svg+xml, which next/image's optimizer
     // blocks by default (SVGs can embed scripts). Sandboxed CSP below is
     // Next's own documented mitigation — allows rendering without

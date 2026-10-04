@@ -1,3 +1,4 @@
+use aws_sdk_s3::config::{BehaviorVersion, Builder as S3ConfigBuilder, Credentials, Region};
 use sqlx::postgres::PgPoolOptions;
 use tracing_subscriber::EnvFilter;
 
@@ -14,6 +15,13 @@ fn init_tracing() {
     std::panic::set_hook(Box::new(|info| {
         tracing::error!(panic = %info, "panicked");
     }));
+}
+
+fn require_env(key: &str) -> String {
+    std::env::var(key).unwrap_or_else(|_| {
+        tracing::error!("{key} must be set");
+        std::process::exit(1);
+    })
 }
 
 #[tokio::main]
@@ -46,7 +54,47 @@ async fn main() {
         .map(|v| v == "true")
         .unwrap_or(false);
 
-    let app = match api::build_app(pool, cookie_secure).await {
+    let minio_endpoint = require_env("MINIO_ENDPOINT");
+    let minio_access_key = require_env("MINIO_ACCESS_KEY");
+    let minio_secret_key = require_env("MINIO_SECRET_KEY");
+    let bucket = std::env::var("MINIO_BUCKET").unwrap_or_else(|_| "menu-images".into());
+    let public_base_url = require_env("PUBLIC_API_URL");
+
+    let s3_config = S3ConfigBuilder::new()
+        .behavior_version(BehaviorVersion::latest())
+        .region(Region::new("us-east-1")) // MinIO ignores region; the SDK still requires one
+        .endpoint_url(minio_endpoint)
+        .credentials_provider(Credentials::new(
+            minio_access_key,
+            minio_secret_key,
+            None,
+            None,
+            "minio-static",
+        ))
+        .force_path_style(true) // MinIO requires path-style bucket addressing
+        .build();
+    let client = aws_sdk_s3::Client::from_conf(s3_config);
+
+    // Idempotent — tolerates the bucket already existing from a prior boot,
+    // same "fix drift on startup" spirit as sqlx::migrate!() above.
+    match client.create_bucket().bucket(&bucket).send().await {
+        Ok(_) => tracing::info!(%bucket, "created media bucket"),
+        Err(err)
+            if err
+                .as_service_error()
+                .is_some_and(|e| e.is_bucket_already_owned_by_you() || e.is_bucket_already_exists()) =>
+        {
+            tracing::info!(%bucket, "media bucket already exists");
+        }
+        Err(err) => {
+            tracing::error!(%err, %bucket, "failed to create media bucket");
+            std::process::exit(1);
+        }
+    }
+
+    let media = api::MediaConfig { client, bucket, public_base_url };
+
+    let app = match api::build_app(pool, cookie_secure, media).await {
         Ok(app) => app,
         Err(error) => {
             tracing::error!(%error, "failed to build application");

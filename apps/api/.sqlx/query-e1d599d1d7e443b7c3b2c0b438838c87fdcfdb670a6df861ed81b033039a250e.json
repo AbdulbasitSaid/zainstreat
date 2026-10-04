@@ -1,0 +1,82 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT mi.id, mi.category_id, c.name as category_name, mi.name, mi.description,\n               mi.price, mi.image_url, mi.is_available, mi.is_featured,\n               mi.deleted_at as \"deleted_at: DateTime<Utc>\",\n               mi.updated_at as \"updated_at: DateTime<Utc>\"\n        FROM menu_items mi\n        JOIN categories c ON c.id = mi.category_id\n        WHERE mi.id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "category_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "category_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "price",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 6,
+        "name": "image_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "is_available",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 8,
+        "name": "is_featured",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 9,
+        "name": "deleted_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "updated_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "e1d599d1d7e443b7c3b2c0b438838c87fdcfdb670a6df861ed81b033039a250e"
+}

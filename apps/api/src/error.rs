@@ -20,6 +20,12 @@ pub struct UnavailableItem {
     pub reason: String,
 }
 
+#[derive(Debug, Serialize, sqlx::FromRow)]
+pub struct BlockingMenuItem {
+    pub id: i64,
+    pub name: String,
+}
+
 pub enum AppError {
     Database(sqlx::Error),
     Validation(Vec<FieldError>),
@@ -27,10 +33,27 @@ pub enum AppError {
     Unauthorized,
     InvalidCredentials,
     Session(tower_sessions::session::Error),
+    NotFound,
+    CategoryHasActiveItems(Vec<BlockingMenuItem>),
+    CategoryArchived,
+    Conflict(serde_json::Value),
+    Internal,
 }
 
 impl From<sqlx::Error> for AppError {
     fn from(err: sqlx::Error) -> Self {
+        // requirement.md Decision 7's addendum (open risk 5) — Group 1a's
+        // trigger raises this specific check_violation when a menu item is
+        // inserted/re-pointed under an archived category under a race the
+        // application-level pre-check in `validate_menu_item` can't close
+        // alone. Matched on message, not just the 23514 code, so some other
+        // unrelated check_violation doesn't get swallowed under this shape.
+        if let sqlx::Error::Database(db_err) = &err
+            && db_err.code().as_deref() == Some("23514")
+            && db_err.message().contains("menu item category")
+        {
+            return Self::CategoryArchived;
+        }
         Self::Database(err)
     }
 }
@@ -96,6 +119,38 @@ impl IntoResponse for AppError {
             }
             AppError::Session(err) => {
                 tracing::error!(error = ?err, "session store error");
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(json!({ "error": "internal_server_error" })),
+                )
+                    .into_response()
+            }
+            AppError::NotFound => {
+                (StatusCode::NOT_FOUND, Json(json!({ "error": "not_found" }))).into_response()
+            }
+            AppError::CategoryHasActiveItems(items) => {
+                tracing::warn!(?items, "category archive rejected: active menu items remain");
+                (
+                    StatusCode::CONFLICT,
+                    Json(json!({ "error": "category_has_active_items", "items": items })),
+                )
+                    .into_response()
+            }
+            AppError::CategoryArchived => (
+                StatusCode::BAD_REQUEST,
+                Json(json!({
+                    "error": "validation_error",
+                    "fields": [{ "field": "category_id", "message": "invalid" }],
+                })),
+            )
+                .into_response(),
+            AppError::Conflict(current) => (
+                StatusCode::CONFLICT,
+                Json(json!({ "error": "conflict", "current": current })),
+            )
+                .into_response(),
+            AppError::Internal => {
+                tracing::error!("internal server error");
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     Json(json!({ "error": "internal_server_error" })),

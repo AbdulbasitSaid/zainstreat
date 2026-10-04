@@ -22,6 +22,15 @@ export function MenuItemCard({ item }: { item: MenuItem }) {
             alt={item.name}
             width={600}
             height={400}
+            // Phase 14's uploaded photos are absolute URLs served by the API
+            // (apps/api's media route); the backend already serves a fixed
+            // pre-cropped square and never generates resized variants, so
+            // next/image's own optimizer has nothing to gain here — and in
+            // dev, that optimizer runs server-side inside the `web`
+            // container, which can't reach the api container at the
+            // browser-facing `localhost:8080` host. Relative seed-data
+            // paths (same origin) are unaffected and keep optimizing.
+            unoptimized={item.image_url.startsWith("http")}
             className="h-[180px] w-full object-cover"
           />
         ) : (

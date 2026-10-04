@@ -27,6 +27,7 @@ services:
       RUST_LOG: ${RUST_LOG:-info}
       LOG_FORMAT: ${LOG_FORMAT:-json}
       COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      PUBLIC_API_URL: https://api.${DOMAIN}
     restart: unless-stopped
     <<: *default-logging
 
@@ -36,6 +37,8 @@ services:
     volumes: !reset []
     command: !reset null
     ports: !reset []
+    environment:
+      DOMAIN: ${DOMAIN}
     restart: unless-stopped
     <<: *default-logging
 

@@ -202,11 +202,19 @@ phase replaces.
 
 ## Phase 14 — Admin: Menu & Categories
 
-- Add / edit menu item (name, description, price, category, image,
-  available, featured).
+- Add / edit menu item (name, description, price or multiple priced size
+  options, category, image, available, featured).
+- Image upload: the first real use of the MinIO container running since
+  Phase 1 — admins upload a photo from their device rather than pasting a
+  URL, served back out through a new public `GET /api/media/{key}` route
+  on the already-public `api.{$DOMAIN}` Caddy site (see
+  `specs/2026-10-04-phase-14-admin-menu-categories/requirement.md`
+  Decisions 1–4, 10, 12–13 for the full upload/serve/env-var design).
 - Archive menu item (soft delete; remains on historical orders).
-- Availability toggle (available/unavailable).
-- Category management: add, rename, archive.
+- Availability toggle (available/unavailable) — a dedicated one-field
+  endpoint, separate from the full edit form.
+- Category management: add, rename, archive — archiving is blocked with
+  a `409` while the category still has active (non-archived) menu items.
 
 ## Phase 15 — Catering & Contact Workflows
 

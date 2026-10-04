@@ -222,6 +222,45 @@ staying inside the self-hosted-VPS decision. Because MinIO speaks the S3
 API, a future migration to a managed S3-compatible provider (if the
 business outgrows self-hosting) is a configuration change, not a rewrite.
 
+**Wired into `apps/api` in Phase 14** (see
+`specs/2026-10-04-phase-14-admin-menu-categories/requirement.md` for full
+rationale) — the `minio` container ran unused since Phase 1 until then:
+
+- **`aws-sdk-s3`** crate, configured by hand (no `aws-config`/IMDS lookup)
+  with a static `Credentials` pair, `endpoint_url` pointed at
+  `MINIO_ENDPOINT`, and `force_path_style(true)` (required for MinIO's
+  path-style bucket addressing).
+- **Server-side proxy pattern, both directions** — the browser never
+  talks to MinIO directly. Upload: browser → same-origin Next.js Route
+  Handler → protected `POST /api/admin/media` → MinIO. Serve: `<img>`/
+  `next/image` → public, unauthenticated `GET /api/media/{key}` → MinIO.
+  Chosen over a presigned direct-to-MinIO upload/download, which would
+  need MinIO CORS configuration and a public-read bucket policy for one
+  admin feature.
+- The API authenticates to MinIO with the same `MINIO_ROOT_USER`/
+  `MINIO_ROOT_PASSWORD` credentials already provisioned for the
+  container — not a second, bucket-scoped MinIO user/policy (acceptable
+  at single-admin, single-bucket scale; see that phase's open risk 1).
+- Every upload gets a fresh, randomly generated object key
+  (`{uuid}.{ext}`), never overwritten or deleted — this makes the public
+  serve route's `Cache-Control: public, max-age=31536000, immutable`
+  response header safe. Orphaned objects from replaced/archived images
+  are never cleaned up (that phase's open risk 2).
+- `apps/web/next.config.ts`'s `images.remotePatterns` carries a second
+  entry (alongside `placehold.co`) for this public media host:
+  `localhost:8080` in dev, `api.${DOMAIN}` in production — the latter
+  needs `DOMAIN` passed into the `web` service's environment in
+  `docker-compose.prod.yml`, which it didn't receive before Phase 14.
+- **`react-easy-crop`** (`^6`), added mid-phase (open risk 4 resolution,
+  2026-10-04) for the admin image-upload form's fixed-1:1-square
+  pan/zoom/crop UI. Chosen over `react-image-crop` — it does the actual
+  canvas cropping for you (not just the selection rectangle), has native
+  touch/pinch support, and has no React 19 peer-dependency friction
+  (`react`/`react-dom` peer range is `>=16.4.0`). The crop happens
+  entirely client-side before upload; no server-side image processing
+  crate was added to `apps/api` for this (see that phase's requirement.md
+  Decision 14 addendum for why cropping stays off the Rust side).
+
 ## Email (P1 — order confirmations, contact/catering notifications)
 
 - **`lettre`** crate, sending through a transactional email provider (e.g.
@@ -304,7 +343,8 @@ runners absorb that cost for free, and the box's job shrinks to just
 | Backend API | Rust + Axum + sqlx + serde |
 | Database | PostgreSQL |
 | Admin auth | argon2 + tower-sessions (Postgres-backed sessions) |
-| Image/object storage | MinIO (S3-compatible, self-hosted) |
+| Image/object storage | MinIO (S3-compatible, self-hosted) via `aws-sdk-s3`, server-side upload/serve proxy (Phase 14) |
+| Image cropping | `react-easy-crop` — client-side fixed 1:1 crop before upload (Phase 14) |
 | Email (P1) | lettre + transactional email provider |
 | WhatsApp | `wa.me` deep links |
 | Hosting | AWS Lightsail VPS (`eu-central-1`, Frankfurt), Docker Compose |

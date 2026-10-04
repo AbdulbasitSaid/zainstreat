@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE menu_items\n        SET category_id = $3, name = $4, description = $5, price = $6,\n            image_url = $7, is_featured = $8, updated_at = now()\n        WHERE id = $1 AND updated_at = $2\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Timestamptz",
+        "Int8",
+        "Text",
+        "Text",
+        "Numeric",
+        "Text",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6a47e7ef864ffdce8f88d206645dd535e6893347ebc81fb412c0c392c27fb2a6"
+}
