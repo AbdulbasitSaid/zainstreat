@@ -48,6 +48,8 @@ export function SiteHeader() {
   const bar2Ref = useRef<HTMLSpanElement>(null);
   const bar3Ref = useRef<HTMLSpanElement>(null);
   const navListRef = useRef<HTMLUListElement>(null);
+  const indicatorRef = useRef<HTMLSpanElement>(null);
+  const navItemRefs = useRef(new Map<string, HTMLLIElement>());
 
   useGSAP(
     () => {
@@ -64,6 +66,30 @@ export function SiteHeader() {
       });
     },
     { dependencies: [isMenuOpen, shouldReduceMotion] },
+  );
+
+  function moveIndicatorTo(href: string) {
+    const indicator = indicatorRef.current;
+    const item = navItemRefs.current.get(href);
+    const list = navListRef.current;
+    if (!indicator || !item || !list) return;
+
+    const itemRect = item.getBoundingClientRect();
+    const listRect = list.getBoundingClientRect();
+    gsap.to(indicator, {
+      x: itemRect.left - listRect.left,
+      width: itemRect.width,
+      duration: shouldReduceMotion ? 0 : 0.3,
+      ease: "outExpo",
+    });
+  }
+
+  useGSAP(
+    () => {
+      if (!isDesktop) return;
+      moveIndicatorTo(pathname);
+    },
+    { dependencies: [isDesktop, pathname, shouldReduceMotion] },
   );
 
   return (
@@ -86,12 +112,27 @@ export function SiteHeader() {
           id="primary-navigation"
           inert={!isDesktop && !isMenuOpen}
           style={{ overflow: "hidden", height: 0, opacity: 0 }}
-          className="absolute inset-x-0 top-full flex flex-col gap-1 rounded-b-3xl bg-cream px-4 pb-4 shadow-lg min-[769px]:!static min-[769px]:!h-auto min-[769px]:!opacity-100 min-[769px]:flex-row min-[769px]:items-center min-[769px]:gap-7 min-[769px]:rounded-none min-[769px]:bg-transparent min-[769px]:p-0 min-[769px]:shadow-none"
+          onMouseLeave={() => isDesktop && moveIndicatorTo(pathname)}
+          className="absolute inset-x-0 top-full flex flex-col gap-1 rounded-b-3xl bg-cream px-4 pb-4 shadow-lg min-[769px]:!relative min-[769px]:!h-auto min-[769px]:!opacity-100 min-[769px]:flex-row min-[769px]:items-center min-[769px]:gap-7 min-[769px]:rounded-none min-[769px]:bg-transparent min-[769px]:p-0 min-[769px]:shadow-none"
         >
+          {isDesktop && (
+            <span
+              ref={indicatorRef}
+              aria-hidden="true"
+              className="pointer-events-none absolute bottom-0 left-0 h-0.5 bg-primary"
+            />
+          )}
           {NAV_ITEMS.map((item) => {
             const isActive = pathname === item.href;
             return (
-              <li key={item.href}>
+              <li
+                key={item.href}
+                ref={(node) => {
+                  if (node) navItemRefs.current.set(item.href, node);
+                  else navItemRefs.current.delete(item.href);
+                }}
+                onMouseEnter={() => isDesktop && moveIndicatorTo(item.href)}
+              >
                 <Link
                   href={item.href}
                   aria-current={isActive ? "page" : undefined}

@@ -2,9 +2,10 @@ import { useTranslations } from "next-intl";
 import { Reveal } from "@/components/reveal";
 import { SplitRow } from "@/components/split-row";
 import { PageHero } from "@/components/page-hero";
-import { PlaceholderImage } from "@/components/placeholder-image";
+import { SiteImage } from "@/components/site-image";
 import { Button } from "@/components/button";
 import { Notice } from "@/components/notice";
+import contact from "@/assets/images/contact.jpg";
 
 const FIELD_LABEL_CLASS = "mb-1.5 block text-sm font-semibold text-text";
 
@@ -21,18 +22,18 @@ export default function ContactPage() {
 
       <SplitRow
         media={
-          <PlaceholderImage
-            label={t("mapPlaceholderLabel")}
+          <SiteImage
+            src={contact}
+            alt={t("mapPlaceholderLabel")}
             className="min-h-[240px]"
           />
         }
         content={
           <ul className="m-0 flex list-none flex-col gap-3.5 p-0 text-[1.05rem] [&_a]:font-semibold [&_a]:text-primary [&_a:hover]:underline">
             <li>{t("phoneLabel")}: <a href="tel:+31630545277">{t("phoneValue")}</a></li>
-            <li>{t("emailLabel")}: {t("emailPlaceholder")}</li>
+            <li>{t("emailLabel")}: <a href="mailto:zainstreat@gmail.com">{t("emailValue")}</a></li>
             <li>{t("whatsappLabel")}: <a href="https://wa.me/31630545277" target="_blank" rel="noopener noreferrer">{t("whatsappValue")}</a></li>
-            <li>{t("addressLabel")}: {t("addressPlaceholder")}</li>
-            <li>{t("hoursLabel")}: {t("hoursPlaceholder")}</li>
+            <li>{t("hoursLabel")}: {t("hoursValue")}</li>
             <li>{t("instagramLabel")}: <a href="https://instagram.com/zain_treats" target="_blank" rel="noopener noreferrer">{t("instagramHandle")}</a></li>
             <li>{t("tiktokLabel")}: {t("tiktokHandle")}</li>
           </ul>

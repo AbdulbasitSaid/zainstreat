@@ -190,6 +190,224 @@ folders — those historical folders are left untouched, per the same
 precedent Phase 8 and Phase 7 established. `specs/mission.md` has no phase
 number references.
 
+## Addendum — real imagery, idle float, custom cursor, nav indicator
+
+Groups 0–4 above are already committed (`3432423`). Groups 5–8 below are
+new, planned follow-up scope — see `requirement.md`'s Addendum for the
+decisions behind each.
+
+## Group 5 — Real imagery pipeline
+
+New directory `apps/web/assets/images/`, 8 generated files (dimensions are
+targets for the generator, ~4:3 for `SplitRow` media panels, 1:1 for the
+circular category tiles):
+
+| File | ~Size | Content brief |
+|---|---|---|
+| `hero.jpg` | 1600×1200 | Warm, appetizing overhead spread of home-style/international dishes on a table, natural light, no text/logos. |
+| `category-meals.jpg` | 1200×1200 | A single generous plate of a hearty home-cooked meal, close-up, natural light. |
+| `category-snacks.jpg` | 1200×1200 | An assortment of fried/baked snacks on a plate, close-up. |
+| `category-catering.jpg` | 1200×1200 | A catering buffet spread set up at an event, wide shot. |
+| `category-event-rentals.jpg` | 1200×1200 | An elegantly set event/banquet table with rented chairs and linens, wide shot. |
+| `about-hero.jpg` | 1600×1200 | A warm, candid photo representing a small food business's kitchen/team at work. |
+| `about-mission.jpg` | 1600×1200 | Fresh ingredients being prepared, close-up, natural light. |
+| `contact.jpg` | 1600×1200 | The business's storefront, or a delivery/pickup moment — warm, welcoming. |
+
+(Implementer: adjust briefs to match real brand tone/feedback; regenerate
+rather than ship an off-brand first pass — see `requirement.md` Open risk 1.)
+
+**Deviation from the original plan**: no image-generation capability was
+available in the implementing session (see `requirement.md` addendum Open
+risk 1). Asked directly, the user chose to source free, real stock
+photography instead (over solid-color placeholder stand-ins, or pausing
+this group entirely) — each of the 8 briefs above was matched against a
+real Pexels photo via its direct CDN URL (`images.pexels.com/photos/
+<id>/pexels-photo-<id>.jpeg`), downloaded with `curl`, and visually
+reviewed one by one before committing. One early contact-page candidate
+was rejected and replaced after review because it visibly showed a real
+competing food brand's storefront signage — using another company's
+branded building as this site's own contact photo would misrepresent it;
+the replacement is an unbranded delivery-handoff photo instead. This
+satisfies Decision 7's "real imagery, statically imported, `next/image`
+blur placeholder" goals but not its literal "AI-generated" wording — see
+`validation.md`'s addendum checklist for the explicit note.
+
+New `apps/web/components/site-image.tsx` (replaces
+`apps/web/components/placeholder-image.tsx`, which is deleted once no call
+site imports it):
+
+```tsx
+"use client";
+
+import { useRef } from "react";
+import Image, { type StaticImageData } from "next/image";
+import { gsap, useGSAP } from "@/lib/gsap";
+
+export function SiteImage({
+  src,
+  alt,
+  className = "",
+  priority = false,
+  float = false,
+}: {
+  src: StaticImageData;
+  alt: string;
+  className?: string;
+  priority?: boolean;
+  float?: boolean;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useGSAP(
+    () => {
+      if (!float) return;
+      const mm = gsap.matchMedia();
+      mm.add("(prefers-reduced-motion: no-preference)", () => {
+        gsap.to(ref.current, { y: 10, duration: 3, ease: "sine.inOut", repeat: -1, yoyo: true });
+      });
+      return () => mm.revert();
+    },
+    { scope: ref, dependencies: [float] },
+  );
+
+  return (
+    <div ref={ref} className={`relative min-h-[200px] overflow-hidden rounded-card ${className}`.trim()}>
+      <Image
+        src={src}
+        alt={alt}
+        fill
+        sizes="(max-width: 768px) 100vw, 50vw"
+        className="object-cover"
+        placeholder="blur"
+        priority={priority}
+      />
+    </div>
+  );
+}
+```
+
+Call-site updates (import + tag name + props, `label` string → `alt` string
++ imported `src`):
+- `apps/web/app/[locale]/page.tsx`: hero (`src={hero}`, `priority`,
+  `float`), the 4 category tiles (`src={categoryMeals}` etc., `float`),
+  about-preview (`src={aboutHero}`, no `float`).
+- `apps/web/app/[locale]/about/page.tsx`: hero (`src={aboutHero}`),
+  mission (`src={aboutMission}`).
+- `apps/web/app/[locale]/services/page.tsx`: the 4 sections reuse the
+  category images (`src={categoryMeals}` etc.) — same file imported again
+  from `@/assets/images/...`, no cross-file coupling.
+- `apps/web/app/[locale]/contact/page.tsx`: `src={contact}`, no `float`.
+
+## Group 6 — Custom cursor
+
+New `apps/web/components/custom-cursor.tsx`: a `useSyncExternalStore` +
+`matchMedia("(pointer: fine)")` check (mirrors `site-header.tsx`'s
+`isDesktop` pattern) combined with the existing `useReducedMotion()` hook;
+if either gate fails, renders `null` and never touches `document.body`'s
+class list. When both pass: adds `custom-cursor-active` to `document.body`
+in a `useEffect`, renders a small fixed dot + a larger trailing ring (both
+`pointer-events-none`), driven by four `gsap.quickTo` setters (dot:
+`duration 0.1`; ring: `duration 0.35`, so it visibly lags) updated on a
+single `window` `mousemove` listener. A delegated `document` `mouseover`/
+`mouseout` pair checks `event.target.closest("a, button, [role='button'],
+input, textarea, select, label")` and scales the ring up/down
+(`gsap.to(ring, { scale: 1.6 / 1, duration: 0.2 })`). Cleanup on unmount
+removes all listeners and the body class.
+
+`apps/web/app/[locale]/layout.tsx`: mount `<CustomCursor />` next to
+`<MotionProvider />` (public-site layout only).
+
+`apps/web/app/globals.css`: inside the existing `@layer base` block, next
+to the `prefers-reduced-motion` safety net, add:
+```css
+body.custom-cursor-active,
+body.custom-cursor-active * {
+  cursor: none;
+}
+```
+
+## Group 7 — Animated desktop nav indicator
+
+`apps/web/components/site-header.tsx`: add an `indicatorRef`
+(`useRef<HTMLSpanElement>`) and an item-ref map keyed by `href`, plus a
+`moveIndicatorTo(href)` helper that reads the target `<li>`'s and the nav
+`<ul>`'s `getBoundingClientRect()` and `gsap.to`s the indicator's `x`/
+`width` (`duration: 0.3`, `ease: "outExpo"`). Call it on mount and on
+`pathname` change (active route), on each desktop nav `<li>`'s
+`onMouseEnter`, and on the `<ul>`'s `onMouseLeave` (back to the active
+route). The indicator `<span>` renders only when `isDesktop` is true (the
+existing boolean already in this component) — mobile's stacked menu is
+untouched.
+
+## Group 8 — tech-stack.md correction + imagery convention
+
+`specs/tech-stack.md`'s Frontend "Animation" bullet and its "_Why Motion +
+Lenis over GSAP:_" rationale paragraph still describe the pre-migration
+stack even though Group 2 (committed in `3432423`) already fully replaced
+`motion` with GSAP. Rewrite both to describe what's actually running:
+GSAP + ScrollTrigger + CustomEase + `@gsap/react` (`useGSAP`), Lenis kept
+and driven off `gsap.ticker`. Update the Summary Table's "Animation" row
+to match. Add a short new bullet (or extend the existing one) documenting
+the `apps/web/assets/images/` static-import convention for site-decoration
+imagery, noting it supersedes `placehold.co` for that purpose while the
+DB-driven `ImageSlot` fallback still uses `placehold.co`.
+
+## Group 9 — Menu item imagery (`apps/api/seed.sql`, Addendum 2)
+
+16 new files under `apps/web/public/images/menu/`, each `.jpg`, generated
+(or, per Addendum 2's Open risk 1 fallback, sourced as freely-licensed
+stock photography) at a 3:2 aspect ratio to match the existing
+`width={600} height={400}` `object-cover` usage in `MenuItemCard`/
+`CartLineItem` (`apps/web/components/menu-item-card.tsx`,
+`apps/web/components/cart-line-item.tsx` — unchanged, they already render
+whatever string `image_url` holds). Style brief for all 16: natural light,
+a neutral dark-wood or rustic-ceramic surface, 45°-or-overhead angle,
+consistent across the set — matching whatever visual direction the
+Addendum 1 site-decoration photos (`apps/web/assets/images/*.jpg`)
+established, since both now appear on the same pages.
+
+Reuse mapping — file name, the `seed.sql` row(s) it covers (by current
+`name` value), and a one-line content brief:
+
+| File | `seed.sql` row(s) | Brief |
+|---|---|---|
+| `jollof-rice-plantain.jpg` | `Jollof Rice & Plantain with Chicken or Turkey`; `5 L Jollof Rice + 5 Pieces of Chicken or Turkey`; `Cooler of Jollof Rice` | Smoky party jollof rice, fried plantain, chicken/turkey piece |
+| `fried-rice-plantain.jpg` | `Fried Rice & Plantain with Chicken or Turkey`; `5 L Fried Rice + 5 Pieces of Chicken or Turkey`; `Cooler of Fried Rice` | Vegetable fried rice, fried plantain, chicken/turkey piece |
+| `ewa-agoyin.jpg` | `Ewa Agoyin with Plantain & Fish`; `2 L Ewa Agoyin + 500 ml Agoyin Sauce` | Mashed beans, dark peppered agoyin sauce, plantain, fish |
+| `vegetable-salad.jpg` | `Vegetable Salad`; `½ Tray of Vegetable Salad` | Fresh colourful mixed vegetable salad |
+| `white-rice-beans-assorted-stew.jpg` | `White Rice & Beans with Plantain & Assorted Meat Stew`; `5 L White Rice + 1.5 L Assorted Meat Stew` | White rice and beans, plantain, assorted-meat stew |
+| `white-rice-beans-pepper-beef.jpg` | `White Rice & Beans with Pepper Sauce & Beef` | White rice and beans, peppery sauce, beef |
+| `assorted-meat-stew.jpg` | `Assorted Meat Stew` | Tomato-based stew, assorted meats, no rice in frame |
+| `moin-moin-fish-egg.jpg` | `Moin Moin with Fish & Egg` | Steamed bean pudding wedge, visible fish and egg |
+| `moin-moin-egg.jpg` | `Moin Moin with Egg` | Steamed bean pudding wedge, visible egg, no fish |
+| `smoked-mackerel-sauce.jpg` | `Smoked Mackerel Fish Sauce` | Tomato sauce, visible smoked mackerel pieces |
+| `pepper-sauce.jpg` | `Pepper Sauce` | Fiery red tomato-pepper sauce, no protein |
+| `fried-fish.jpg` | `50 Pieces of Fried Fish` | Platter of golden crisp fried fish pieces |
+| `ogbono-soup.jpg` | `Ogbono Soup` | Dark-green, thick ogbono draw soup |
+| `ofada-stew.jpg` | `Ofada Stew` | Bold dark-red/brown ofada-style stew |
+| `poultry-stew.jpg` | `Chicken Stew`; `Turkey Stew` | Classic tomato stew, poultry pieces (reused across both) |
+| `peppered-poultry.jpg` | `Box of Peppered Turkey`; `Box of Peppered Chicken` | Pan-fried peppered poultry pieces (reused across both) |
+
+`Egusi Soup`/`Efo Riro` already have real photos and are untouched; the
+other 10 pre-existing `seed.sql` rows not listed above don't exist (28
+total rows: 2 already real + 26 covered by the 16 files above).
+
+Implementation mechanics:
+- Generate/source the 16 files, save to
+  `apps/web/public/images/menu/<name-from-table-above>`.
+- In `apps/api/seed.sql`, for each VALUES tuple whose `name` appears in the
+  table above, replace its `'https://placehold.co/600x400?text=...'`
+  `image_url` string with `'/images/menu/<file>.jpg'` (exact string match
+  per the file column above — e.g. both the `Jollof Rice & Plantain with
+  Chicken or Turkey` row in the flat-price VALUES block and the `5 L Jollof
+  Rice + 5 Pieces of Chicken or Turkey` row in that same block get
+  `'/images/menu/jollof-rice-plantain.jpg'`; `Cooler of Jollof Rice` is in
+  the separate variant-priced VALUES block further down the file). No
+  other column in any row changes — names, descriptions, prices, display
+  orders, and the `menu_item_price_options` INSERT are all untouched.
+- No `apps/api` Rust code change (Decision 17) — `image_url` is already
+  passed through as-is.
+
 ## Verification
 
 See `validation.md`.

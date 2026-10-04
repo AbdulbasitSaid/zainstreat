@@ -1,8 +1,10 @@
 import { useTranslations } from "next-intl";
 import { Reveal } from "@/components/reveal";
-import { PlaceholderImage } from "@/components/placeholder-image";
+import { SiteImage } from "@/components/site-image";
 import { SplitRow } from "@/components/split-row";
 import { CheckList } from "@/components/check-list";
+import aboutHero from "@/assets/images/about-hero.jpg";
+import aboutMission from "@/assets/images/about-mission.jpg";
 
 export default function AboutPage() {
   const t = useTranslations("AboutPage");
@@ -18,13 +20,13 @@ export default function AboutPage() {
             {t.rich("whoWeAre", { em: (chunks) => <em>{chunks}</em> })}
           </h1>
         }
-        media={<PlaceholderImage label={t.markup("whoWeAre", { em: (chunks) => chunks })} />}
+        media={<SiteImage src={aboutHero} alt={t.markup("whoWeAre", { em: (chunks) => chunks })} />}
       />
 
       <SplitRow
         tinted
         reverse
-        media={<PlaceholderImage label={t("ourMission")} />}
+        media={<SiteImage src={aboutMission} alt={t("ourMission")} />}
         content={
           <div>
             <h2>{t("ourMission")}</h2>

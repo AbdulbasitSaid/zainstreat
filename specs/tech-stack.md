@@ -81,34 +81,49 @@ same token-driven approach the team already liked about the Pico-remapping
 setup, just as native Tailwind utilities instead of custom properties
 aliased onto someone else's token names.
 
-- **Motion** (`motion`, formerly Framer Motion) for scroll-triggered reveals,
-  gesture/hover-driven animation, and the mobile nav/route transitions, plus
-  **Lenis** for the global smooth-scroll feel (Phase 5 addendum — see
-  `specs/2026-10-02-phase-5-public-static-pages/requirement.md`). Both ship
-  native TypeScript types, so no `any` is needed under the no-`any` rule
-  above. Motion/Lenis usage is confined to small `"use client"` wrapper
-  components (`apps/web/components/{motion-provider,reveal,page-transition}.tsx`)
-  imported into otherwise-server-component pages — Motion throws a build
-  error if imported directly into a Server Component, so this boundary is
-  enforced by the framework, not just convention. `prefers-reduced-motion`
-  is respected at three layers: each animating component's
-  `useReducedMotion()` check, Lenis never initializing under reduced
-  motion, and a blanket CSS safety net in `globals.css`.
+- **GSAP** (`gsap`, `@gsap/react`'s `useGSAP` hook, `ScrollTrigger`,
+  `CustomEase`) for scroll-triggered reveals, the mobile nav/hamburger and
+  desktop nav-indicator tweens, and route transitions, plus **Lenis** for
+  the global smooth-scroll feel — driven off `gsap.ticker` rather than its
+  own `requestAnimationFrame` loop, with `ScrollTrigger.update` wired to
+  Lenis's `scroll` event and `gsap.ticker.lagSmoothing(0)` (Phase 12 — see
+  `specs/2026-10-04-phase-12-visual-refresh/requirement.md`, which replaced
+  the Motion/Framer Motion choice Phase 5 originally made). GSAP ships
+  native TypeScript types, so no `any`
+  is needed under the no-`any` rule above. All registration happens once at
+  module scope in `apps/web/lib/gsap.ts`; usage is confined to small
+  `"use client"` wrapper components
+  (`apps/web/components/{motion-provider,reveal,page-transition,
+  site-header,custom-cursor,site-image}.tsx`) imported into otherwise-
+  server-component pages. `prefers-reduced-motion` is respected at three
+  layers: each animating component's `gsap.matchMedia()` or
+  `useReducedMotion()` (`apps/web/lib/use-reduced-motion.ts`) check, Lenis
+  never initializing under reduced motion, and a blanket CSS safety net in
+  `globals.css`.
 
-_Why Motion + Lenis over GSAP:_ Motion is React-idiomatic (declarative
-`variants`/`whileInView`, hooks-based), which fits this codebase's existing
-component model better than GSAP's imperative, DOM-ref-driven API — and it
-keeps the dependency surface and learning curve smaller for a site this
-size. GSAP's timeline/ScrollTrigger power isn't needed for the reveal/hover/
-transition scope decided here; this can be revisited if a future phase
-needs more elaborate scroll choreography.
+_Why GSAP over Motion (superseding Phase 5's original choice):_ the
+Phase 12 client ask (page transitions, scroll choreography, idle float,
+a sitewide custom cursor, a desktop nav indicator) needed exactly the
+imperative, DOM-ref-driven timeline/ScrollTrigger control Motion was
+originally passed over for — see Phase 12's `requirement.md` Decision 2.
+Rather than keep both libraries long-term, Motion was removed entirely.
 
-_Why not plain CSS alone:_ CSS transitions/`@keyframes` handle hover,
-press, focus, and the ambient decorative shapes fine (and are used for
-exactly those), but can't do scroll-into-view triggering or animate a
-disclosure panel's `height: auto` cleanly — Motion is reserved for those
-two cases only, keeping the CSS/JS split deliberate rather than
-all-or-nothing.
+_Why not plain CSS alone:_ CSS transitions/`@keyframes` still handle
+simple hover/press/focus states fine, but can't do scroll-into-view
+triggering, animate a disclosure panel's `height: auto` cleanly, or drive
+per-frame cursor-following/idle-float tweens — GSAP is reserved for those
+cases, keeping the CSS/JS split deliberate rather than all-or-nothing.
+
+- **Site-decoration imagery**: real, AI-generated photos committed as
+  static files under `apps/web/assets/images/` and brought in via a plain
+  Next.js static `import` (not `public/` + a manual URL), so `next/image`
+  gets automatic width/height and a built-in blur placeholder for free
+  (Phase 12 addendum — see `specs/2026-10-04-phase-12-visual-refresh/
+  requirement.md` Decision 7, which supersedes that same phase's original,
+  shorter-lived `placehold.co`-based `PlaceholderImage` convention). This
+  is for static-page decoration only — the DB-driven `ImageSlot` fallback
+  on menu items/cart line items (used when a real `image_url` is absent)
+  still uses `placehold.co`, a separate concern.
 
 ## Internationalization (i18n)
 
@@ -283,7 +298,8 @@ runners absorb that cost for free, and the box's job shrinks to just
 | Concern | Choice |
 |---|---|
 | Frontend | Next.js (App Router) + React + TypeScript + Tailwind CSS v4 |
-| Animation | Motion (scroll/gesture/transitions) + Lenis (smooth scroll) + plain CSS (hover/focus/decorative) |
+| Animation | GSAP + ScrollTrigger + CustomEase (scroll/transitions/cursor/float) + Lenis (smooth scroll) + plain CSS (hover/focus) |
+| Site imagery | Static imports from `apps/web/assets/images/` (decoration); `placehold.co` (DB `image_url` fallback only) |
 | i18n | next-intl (locale-prefixed `/en`, `/nl` routing) |
 | Backend API | Rust + Axum + sqlx + serde |
 | Database | PostgreSQL |

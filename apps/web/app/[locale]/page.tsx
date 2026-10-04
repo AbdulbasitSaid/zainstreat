@@ -1,12 +1,18 @@
 import { getTranslations } from "next-intl/server";
 import { Reveal } from "@/components/reveal";
-import { PlaceholderImage } from "@/components/placeholder-image";
+import { SiteImage } from "@/components/site-image";
 import { SplitRow } from "@/components/split-row";
 import { Eyebrow } from "@/components/eyebrow";
 import { ButtonLink, buttonClasses } from "@/components/button";
 import { MenuItemCard } from "@/components/menu-item-card";
 import { Link } from "@/i18n/navigation";
 import { getMenuItems } from "@/lib/api";
+import hero from "@/assets/images/hero.jpg";
+import categoryMeals from "@/assets/images/category-meals.jpg";
+import categorySnacks from "@/assets/images/category-snacks.jpg";
+import categoryCatering from "@/assets/images/category-catering.jpg";
+import categoryEventRentals from "@/assets/images/category-event-rentals.jpg";
+import aboutHero from "@/assets/images/about-hero.jpg";
 
 const MAX_FEATURED_ITEMS = 6;
 
@@ -52,10 +58,10 @@ const PROMISE_ITEMS = [
 ] as const;
 
 const CATEGORY_ITEMS = [
-  { labelKey: "servicesMeals" },
-  { labelKey: "servicesSnacks" },
-  { labelKey: "servicesCatering" },
-  { labelKey: "servicesEventRentals" },
+  { labelKey: "servicesMeals", src: categoryMeals },
+  { labelKey: "servicesSnacks", src: categorySnacks },
+  { labelKey: "servicesCatering", src: categoryCatering },
+  { labelKey: "servicesEventRentals", src: categoryEventRentals },
 ] as const;
 
 export default async function Home() {
@@ -92,17 +98,26 @@ export default async function Home() {
             </div>
           </div>
         }
-        media={<PlaceholderImage label={t.markup("heroHeadline", { em: (chunks) => chunks })} />}
+        media={
+          <SiteImage
+            src={hero}
+            alt={t.markup("heroHeadline", { em: (chunks) => chunks })}
+            priority
+            float
+          />
+        }
       />
 
       <section className="container">
         <Reveal>
           <div className="flex flex-wrap justify-center gap-x-10 gap-y-8">
-            {CATEGORY_ITEMS.map(({ labelKey }) => (
+            {CATEGORY_ITEMS.map(({ labelKey, src }) => (
               <div key={labelKey} className="flex w-[150px] flex-col items-center gap-3.5 text-center">
-                <PlaceholderImage
-                  label={t(labelKey)}
+                <SiteImage
+                  src={src}
+                  alt={t(labelKey)}
                   className="h-[150px] w-[150px] min-h-0 rounded-full"
+                  float
                 />
                 <h3 className="m-0 text-base">{t(labelKey)}</h3>
                 <Link href="/services" className="text-[0.85rem] font-semibold text-primary">
@@ -171,7 +186,7 @@ export default async function Home() {
 
       <SplitRow
         className="container"
-        media={<PlaceholderImage label={t("aboutPreview")} />}
+        media={<SiteImage src={aboutHero} alt={t("aboutPreview")} />}
         content={
           <div>
             <p className={heroSupportingClass}>{t("aboutPreview")}</p>

@@ -103,6 +103,11 @@
       scroll-behavior: auto !important;
     }
   }
+
+  body.custom-cursor-active,
+  body.custom-cursor-active * {
+    cursor: none;
+  }
 }
 
 @layer components {

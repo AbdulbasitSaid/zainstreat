@@ -1,8 +1,12 @@
 import { useTranslations } from "next-intl";
-import { PlaceholderImage } from "@/components/placeholder-image";
+import { SiteImage } from "@/components/site-image";
 import { SplitRow } from "@/components/split-row";
 import { PageHero } from "@/components/page-hero";
 import { ButtonLink } from "@/components/button";
+import categoryMeals from "@/assets/images/category-meals.jpg";
+import categorySnacks from "@/assets/images/category-snacks.jpg";
+import categoryCatering from "@/assets/images/category-catering.jpg";
+import categoryEventRentals from "@/assets/images/category-event-rentals.jpg";
 
 function SplitRowIndex({ children }: { children: string }) {
   return (
@@ -28,7 +32,7 @@ export default function ServicesPage() {
       </PageHero>
 
       <SplitRow
-        media={<PlaceholderImage label={t("mealsHeading")} />}
+        media={<SiteImage src={categoryMeals} alt={t("mealsHeading")} />}
         content={
           <div>
             <SplitRowIndex>01</SplitRowIndex>
@@ -41,7 +45,7 @@ export default function ServicesPage() {
       <SplitRow
         tinted
         reverse
-        media={<PlaceholderImage label={t("snacksHeading")} />}
+        media={<SiteImage src={categorySnacks} alt={t("snacksHeading")} />}
         content={
           <div>
             <SplitRowIndex>02</SplitRowIndex>
@@ -52,7 +56,7 @@ export default function ServicesPage() {
       />
 
       <SplitRow
-        media={<PlaceholderImage label={t("cateringHeading")} />}
+        media={<SiteImage src={categoryCatering} alt={t("cateringHeading")} />}
         content={
           <div>
             <SplitRowIndex>03</SplitRowIndex>
@@ -68,7 +72,7 @@ export default function ServicesPage() {
       <SplitRow
         tinted
         reverse
-        media={<PlaceholderImage label={t("eventRentalsHeading")} />}
+        media={<SiteImage src={categoryEventRentals} alt={t("eventRentalsHeading")} />}
         content={
           <div>
             <SplitRowIndex>04</SplitRowIndex>

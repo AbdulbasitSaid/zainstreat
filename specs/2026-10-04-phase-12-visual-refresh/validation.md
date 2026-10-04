@@ -75,6 +75,107 @@
 - [ ] CI green on PR (same open item every prior phase has left unchecked
       at spec-writing time).
 
+## Addendum — Pass/fail checklist (real imagery, float, cursor, nav indicator)
+
+- [x] `cd apps/web && pnpm lint` — clean after Groups 5–8.
+- [x] `cd apps/web && pnpm exec tsc --noEmit -p tsconfig.json` — clean.
+- [x] `cd apps/web && pnpm build` (Turbopack, production build) —
+      compiles cleanly, all 25 pages generate successfully.
+- [x] `grep -rn "placeholder-image" apps/web` (excluding `.next`) → empty
+      (component fully replaced and deleted).
+- [x] `grep -rln "placehold.co" apps/web/app apps/web/components` → only
+      `image-slot.tsx`/its call sites (`menu-item-card.tsx`,
+      `cart-line-item.tsx`) remain; no static page still references
+      `placehold.co`.
+- [x] `ls apps/web/assets/images/` → exactly the 8 files named in
+      `plan.md` Group 5. **Deviation from the original plan**: these are
+      real, freely-licensed stock photographs (sourced from Pexels direct
+      CDN URLs, verified individually for on-brand content and absence of
+      third-party branding — one initial contact-page candidate showing a
+      competitor's storefront signage was rejected and replaced) rather
+      than AI-generated images as Decision 7 specifies — no image
+      generation capability was available in the implementing session; the
+      user explicitly chose this sourcing method when asked. Functionally
+      equivalent (real photos, statically imported, `next/image`
+      blur-placeholder support) but worth a conscious note for whoever
+      reviews this before merge, since it doesn't literally match "AI-
+      generated."
+- [x] `grep -rn "SiteImage" apps/web/app` → all 10 original call sites
+      present (hero, 4 category tiles, about-preview, about hero, about
+      mission, 4 services sections, contact — 10 call sites total using 8
+      distinct `src` imports per `plan.md` Group 5's reuse table).
+      Confirmed server-rendered HTML also carries the base64 blur
+      placeholder and the hashed `/_next/static/media/...jpg` URLs for all
+      8 images via a live HTTP fetch of `/en`, `/en/about`, `/en/services`,
+      `/en/contact`.
+- [ ] **Manual — not checked here (no browser available in this session):**
+      - Every image renders as a real photo, correctly cropped (circular
+        category tiles, rectangular `SplitRow` panels), no broken-image
+        icons, no visible blur-placeholder flash lingering past the real
+        image's load.
+      - Hero image and the 4 category tiles visibly, subtly float
+        (slow vertical drift) when `prefers-reduced-motion` is not set;
+        the about/services/contact images do not float.
+      - Toggling OS "reduce motion" stops the float entirely (images sit
+        still) and leaves the native cursor visible (custom cursor never
+        activates).
+      - On a touchscreen device/emulation (`pointer: coarse`), the native
+        cursor is never hidden and no custom cursor dot/ring appears.
+      - On desktop with a mouse: the native cursor is hidden, a small dot
+        tracks the pointer exactly, a trailing ring lags slightly behind,
+        and the ring visibly scales up when hovering any link/button/
+        form control across the homepage, about, services, menu, cart,
+        and contact pages (not just one page).
+      - Fast scrolling (via Lenis) while also moving the mouse quickly
+        doesn't produce visible jank or a frozen cursor (`requirement.md`
+        addendum Open risk 2).
+      - Desktop nav: hovering each nav link smoothly slides/resizes the
+        indicator under it; moving the mouse off the nav snaps the
+        indicator back to the current route's link; the indicator is
+        absent entirely on the mobile stacked menu.
+- [ ] CI green on PR.
+
+## Addendum 2 — Pass/fail checklist (menu item imagery)
+
+- [ ] `ls apps/web/public/images/menu/` → the existing 4 files
+      (`egusi-soup.jpeg`, `efo-soup.jpeg`, `chin-chin.jpeg`,
+      `small-chops.jpeg`, the last two still unreferenced — see
+      `requirement.md` Addendum 2 Context) plus exactly the 16 new `.jpg`
+      files named in `plan.md` Group 9's table — 20 total.
+- [ ] `grep -c "placehold.co" apps/api/seed.sql` → `0` (every remaining
+      `placehold.co` `image_url` replaced).
+- [ ] `grep -n "image_url" apps/api/seed.sql` spot-check: every row's
+      `image_url` either stays untouched (`Egusi Soup`, `Efo Riro`) or
+      matches `plan.md` Group 9's table exactly, including the two reused
+      pairs (`Chicken Stew`/`Turkey Stew` → `poultry-stew.jpg`; `Box of
+      Peppered Turkey`/`Box of Peppered Chicken` → `peppered-poultry.jpg`).
+- [ ] `cd apps/api && SQLX_OFFLINE=true cargo check --all-targets` — clean
+      (seed.sql is plain SQL text, not compiled, but confirm nothing else
+      regressed).
+- [ ] Re-run the seed (`psql ... -f apps/api/seed.sql` per
+      `docs/local-development.md`'s convention, or the project's existing
+      seed-loading step) against the local dev stack without error —
+      confirms the 16 new `image_url` strings aren't malformed SQL.
+- [ ] Live smoke test: `GET /en/menu` on the running dev stack renders
+      every menu item card with a real photo (`<img>`/`next/image` `src`
+      resolving to `/images/menu/<file>.jpg`, `200` on direct fetch) —
+      zero remaining `placehold.co` `<img>` sources anywhere on the menu
+      page. Also check the cart: add one item from each of the 16 reused
+      groups and confirm `CartLineItem`'s 64×64 thumbnail renders the same
+      photo, not a broken-image icon.
+- [ ] **Manual — needs a browser:**
+      - All 16 images read as on-brand, correctly identify their dish (no
+        mismatched protein/sauce), and crop sensibly at both the menu
+        card's 600×400 and the cart line item's 64×64 sizes.
+      - No visual seams between the Addendum 1 site-decoration photos and
+        these menu photos — i.e. the two image sets don't look like they
+        came from two unrelated shoots.
+      - Unavailable items (`is_available = false`, most of the catalogue
+        per `seed.sql`'s `grayscale-[30%]` treatment in `MenuItemCard`)
+        still show their new photo correctly grayscaled/dimmed, not
+        broken.
+- [ ] CI green on PR.
+
 ## Definition of done
 
 The floating decorative shapes are gone from the codebase entirely (file
@@ -85,10 +186,21 @@ and now correctly integrated with ScrollTrigger via `gsap.ticker`. Every
 page that previously showed a text-label `ImageSlot` placeholder for
 decorative/content imagery (homepage hero and category tiles, homepage
 about-preview, the about page's hero and mission sections, all four
-services sections, and the contact page's map area) now renders a real
-(placeholder) image via the new `PlaceholderImage` component, reusing the
-project's existing `placehold.co` convention. `ImageSlot` itself remains in
-place for its one legitimate remaining use — the real-`image_url` fallback
-on menu items and cart line items. The roadmap is renumbered and internally
-consistent, with this phase's own `specs/` folder following the established
-format.
+services sections, and the contact page's map area) now renders a real photo
+(sourced as free stock photography rather than AI-generated — see the
+Addendum checklist's noted deviation from Decision 7) via the new
+`SiteImage` component, statically imported
+from `apps/web/assets/images/`. `ImageSlot` itself remains in place for its one legitimate remaining use —
+the real-`image_url` fallback on menu items and cart line items, now
+rendering a real photo for every one of the 28 `seed.sql` menu items (16
+new reused images plus the pre-existing `Egusi Soup`/`Efo Riro` photos
+covering all 26 previously-`placehold.co` rows; see Addendum 2), with
+`placehold.co` itself no longer referenced anywhere in `seed.sql` — only
+`ImageSlot`'s own component code still mentions it, for the case where a
+future menu item genuinely has no `image_url` set. The homepage hero and
+category tiles idly float; a sitewide custom cursor reacts to every
+interactive element on the public site, gated on `pointer: fine` and
+`prefers-reduced-motion`; the desktop nav shows an animated hover/active
+indicator. The roadmap is renumbered and internally consistent,
+`tech-stack.md`'s Animation section accurately describes GSAP (not Motion),
+with this phase's own `specs/` folder following the established format.
