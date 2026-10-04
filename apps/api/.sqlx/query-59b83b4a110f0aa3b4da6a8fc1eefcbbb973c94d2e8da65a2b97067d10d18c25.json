@@ -1,0 +1,58 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, name, email, phone, subject, message,\n                  created_at as \"created_at: DateTime<Utc>\"\n           FROM contact_messages WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "phone",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "subject",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "message",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "59b83b4a110f0aa3b4da6a8fc1eefcbbb973c94d2e8da65a2b97067d10d18c25"
+}

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT COUNT(*) FROM menu_item_price_options WHERE menu_item_id = $1 AND deleted_at IS NOT NULL",
+  "query": "SELECT COUNT(*) FROM catering_enquiries",
   "describe": {
     "columns": [
       {
@@ -10,13 +10,11 @@
       }
     ],
     "parameters": {
-      "Left": [
-        "Int8"
-      ]
+      "Left": []
     },
     "nullable": [
       null
     ]
   },
-  "hash": "c33af41c5545290dcc6b0dca935ee08b6a37a16a4fb565bcab3e5f0a6f0e2900"
+  "hash": "841eea3720d60a0a84f3541716ad6ac7a314b3ea2670d6c558f7292dd9ba1d4d"
 }

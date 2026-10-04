@@ -1,0 +1,32 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO contact_messages (name, email, phone, subject, message)\n        VALUES ($1, $2, $3, $4, $5)\n        RETURNING id, created_at as \"created_at: DateTime<Utc>\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "created_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "274def3f09ebda60760ac03e968d8c26f6dcf7aeacb7569d6ce247ebb0a56d2e"
+}
