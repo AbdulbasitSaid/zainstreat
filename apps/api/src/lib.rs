@@ -1,5 +1,7 @@
 pub mod error;
+pub mod rate_limit;
 pub mod routes;
+pub mod validation;
 
 use axum::extract::FromRef;
 use axum::Router;
@@ -55,6 +57,20 @@ pub(crate) fn chrono_to_offset(dt: chrono::DateTime<chrono::Utc>) -> time::Offse
         dt.timestamp_nanos_opt().expect("updated_at fits in i64 nanoseconds") as i128,
     )
     .expect("valid offset datetime")
+}
+
+/// Same ambiguity as `chrono_to_offset`, for `DATE` columns:
+/// `catering_enquiries.event_date` binds as a query parameter, which needs
+/// `time::Date` even though the result still decodes back to
+/// `chrono::NaiveDate` fine via an explicit `as "col: NaiveDate"` override.
+pub(crate) fn chrono_date_to_offset(date: chrono::NaiveDate) -> time::Date {
+    use chrono::Datelike;
+    time::Date::from_calendar_date(
+        date.year(),
+        time::Month::try_from(date.month() as u8).expect("valid month"),
+        date.day() as u8,
+    )
+    .expect("valid calendar date")
 }
 
 pub async fn build_app(

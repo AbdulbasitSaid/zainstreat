@@ -1,5 +1,6 @@
 pub mod auth;
 pub mod categories;
+pub mod enquiries;
 pub mod media;
 pub mod menu_items;
 pub mod middleware;
@@ -33,6 +34,10 @@ pub fn admin_router() -> Router<AppState> {
         .route("/menu-items/{id}/availability", patch(menu_items::update_availability))
         .route("/menu-items/{id}/archive", post(menu_items::archive_menu_item))
         .route("/media", media::upload_router())
+        .route("/catering-enquiries", get(enquiries::list_catering_enquiries))
+        .route("/catering-enquiries/{id}", get(enquiries::get_catering_enquiry))
+        .route("/contact-messages", get(enquiries::list_contact_messages))
+        .route("/contact-messages/{id}", get(enquiries::get_contact_message))
         .route_layer(from_fn(middleware::require_admin));
 
     Router::new().route("/login", post(auth::login)).merge(protected)

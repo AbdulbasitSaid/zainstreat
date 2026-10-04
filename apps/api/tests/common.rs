@@ -50,11 +50,80 @@ async fn send_raw(pool: PgPool, request: Request<Body>) -> (StatusCode, HeaderMa
     let app = build_app(pool, false, test_media_config().await)
         .await
         .expect("failed to build app in test");
+    send_on_raw(app, request).await
+}
+
+/// For rate-limit tests: every other helper in this module calls
+/// `build_app` fresh per request, which also rebuilds any `route_layer`
+/// state (e.g. the rate limiter's in-memory bucket) from scratch — so
+/// successive calls to `post()`/`get()`/etc. never see each other's rate
+/// limit state. Build the app once with this, then send multiple requests
+/// through `app.clone()` (axum `Router` clones share the same underlying
+/// layered state) to actually exercise rate limiting across requests.
+#[allow(dead_code)]
+pub async fn build_test_app(pool: PgPool) -> axum::Router {
+    build_app(pool, false, test_media_config().await)
+        .await
+        .expect("failed to build app in test")
+}
+
+async fn send_on_raw(app: axum::Router, request: Request<Body>) -> (StatusCode, HeaderMap, Vec<u8>) {
     let response = app.oneshot(request).await.unwrap();
     let status = response.status();
     let headers = response.headers().clone();
     let bytes = response.into_body().collect().await.unwrap().to_bytes().to_vec();
     (status, headers, bytes)
+}
+
+#[allow(dead_code)]
+pub async fn post_on(app: axum::Router, uri: &str, body: Value) -> (StatusCode, Value) {
+    let (status, _headers, resp_body) = send_on(
+        app,
+        Request::builder()
+            .method("POST")
+            .uri(uri)
+            .header("content-type", "application/json")
+            .body(Body::from(body.to_string()))
+            .unwrap(),
+    )
+    .await;
+    (status, resp_body)
+}
+
+#[allow(dead_code)]
+pub async fn post_on_with_header(
+    app: axum::Router,
+    uri: &str,
+    body: Value,
+    header_name: &str,
+    header_value: &str,
+) -> (StatusCode, Value) {
+    let (status, _headers, resp_body) = send_on(
+        app,
+        Request::builder()
+            .method("POST")
+            .uri(uri)
+            .header("content-type", "application/json")
+            .header(header_name, header_value)
+            .body(Body::from(body.to_string()))
+            .unwrap(),
+    )
+    .await;
+    (status, resp_body)
+}
+
+async fn send_on(app: axum::Router, request: Request<Body>) -> (StatusCode, HeaderMap, Value) {
+    let (status, headers, bytes) = send_on_raw(app, request).await;
+    // Unlike every other response in this API, tower_governor's default 429
+    // body is plain text ("Too Many Requests! Wait for Ns"), not JSON — fall
+    // back to `Null` instead of panicking so rate-limit tests can still
+    // assert on `status` alone.
+    let body: Value = if bytes.is_empty() {
+        Value::Null
+    } else {
+        serde_json::from_slice(&bytes).unwrap_or(Value::Null)
+    };
+    (status, headers, body)
 }
 
 async fn send(pool: PgPool, request: Request<Body>) -> (StatusCode, HeaderMap, Value) {
