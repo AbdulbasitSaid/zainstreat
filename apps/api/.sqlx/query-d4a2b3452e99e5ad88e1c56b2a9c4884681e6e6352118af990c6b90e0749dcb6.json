@@ -1,0 +1,25 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO catering_enquiries\n            (name, phone, email, event_type, event_date, guest_count, location, services_required, message)\n        VALUES ($1, '+31612345678', 'c@example.com', $2, $3, $4, 'Amsterdam', ARRAY['catering'], NULL)\n        RETURNING id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Date",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "d4a2b3452e99e5ad88e1c56b2a9c4884681e6e6352118af990c6b90e0749dcb6"
+}

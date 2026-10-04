@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO categories (name, display_order) VALUES ('Soup', 1)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "eab9272def656976bbce472fdc6eb4054e140be99a034b9eb572f95b1ec0386a"
+}
