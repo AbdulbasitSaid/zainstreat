@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT COUNT(*) FROM orders\n        WHERE created_at >= date_trunc('day', now() AT TIME ZONE 'Europe/Amsterdam')\n                            AT TIME ZONE 'Europe/Amsterdam'\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "897c9bb696e889b0ad25629f26d889aa79c58a8dfd357fca5abaddcca137501a"
+}

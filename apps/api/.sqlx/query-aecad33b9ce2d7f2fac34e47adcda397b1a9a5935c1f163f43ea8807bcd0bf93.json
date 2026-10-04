@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, customer_name, delivery_type, total, status,\n               created_at as \"created_at: DateTime<Utc>\"\n        FROM orders\n        ORDER BY created_at DESC, id DESC\n        LIMIT $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "customer_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "delivery_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "total",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 4,
+        "name": "status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "created_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "aecad33b9ce2d7f2fac34e47adcda397b1a9a5935c1f163f43ea8807bcd0bf93"
+}
