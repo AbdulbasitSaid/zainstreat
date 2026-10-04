@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE menu_items SET deleted_at = now(), updated_at = now() WHERE id = $1 AND updated_at = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "69424e57bb25e279460966b69d8ed5c7d7da17eda75a77a8b8ed2a1fcf33d494"
+}
