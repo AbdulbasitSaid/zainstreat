@@ -1,16 +1,19 @@
-import { useTranslations } from "next-intl";
+import { getTranslations } from "next-intl/server";
 import { Reveal } from "@/components/reveal";
 import { SplitRow } from "@/components/split-row";
 import { PageHero } from "@/components/page-hero";
 import { SiteImage } from "@/components/site-image";
-import { Button } from "@/components/button";
-import { Notice } from "@/components/notice";
+import { ContactFormsTabs } from "@/components/contact-forms-tabs";
 import contact from "@/assets/images/contact.jpg";
 
-const FIELD_LABEL_CLASS = "mb-1.5 block text-sm font-semibold text-text";
-
-export default function ContactPage() {
-  const t = useTranslations("ContactPage");
+export default async function ContactPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
+  const { tab } = await searchParams;
+  const initialTab = tab === "catering" ? "catering" : "general";
+  const t = await getTranslations("ContactPage");
 
   return (
     <main className="container">
@@ -42,44 +45,7 @@ export default function ContactPage() {
 
       <Reveal>
         <section className="mx-auto max-w-[640px]">
-          <form>
-            <div className="mb-5">
-              <label htmlFor="contact-name" className={FIELD_LABEL_CLASS}>{t("formName")}</label>
-              <input id="contact-name" name="name" type="text" className="field" />
-            </div>
-
-            <div className="mb-5">
-              <label htmlFor="contact-email" className={FIELD_LABEL_CLASS}>{t("formEmail")}</label>
-              <input id="contact-email" name="email" type="email" className="field" />
-            </div>
-
-            <div className="mb-5">
-              <label htmlFor="contact-phone" className={FIELD_LABEL_CLASS}>{t("formPhone")}</label>
-              <input id="contact-phone" name="phone" type="tel" className="field" />
-            </div>
-
-            <div className="mb-5">
-              <label htmlFor="contact-subject" className={FIELD_LABEL_CLASS}>{t("formSubject")}</label>
-              <select id="contact-subject" name="subject" className="field">
-                <option value="general">{t("formSubjectGeneral")}</option>
-                <option value="catering">{t("formSubjectCatering")}</option>
-                <option value="eventRental">{t("formSubjectEventRental")}</option>
-                <option value="menu">{t("formSubjectMenu")}</option>
-                <option value="order">{t("formSubjectOrder")}</option>
-                <option value="other">{t("formSubjectOther")}</option>
-              </select>
-            </div>
-
-            <div className="mb-5">
-              <label htmlFor="contact-message" className={FIELD_LABEL_CLASS}>{t("formMessage")}</label>
-              <textarea id="contact-message" name="message" rows={5} className="field" />
-            </div>
-
-            <Button type="submit" disabled className="mb-4">
-              {t("sendMessage")}
-            </Button>
-            <Notice>{t("formComingSoon")}</Notice>
-          </form>
+          <ContactFormsTabs initialTab={initialTab} />
         </section>
       </Reveal>
     </main>

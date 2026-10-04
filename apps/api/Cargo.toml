@@ -22,6 +22,8 @@ argon2 = "0.6"
 tower-sessions = "0.14"
 tower-sessions-sqlx-store = { version = "0.15", features = ["postgres"] }
 rpassword = "7"
+tower_governor = { version = "0.8.0", default-features = false, features = ["axum"] }
+governor = { version = "0.10.4", default-features = false, features = ["std"] }
 
 [dev-dependencies]
 tower = { version = "0.5", features = ["util"] }

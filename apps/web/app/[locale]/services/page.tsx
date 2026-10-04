@@ -62,7 +62,7 @@ export default function ServicesPage() {
             <SplitRowIndex>03</SplitRowIndex>
             <h2>{t("cateringHeading")}</h2>
             <p className={supportingClass}>{t("cateringCopy")}</p>
-            <ButtonLink href="/contact" className="mt-4">
+            <ButtonLink href="/contact?tab=catering" className="mt-4">
               {t("requestCateringQuote")}
             </ButtonLink>
           </div>
@@ -78,7 +78,7 @@ export default function ServicesPage() {
             <SplitRowIndex>04</SplitRowIndex>
             <h2>{t("eventRentalsHeading")}</h2>
             <p className={supportingClass}>{t("eventRentalsCopy")}</p>
-            <ButtonLink href="/contact" className="mt-4">
+            <ButtonLink href="/contact?tab=catering" className="mt-4">
               {t("requestQuote")}
             </ButtonLink>
           </div>

@@ -39,6 +39,16 @@ service works as-is). Each test gets its own throwaway database via
 `#[sqlx::test]`, migrated automatically. Run `cargo sqlx prepare` again
 after adding or changing any query, including in `tests/`.
 
+- If `cargo test` (or any `SQLX_OFFLINE=true` build) fails with
+  `` `SQLX_OFFLINE=true` but there is no cached data for this query ``,
+  the `.sqlx/` cache is stale relative to a query added or changed in
+  source or in `tests/`. Fix: `cd apps/api && cargo sqlx migrate run`
+  (apply any pending migrations the query depends on), then
+  `cargo sqlx prepare --workspace -- --tests` (the `--tests` flag is
+  required to cover queries that only live in test files — plain
+  `cargo sqlx prepare` skips them). Commit the resulting `.sqlx/`
+  changes.
+
 ## Web → API data fetching
 
 `apps/web`'s server components call `apps/api` over HTTP using

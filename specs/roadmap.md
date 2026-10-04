@@ -220,10 +220,15 @@ phase replaces.
 
 - Catering/event enquiry form (name, phone, email, event type, date,
   guests, location, services required, message) — separate from the food
-  cart, per the non-negotiable rule in `mission.md`.
-- General contact form (name, email, phone, subject, message).
+  cart, per the non-negotiable rule in `mission.md`. Lives on the existing
+  `/contact` page (the Phase 5 Services page CTAs already link there) as a
+  second form, switched to via a tab alongside the general contact form.
+- General contact form (name, email, phone, subject, message) — the
+  Phase 5 static stub on the Contact page, wired up for real.
 - Submissions persisted and, once Phase-17 email is wired in, forwarded by
-  email to the business.
+  email to the business. No status workflow on either (unlike Orders).
+- A minimal read-only admin view (`/admin/enquiries`) listing both, so
+  staff aren't blind to submissions before Phase 17's email lands.
 
 ## Phase 16 — WhatsApp CTAs
 

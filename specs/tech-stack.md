@@ -272,6 +272,45 @@ ordering flow, but the dependency is named here so the `orders` and
 `contact`/`catering` workflows can wire it in without a follow-up stack
 decision.
 
+## Spam/Abuse Mitigation (Phase 15)
+
+Added mid-phase (open risk 3 resolution, 2026-10-04) for the two new
+public, unauthenticated write endpoints (`POST /api/catering-enquiries`,
+`POST /api/contact-messages`) — `POST /api/orders` (Phase 10) still has
+neither, left as-is since it isn't this phase's concern.
+
+- **`tower_governor`** (`^0.8`, `axum` feature), a `tower`/Axum rate-limit
+  middleware, for a per-client-IP token bucket on both new endpoints —
+  layered on only those two routes (`.route_layer`), not the whole
+  `api_router()`.
+- **A custom `KeyExtractor`**, not the crate's built-in peer-IP/smart-IP
+  extractors — this app's browser traffic reaches `apps/api` exclusively
+  through `apps/web`'s same-origin Route Handler proxy (server-to-server,
+  over the Docker-internal network), so the TCP peer `apps/api` sees for
+  that path is always the `web` container, not the visitor. The
+  proxy forwards the real client IP (already present on its own
+  incoming request's `X-Forwarded-For`, set by Caddy) through to `apps/api`
+  unchanged; the custom extractor reads `X-Forwarded-For` and takes its
+  **last** comma-separated entry (the nearest hop that actually touched
+  the request — Caddy either way, whether a request reaches `apps/api`
+  by this route or by hitting `api.${DOMAIN}` directly), not the first
+  (which a client could freely spoof, since Caddy appends rather than
+  replaces an incoming `X-Forwarded-For`). Missing header (local dev with
+  no Caddy in front) falls back to one shared bucket rather than wiring up
+  `axum::serve`'s `ConnectInfo` for a peer-IP fallback — acceptable since
+  every real deployment of this app sits behind Caddy (same edge-proxy
+  trust assumption the rest of the deployment already makes).
+- **A honeypot field** (`website`, visually hidden off-screen +
+  `aria-hidden` + `tabIndex={-1}` + `autoComplete="off"`, not
+  `type="hidden"` or `display:none`) added to both new public forms. A
+  filled value short-circuits the handler before validation or any
+  database write, returning the same `201` success shape the real
+  endpoint would (synthetic `id`/`created_at`) so a scripted submitter
+  gets no signal that anything was rejected.
+- Deliberately **not** CAPTCHA — no third-party dependency/user friction
+  for a two-form, low-traffic site; revisit only if the business reports
+  spam these two measures don't stop.
+
 ## WhatsApp Integration
 
 - **`wa.me` deep links** with a prefilled message (e.g.
@@ -346,6 +385,7 @@ runners absorb that cost for free, and the box's job shrinks to just
 | Image/object storage | MinIO (S3-compatible, self-hosted) via `aws-sdk-s3`, server-side upload/serve proxy (Phase 14) |
 | Image cropping | `react-easy-crop` — client-side fixed 1:1 crop before upload (Phase 14) |
 | Email (P1) | lettre + transactional email provider |
+| Spam/abuse mitigation | `tower_governor` (per-IP rate limit, custom `X-Forwarded-For` key extractor) + honeypot field (Phase 15) |
 | WhatsApp | `wa.me` deep links |
 | Hosting | AWS Lightsail VPS (`eu-central-1`, Frankfurt), Docker Compose |
 | CI/CD | GitHub Actions → private GHCR → SSH deploy (dedicated `deploy` user) |

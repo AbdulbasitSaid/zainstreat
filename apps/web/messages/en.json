@@ -176,7 +176,49 @@
     "formSubjectOrder": "Order Enquiry",
     "formSubjectOther": "Other",
     "sendMessage": "Send Message",
-    "formComingSoon": "This form isn't connected yet — please reach us on WhatsApp or by email in the meantime."
+    "formTabsLabel": "Choose enquiry type",
+    "tabGeneral": "General Enquiry",
+    "tabCatering": "Catering & Event Enquiry",
+    "cateringNameLabel": "Full Name",
+    "cateringPhoneLabel": "Phone Number",
+    "cateringEmailLabel": "Email",
+    "cateringEventTypeLabel": "Event Type",
+    "eventType": {
+      "wedding": "Wedding",
+      "birthday": "Birthday",
+      "corporate": "Corporate",
+      "family_gathering": "Family Gathering",
+      "outdoor_event": "Outdoor Event",
+      "other": "Other"
+    },
+    "cateringEventDateLabel": "Event Date",
+    "cateringGuestCountLabel": "Number of Guests",
+    "cateringLocationLabel": "Location",
+    "cateringServicesLabel": "Services Required",
+    "service": {
+      "catering": "Catering",
+      "meal_delivery": "Meal Delivery",
+      "event_rental": "Event Rental",
+      "other": "Other"
+    },
+    "cateringMessageLabel": "Message (optional)",
+    "submitEnquiry": "Request a Quote",
+    "submittingEnquiry": "Submitting…",
+    "cateringSuccessHeading": "Thank you!",
+    "cateringSuccessBody": "We've received your enquiry and will be in touch to discuss your event.",
+    "contactSuccessHeading": "Message Sent",
+    "contactSuccessBody": "Thanks for reaching out — we'll get back to you soon.",
+    "submitMessage": "Send Message",
+    "submittingMessage": "Sending…",
+    "submitErrorGeneric": "Something went wrong submitting this — please try again, or reach us on WhatsApp.",
+    "errors": {
+      "required": "{field} is required.",
+      "invalid": "Please enter a valid {field}.",
+      "tooShort": "{field} is too short.",
+      "tooLong": "{field} is too long.",
+      "mustBeFuture": "{field} must be a future date.",
+      "mustBePositive": "{field} must be greater than zero."
+    }
   },
   "TermsPage": {
     "heading": "Terms & Conditions",
