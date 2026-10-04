@@ -1,0 +1,94 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, customer_name, customer_email, customer_phone, delivery_type,\n               delivery_address, notes, subtotal, delivery_fee, total, status,\n               created_at as \"created_at: DateTime<Utc>\",\n               updated_at as \"updated_at: DateTime<Utc>\"\n        FROM orders\n        WHERE id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "customer_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "customer_email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "customer_phone",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "delivery_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "delivery_address",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "notes",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "subtotal",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 8,
+        "name": "delivery_fee",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 9,
+        "name": "total",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 10,
+        "name": "status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
+        "name": "created_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 12,
+        "name": "updated_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "a1bae497d1681f05cb54b42b384c5fa8662f3fc3e1e90626a368341388165282"
+}

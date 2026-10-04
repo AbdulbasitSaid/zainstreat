@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, item_name, option_label, unit_price, quantity, subtotal\n        FROM order_items\n        WHERE order_id = $1\n        ORDER BY id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "item_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "option_label",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "unit_price",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 4,
+        "name": "quantity",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "subtotal",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "7ad91b54222401e2b1142571b28e0904c0b372dc74c20a71b460356f0a6c7e13"
+}

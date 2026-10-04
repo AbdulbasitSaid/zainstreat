@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { NextIntlClientProvider, hasLocale } from "next-intl";
 import { notFound } from "next/navigation";
-import { Fraunces, Work_Sans } from "next/font/google";
 import { routing } from "@/i18n/routing";
 import { UtilityBar } from "@/components/utility-bar";
 import { SiteHeader } from "@/components/site-header";
@@ -10,17 +9,8 @@ import { MotionProvider } from "@/components/motion-provider";
 import { PageTransition } from "@/components/page-transition";
 import { CustomCursor } from "@/components/custom-cursor";
 import { CartProvider } from "@/lib/cart-context";
+import { bodyFont, displayFont } from "@/lib/fonts";
 import "../globals.css";
-
-const displayFont = Fraunces({
-  subsets: ["latin"],
-  variable: "--font-display",
-  weight: ["600", "700"],
-});
-const bodyFont = Work_Sans({
-  subsets: ["latin"],
-  variable: "--font-body",
-});
 
 export const metadata: Metadata = {
   title: "Zain's Treat n More",

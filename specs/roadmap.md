@@ -179,10 +179,26 @@ beautiful" before continuing the MVP build-out.
 
 ## Phase 13 — Admin: Orders
 
-- Dashboard shell (nav: Dashboard, Orders, Menu, Categories, Settings).
-- Order list (ID, customer, total, status) and order detail view (items,
-  quantities, totals, delivery/pickup info, notes).
-- Update order status.
+Builds on the authentication seam Phase 11 deliberately left behind: the
+protected `/api/admin/*` route group + `require_admin` middleware, and the
+`app/admin/(protected)/` route group whose bare "Welcome, {name}" page this
+phase replaces.
+
+- Dashboard shell (nav: Dashboard, Orders, Menu, Categories, Settings) —
+  all five rendered, with Menu/Categories (Phase 14) and Settings (no phase
+  yet) as visibly disabled, non-navigable items rather than links to
+  dead ends.
+- Dashboard landing page (`/admin`): per-status order counts, a "placed
+  today" count, and the five most recent orders as links into detail.
+- Order list (ID, customer, type, total, status, placed-at) with a status
+  filter and `limit`/`offset` pagination, newest first.
+- Order detail view (items, option labels, quantities, unit prices, line
+  subtotals, order totals, delivery/pickup info and address, notes,
+  timestamps).
+- Update order status — any of the six `orders.status` CHECK values from
+  any other, no enforced forward-only workflow.
+- Still read-only for everything else: no editing an order's items,
+  customer details or totals, and no deleting orders.
 
 ## Phase 14 — Admin: Menu & Categories
 

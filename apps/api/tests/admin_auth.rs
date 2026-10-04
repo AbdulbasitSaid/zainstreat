@@ -1,24 +1,9 @@
 mod common;
 
-use argon2::password_hash::PasswordHasher;
-use argon2::Argon2;
 use axum::http::StatusCode;
-use common::{get_with_cookie, post_with_cookie, session_cookie};
+use common::{get_with_cookie, insert_admin, post_with_cookie, session_cookie};
 use serde_json::json;
 use sqlx::PgPool;
-
-async fn insert_admin(pool: &PgPool, email: &str, password: &str) {
-    let hash = Argon2::default().hash_password(password.as_bytes()).unwrap().to_string();
-    sqlx::query!(
-        "INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, 'admin')",
-        "Test Admin",
-        email,
-        hash,
-    )
-    .execute(pool)
-    .await
-    .unwrap();
-}
 
 #[sqlx::test]
 async fn login_succeeds_and_me_reflects_session(pool: PgPool) {
