@@ -307,9 +307,11 @@ unreferenced leftovers, not this addendum's concern.
     packaging, or near-identical protein swap (e.g. "Jollof Rice &
     Plantain with Chicken or Turkey" also appears as a 5 L bulk item and a
     "Cooler of Jollof Rice"; "Chicken Stew" and "Turkey Stew" are the same
-    preparation with the protein swapped). The full reuse mapping — 16
-    distinct images covering the 26 remaining rows — is in `plan.md`
-    Group 9.
+    preparation with the protein swapped). The full reuse mapping — 17
+    distinct images covering the 26 remaining rows (one of the 17,
+    `fried-plantain.jpg`, was a gap-fill added during implementation after
+    planning missed the `2 L Fried Plantain` row — see `plan.md` Group 9
+    and `validation.md`) — is in `plan.md` Group 9.
 16. **File convention matches the existing `Egusi Soup`/`Efo Riro`
     precedent, not Addendum 1's static-import convention.** New files
     committed under `apps/web/public/images/menu/<slug>.jpg`, referenced
@@ -349,9 +351,11 @@ unreferenced leftovers, not this addendum's concern.
    when no generation capability was available) — don't assume generation
    will succeed; `plan.md` Group 9 names the fallback explicitly so
    implementation isn't blocked if it recurs.
-2. **16 images is still 16 reviews.** Reusing per base dish (Decision 15)
-   cuts the count from 26 to 16, but each one still needs the same
-   on-brand/no-mismatched-protein/no-broken-crop check Addendum 1's
-   `validation.md` applied to the 8 site-decoration images — don't skip
-   that review pass just because this batch is DB fixture data rather than
-   static page content.
+2. **17 images is still 17 reviews.** Reusing per base dish (Decision 15)
+   cuts the count from 26 to 17 (16 planned + 1 gap-fill, see `plan.md`
+   Group 9), but each one still needs the same on-brand/no-mismatched-
+   protein/no-broken-crop check Addendum 1's `validation.md` applied to
+   the 8 site-decoration images. Done during implementation: all 17 were
+   individually viewed, 6 were rejected as misleading/off-brand on first
+   pass and re-sourced — see `validation.md`'s Addendum 2 checklist for
+   the full list of what was rejected and why.

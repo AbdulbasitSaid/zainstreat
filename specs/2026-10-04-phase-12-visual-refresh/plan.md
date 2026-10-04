@@ -387,13 +387,21 @@ Reuse mapping — file name, the `seed.sql` row(s) it covers (by current
 | `ofada-stew.jpg` | `Ofada Stew` | Bold dark-red/brown ofada-style stew |
 | `poultry-stew.jpg` | `Chicken Stew`; `Turkey Stew` | Classic tomato stew, poultry pieces (reused across both) |
 | `peppered-poultry.jpg` | `Box of Peppered Turkey`; `Box of Peppered Chicken` | Pan-fried peppered poultry pieces (reused across both) |
+| `fried-plantain.jpg` | `2 L Fried Plantain` | Golden fried sweet plantain slices, no other components |
 
-`Egusi Soup`/`Efo Riro` already have real photos and are untouched; the
-other 10 pre-existing `seed.sql` rows not listed above don't exist (28
-total rows: 2 already real + 26 covered by the 16 files above).
+**Correction (caught during implementation, not at planning time):** the
+table above was originally missing `2 L Fried Plantain` (`By The Litre`)
+entirely — no file covered it and it would have been left on
+`placehold.co`. Gap-filled with the `fried-plantain.jpg` row above; see
+`validation.md`'s Addendum 2 checklist for the record of this deviation.
+17 distinct images cover the 26 remaining rows, not 16.
+
+`Egusi Soup`/`Efo Riro` already have real photos and are untouched; every
+other `seed.sql` row is covered by exactly one of the 17 files above (28
+total rows: 2 already real + 26 covered by the 17 files above).
 
 Implementation mechanics:
-- Generate/source the 16 files, save to
+- Generate/source the 17 files, save to
   `apps/web/public/images/menu/<name-from-table-above>`.
 - In `apps/api/seed.sql`, for each VALUES tuple whose `name` appears in the
   table above, replace its `'https://placehold.co/600x400?text=...'`

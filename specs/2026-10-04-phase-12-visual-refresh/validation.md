@@ -137,43 +137,100 @@
 
 ## Addendum 2 — Pass/fail checklist (menu item imagery)
 
-- [ ] `ls apps/web/public/images/menu/` → the existing 4 files
+- [x] `ls apps/web/public/images/menu/` → the existing 4 files
       (`egusi-soup.jpeg`, `efo-soup.jpeg`, `chin-chin.jpeg`,
       `small-chops.jpeg`, the last two still unreferenced — see
-      `requirement.md` Addendum 2 Context) plus exactly the 16 new `.jpg`
-      files named in `plan.md` Group 9's table — 20 total.
-- [ ] `grep -c "placehold.co" apps/api/seed.sql` → `0` (every remaining
-      `placehold.co` `image_url` replaced).
-- [ ] `grep -n "image_url" apps/api/seed.sql` spot-check: every row's
+      `requirement.md` Addendum 2 Context) plus 17 new `.jpg` files — 21
+      total. **Deviation from `plan.md` Group 9's table**: that table
+      specified 16 files but missed one row — `2 L Fried Plantain` (By
+      The Litre) wasn't assigned a file during planning. Caught during
+      implementation and gap-filled with a 17th file,
+      `fried-plantain.jpg`, rather than leaving that one row on
+      `placehold.co`.
+- [x] `grep -c "placehold.co" apps/api/seed.sql` → `0`.
+- [x] `grep -n "image_url" apps/api/seed.sql` spot-check: every row's
       `image_url` either stays untouched (`Egusi Soup`, `Efo Riro`) or
-      matches `plan.md` Group 9's table exactly, including the two reused
+      matches the (corrected, 17-file) mapping, including the two reused
       pairs (`Chicken Stew`/`Turkey Stew` → `poultry-stew.jpg`; `Box of
-      Peppered Turkey`/`Box of Peppered Chicken` → `peppered-poultry.jpg`).
-- [ ] `cd apps/api && SQLX_OFFLINE=true cargo check --all-targets` — clean
-      (seed.sql is plain SQL text, not compiled, but confirm nothing else
-      regressed).
-- [ ] Re-run the seed (`psql ... -f apps/api/seed.sql` per
-      `docs/local-development.md`'s convention, or the project's existing
-      seed-loading step) against the local dev stack without error —
-      confirms the 16 new `image_url` strings aren't malformed SQL.
-- [ ] Live smoke test: `GET /en/menu` on the running dev stack renders
-      every menu item card with a real photo (`<img>`/`next/image` `src`
-      resolving to `/images/menu/<file>.jpg`, `200` on direct fetch) —
-      zero remaining `placehold.co` `<img>` sources anywhere on the menu
-      page. Also check the cart: add one item from each of the 16 reused
-      groups and confirm `CartLineItem`'s 64×64 thumbnail renders the same
-      photo, not a broken-image icon.
-- [ ] **Manual — needs a browser:**
-      - All 16 images read as on-brand, correctly identify their dish (no
-        mismatched protein/sauce), and crop sensibly at both the menu
-        card's 600×400 and the cart line item's 64×64 sizes.
+      Peppered Turkey`/`Box of Peppered Chicken` → `peppered-poultry.jpg`)
+      and the gap-filled `2 L Fried Plantain` → `fried-plantain.jpg`.
+- [x] `cd apps/api && SQLX_OFFLINE=true cargo check --all-targets` — clean.
+- [x] Re-ran the seed against the project's actual running dev stack
+      (`docker compose exec -T postgres psql -U zainstreat -d zainstreat <
+      apps/api/seed.sql`, per `docs/local-development.md`) — `TRUNCATE`
+      cascaded cleanly, all 4 `INSERT` statements succeeded (4 categories,
+      18 flat-price items, 10 variant items, 20 price options). Confirms
+      the new `image_url` strings aren't malformed SQL.
+- [x] Live smoke test against that same running stack: `GET /en/menu` →
+      `200`, `grep -c placehold.co` on the response body → `0`, and every
+      one of the 18 distinct `/images/menu/*` files referenced in the
+      rendered HTML (both as the raw `src` and through
+      `/_next/image?url=...`). Direct-fetched one file
+      (`/images/menu/ewa-agoyin.jpg`) and its `/_next/image`-optimized
+      form — both `200`.
+- [x] **Sourcing deviation (same caveat as Addendum 1):** no
+      image-generation tool was available in the implementing session, so
+      all 17 images were sourced as real, freely-licensed stock
+      photography (16 from Pexels, 1 — `ogbono-soup.jpg` — from Unsplash;
+      both no-attribution-required licenses), per Addendum 2's
+      Open risk 1 fallback.
+- [x] **Quality review pass (manual, performed in-session via direct
+      image inspection, not deferred)**: all 17 sourced images were
+      individually viewed and checked against their `plan.md` brief. 6 of
+      the first-pass picks were rejected as misleading or off-brand and
+      re-sourced before being committed:
+      - `ewa-agoyin.jpg` — rejected a photo of whole beans and carrots
+        (not mashed, no sauce); replaced with a thick, glossy, dark
+        bean stew that actually reads as mashed/pureed.
+      - `moin-moin-fish-egg.jpg` — rejected an East-Asian whole-grilled-
+        fish-and-pickled-vegetables plate (completely wrong dish);
+        replaced by reusing `moin-moin-egg.jpg`'s photo (steamed
+        orange-red pudding in a ramekin topped with egg) — a deliberate,
+        documented reuse across both moin moin rows rather than a
+        distinct fish-specific photo, since no suitable stock photo of a
+        fish-studded steamed bean pudding could be found.
+      - `ogbono-soup.jpg` — rejected a bright lime-green, fine-dining-
+        styled pea soup (wrong color/tone and clashing presentation);
+        replaced with a dark, thick, leafy soup served with a pounded-yam
+        swallow (labeled "eforiro" at the source, but a materially better
+        visual stand-in for a thick, dark Nigerian soup than the
+        original pick).
+      - `smoked-mackerel-sauce.jpg` — rejected a Mediterranean shrimp-
+        and-dill stew; replaced with a tight crop (via local
+        `magick`/ImageMagick, not a different source photo) of a dark
+        fish-in-tomato-sauce dish from a West African flat-lay,
+        removing the surrounding clutter.
+      - `peppered-poultry.jpg` — rejected a Turkish-styled mezze plate
+        (sumac dust border, pickled-onion salad); replaced with plain
+        grilled chicken pieces on a simple plate.
+      - `fried-rice-plantain.jpg` — rejected Indonesian nasi goreng
+        (fried egg, prawn crackers — strong wrong-cuisine signals);
+        replaced with a plainer fried-rice-and-salad plate with no
+        cuisine-specific markers.
+      All 6 replacements were re-verified visually before committing. The
+      remaining 11 first-pass picks (`jollof-rice-plantain`,
+      `fried-plantain`, `vegetable-salad`,
+      `white-rice-beans-assorted-stew`, `white-rice-beans-pepper-beef`,
+      `assorted-meat-stew`, `moin-moin-egg`, `pepper-sauce`, `fried-fish`,
+      `ofada-stew`, `poultry-stew`) were judged acceptable as-is, some
+      with minor noted imperfections (e.g. `poultry-stew.jpg`'s
+      background has fine-dining pepper mills; `fried-fish.jpg`'s
+      background shows an out-of-frame Asian-style side bowl) that don't
+      rise to the same "actively misleading" bar as the 6 replaced.
+- [x] All 17 new files resized/normalized to 1200×800 (matching the
+      aspect ratio `MenuItemCard`/`CartLineItem` render at) via local
+      `magick`, keeping file sizes consistent with the pre-existing 4
+      real photos (85–373 KB each, no outliers).
+- [ ] **Manual — still needs an actual browser, not just an HTML
+      fetch:**
+      - Crop behavior at the cart line item's 64×64 thumbnail size
+        specifically (only the menu card's 600×400 size was checked via
+        the rendered page fetch above).
       - No visual seams between the Addendum 1 site-decoration photos and
-        these menu photos — i.e. the two image sets don't look like they
-        came from two unrelated shoots.
-      - Unavailable items (`is_available = false`, most of the catalogue
-        per `seed.sql`'s `grayscale-[30%]` treatment in `MenuItemCard`)
-        still show their new photo correctly grayscaled/dimmed, not
-        broken.
+        these menu photos when seen side by side in the real layout.
+      - Unavailable items (`is_available = false`, most of the catalogue)
+        still show their new photo correctly grayscaled/dimmed via
+        `MenuItemCard`'s `grayscale-[30%]` class, not broken.
 - [ ] CI green on PR.
 
 ## Definition of done
