@@ -4,12 +4,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 // `enabled: false` renders a muted, non-focusable span instead of a link —
-// requirement.md Decision 2. Phase 14 flips Menu and Categories to true.
+// requirement.md Decision 2.
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/admin", enabled: true },
   { label: "Orders", href: "/admin/orders", enabled: true },
-  { label: "Menu", href: "/admin/menu", enabled: false },
-  { label: "Categories", href: "/admin/categories", enabled: false },
+  { label: "Menu", href: "/admin/menu", enabled: true },
+  { label: "Categories", href: "/admin/categories", enabled: true },
   { label: "Settings", href: "/admin/settings", enabled: false },
 ] as const;
 
