@@ -176,7 +176,49 @@
     "formSubjectOrder": "Bestelvraag",
     "formSubjectOther": "Overig",
     "sendMessage": "Bericht Versturen",
-    "formComingSoon": "Dit formulier is nog niet actief — neem in de tussentijd contact met ons op via WhatsApp of e-mail."
+    "formTabsLabel": "Kies type aanvraag",
+    "tabGeneral": "Algemene Vraag",
+    "tabCatering": "Catering & Evenementaanvraag",
+    "cateringNameLabel": "Volledige Naam",
+    "cateringPhoneLabel": "Telefoonnummer",
+    "cateringEmailLabel": "E-mail",
+    "cateringEventTypeLabel": "Type Evenement",
+    "eventType": {
+      "wedding": "Bruiloft",
+      "birthday": "Verjaardag",
+      "corporate": "Zakelijk",
+      "family_gathering": "Familiebijeenkomst",
+      "outdoor_event": "Buitenevenement",
+      "other": "Overig"
+    },
+    "cateringEventDateLabel": "Datum Evenement",
+    "cateringGuestCountLabel": "Aantal Gasten",
+    "cateringLocationLabel": "Locatie",
+    "cateringServicesLabel": "Gewenste Diensten",
+    "service": {
+      "catering": "Catering",
+      "meal_delivery": "Maaltijdbezorging",
+      "event_rental": "Evenementenverhuur",
+      "other": "Overig"
+    },
+    "cateringMessageLabel": "Bericht (optioneel)",
+    "submitEnquiry": "Offerte Aanvragen",
+    "submittingEnquiry": "Versturen…",
+    "cateringSuccessHeading": "Bedankt!",
+    "cateringSuccessBody": "We hebben uw aanvraag ontvangen en nemen contact met u op om uw evenement te bespreken.",
+    "contactSuccessHeading": "Bericht Verzonden",
+    "contactSuccessBody": "Bedankt voor uw bericht — we nemen zo snel mogelijk contact met u op.",
+    "submitMessage": "Bericht Versturen",
+    "submittingMessage": "Versturen…",
+    "submitErrorGeneric": "Er ging iets mis bij het versturen — probeer het opnieuw, of neem contact met ons op via WhatsApp.",
+    "errors": {
+      "required": "{field} is verplicht.",
+      "invalid": "Voer een geldig(e) {field} in.",
+      "tooShort": "{field} is te kort.",
+      "tooLong": "{field} is te lang.",
+      "mustBeFuture": "{field} moet een datum in de toekomst zijn.",
+      "mustBePositive": "{field} moet groter zijn dan nul."
+    }
   },
   "TermsPage": {
     "heading": "Algemene Voorwaarden",
