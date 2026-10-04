@@ -29,7 +29,6 @@
   /* Motion */
   --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1);
   --animate-marquee: marquee-scroll 26s linear infinite;
-  --animate-float-rotate: float-rotate 12s ease-in-out infinite;
 }
 
 @keyframes marquee-scroll {
@@ -38,16 +37,6 @@
   }
   to {
     transform: translateX(-50%);
-  }
-}
-
-@keyframes float-rotate {
-  0%,
-  100% {
-    transform: translateY(0) rotate(0deg);
-  }
-  50% {
-    transform: translateY(-12px) rotate(8deg);
   }
 }
 
@@ -113,6 +102,11 @@
       transition-duration: 0.01ms !important;
       scroll-behavior: auto !important;
     }
+  }
+
+  body.custom-cursor-active,
+  body.custom-cursor-active * {
+    cursor: none;
   }
 }
 

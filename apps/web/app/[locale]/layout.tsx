@@ -8,6 +8,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { MotionProvider } from "@/components/motion-provider";
 import { PageTransition } from "@/components/page-transition";
+import { CustomCursor } from "@/components/custom-cursor";
 import { CartProvider } from "@/lib/cart-context";
 import "../globals.css";
 
@@ -47,6 +48,7 @@ export default async function LocaleLayout({
         <NextIntlClientProvider>
           <CartProvider>
             <MotionProvider />
+            <CustomCursor />
             <UtilityBar />
             <SiteHeader />
             <PageTransition>{children}</PageTransition>

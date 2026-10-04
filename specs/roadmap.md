@@ -34,7 +34,7 @@ real environment instead of one big-bang deploy at the end (per
   (Next.js standalone build, `node:22-bookworm-slim` runtime) and
   `apps/api/Dockerfile` (`cargo build --release`, copied onto
   `debian:bookworm-slim`). Deliberately basic — not yet hardened
-  (no non-root user, no distroless base); that polish is Phase 17's job.
+  (no non-root user, no distroless base); that polish is Phase 18's job.
 - `.github/workflows/deploy.yml`: on every push to `master`, build the
   `web` and `api` images, push them to a **private** GHCR registry, then
   SSH to the Lightsail box as the `deploy` user and run `docker compose
@@ -52,7 +52,7 @@ real environment instead of one big-bang deploy at the end (per
   a scoped read-only PAT configured once by hand (never committed).
 - Enable Lightsail's automatic daily snapshot add-on — this resolves
   `tech-stack.md`'s previously-open "backup mechanism" item for now (see
-  Phase 17 for verifying an actual restore once real data exists).
+  Phase 18 for verifying an actual restore once real data exists).
 - `docs/deployment.md`: how the CI/CD flow works (push to `master`, watch
   Actions, live), plus a manual/break-glass rollback runbook (SSH as
   admin, pull a previous image tag and `up -d`, or re-run a prior
@@ -72,7 +72,7 @@ real environment instead of one big-bang deploy at the end (per
   and its hardcoded strings moved into the message files, as the first
   real usage example — plus a minimal placeholder language-toggle control
   on that page (no real header/nav exists until Phase 5).
-- Scope: public-facing site only. The admin dashboard (Phase 11/12) and
+- Scope: public-facing site only. The admin dashboard (Phase 11/13) and
   the Rust API (`apps/api`) remain English-only.
 
 ## Phase 4 — Data Model
@@ -88,7 +88,7 @@ real environment instead of one big-bang deploy at the end (per
   Regulations pages — no dynamic data yet.
 - Services page (Meals, Snacks, Catering, Event Rentals detail sections
   per README §12, each with a "Request a Quote" CTA linking to Contact —
-  the enquiry form itself is Phase 14's job).
+  the enquiry form itself is Phase 15's job).
 - Brand system applied: color tokens, typography, logo placement, base
   layout/navigation (desktop + mobile hamburger).
 
@@ -161,14 +161,30 @@ production 502 revealed there was no way to see why. Self-hosted only
   `tower-sessions` (Postgres-backed), logout.
 - Middleware protecting all `/admin` routes and admin API endpoints.
 
-## Phase 12 — Admin: Orders
+## Phase 12 — Visual & Interactive Refresh
+
+Not an original roadmap phase — inserted ahead of the admin-dashboard work
+at the client's request, to make the public site "more interactive and more
+beautiful" before continuing the MVP build-out.
+
+- Remove the decorative "floating shapes" (`DecorativeShape`) entirely from
+  the homepage and about page — no replacement decoration, just gone.
+- Replace Framer Motion (the `motion` package) with GSAP + ScrollTrigger as
+  the site's animation system, for page transitions and scroll-triggered
+  reveals; Lenis (smooth scroll) stays, driven off `gsap.ticker`.
+- Fill in the site's missing imagery (homepage, about, services, contact)
+  with seeded stock/placeholder photography until real brand photography is
+  available — real photos remain a Phase 17 "Image optimization pass"
+  follow-up (or sooner, once the client supplies them).
+
+## Phase 13 — Admin: Orders
 
 - Dashboard shell (nav: Dashboard, Orders, Menu, Categories, Settings).
 - Order list (ID, customer, total, status) and order detail view (items,
   quantities, totals, delivery/pickup info, notes).
 - Update order status.
 
-## Phase 13 — Admin: Menu & Categories
+## Phase 14 — Admin: Menu & Categories
 
 - Add / edit menu item (name, description, price, category, image,
   available, featured).
@@ -176,21 +192,21 @@ production 502 revealed there was no way to see why. Self-hosted only
 - Availability toggle (available/unavailable).
 - Category management: add, rename, archive.
 
-## Phase 14 — Catering & Contact Workflows
+## Phase 15 — Catering & Contact Workflows
 
 - Catering/event enquiry form (name, phone, email, event type, date,
   guests, location, services required, message) — separate from the food
   cart, per the non-negotiable rule in `mission.md`.
 - General contact form (name, email, phone, subject, message).
-- Submissions persisted and, once Phase-16 email is wired in, forwarded by
+- Submissions persisted and, once Phase-17 email is wired in, forwarded by
   email to the business.
 
-## Phase 15 — WhatsApp CTAs
+## Phase 16 — WhatsApp CTAs
 
 - `wa.me` deep links placed in header, hero, contact page, and footer
   (per `tech-stack.md`).
 
-## Phase 16 — Polish & Non-Functional Requirements
+## Phase 17 — Polish & Non-Functional Requirements
 
 - SEO: page titles, meta descriptions, Open Graph tags, semantic HTML,
   clean URLs (`/`, `/about`, `/services`, `/menu`, `/order`, `/contact`,
@@ -207,7 +223,7 @@ production 502 revealed there was no way to see why. Self-hosted only
 - Wire in email sending (order confirmations, contact/catering
   notifications) via `lettre` + transactional email provider.
 
-## Phase 17 — Production Hardening & Final Rollout
+## Phase 18 — Production Hardening & Final Rollout
 
 The AWS Lightsail instance, DNS, TLS, backups, production Dockerfiles, and
 the GitHub Actions CI/CD pipeline already exist from Phase 2 — this phase

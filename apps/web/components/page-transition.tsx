@@ -1,24 +1,28 @@
 "use client";
 
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { useRef, type ReactNode } from "react";
 import { usePathname } from "@/i18n/navigation";
-import type { ReactNode } from "react";
+import { gsap, useGSAP, ScrollTrigger } from "@/lib/gsap";
+
+function Panel({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useGSAP(
+    () => {
+      const mm = gsap.matchMedia();
+      mm.add("(prefers-reduced-motion: no-preference)", () => {
+        gsap.from(ref.current, { opacity: 0, y: 8, duration: 0.3, ease: "outExpo" });
+      });
+      ScrollTrigger.refresh();
+      return () => mm.revert();
+    },
+    { scope: ref },
+  );
+
+  return <div ref={ref}>{children}</div>;
+}
 
 export function PageTransition({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const shouldReduceMotion = useReducedMotion();
-
-  return (
-    <AnimatePresence mode="wait" initial={false}>
-      <motion.div
-        key={pathname}
-        initial={shouldReduceMotion ? false : { opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={shouldReduceMotion ? undefined : { opacity: 0, y: -8 }}
-        transition={{ duration: shouldReduceMotion ? 0 : 0.3, ease: [0.22, 1, 0.36, 1] }}
-      >
-        {children}
-      </motion.div>
-    </AnimatePresence>
-  );
+  return <Panel key={pathname}>{children}</Panel>;
 }

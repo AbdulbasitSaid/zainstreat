@@ -1,13 +1,18 @@
 import { getTranslations } from "next-intl/server";
 import { Reveal } from "@/components/reveal";
-import { DecorativeShape } from "@/components/decorative-shape";
-import { ImageSlot } from "@/components/image-slot";
+import { SiteImage } from "@/components/site-image";
 import { SplitRow } from "@/components/split-row";
 import { Eyebrow } from "@/components/eyebrow";
 import { ButtonLink, buttonClasses } from "@/components/button";
 import { MenuItemCard } from "@/components/menu-item-card";
 import { Link } from "@/i18n/navigation";
 import { getMenuItems } from "@/lib/api";
+import hero from "@/assets/images/hero.jpg";
+import categoryMeals from "@/assets/images/category-meals.jpg";
+import categorySnacks from "@/assets/images/category-snacks.jpg";
+import categoryCatering from "@/assets/images/category-catering.jpg";
+import categoryEventRentals from "@/assets/images/category-event-rentals.jpg";
+import aboutHero from "@/assets/images/about-hero.jpg";
 
 const MAX_FEATURED_ITEMS = 6;
 
@@ -53,10 +58,10 @@ const PROMISE_ITEMS = [
 ] as const;
 
 const CATEGORY_ITEMS = [
-  { labelKey: "servicesMeals" },
-  { labelKey: "servicesSnacks" },
-  { labelKey: "servicesCatering" },
-  { labelKey: "servicesEventRentals" },
+  { labelKey: "servicesMeals", src: categoryMeals },
+  { labelKey: "servicesSnacks", src: categorySnacks },
+  { labelKey: "servicesCatering", src: categoryCatering },
+  { labelKey: "servicesEventRentals", src: categoryEventRentals },
 ] as const;
 
 export default async function Home() {
@@ -72,13 +77,7 @@ export default async function Home() {
   return (
     <main>
       <SplitRow
-        className="container relative overflow-hidden"
-        decoration={
-          <>
-            <DecorativeShape style={{ width: "220px", height: "220px", top: "-60px", right: "-60px" }} />
-            <DecorativeShape style={{ width: "120px", height: "120px", bottom: "-30px", left: "-30px" }} />
-          </>
-        }
+        className="container"
         content={
           <div>
             <Eyebrow>{t("heroEyebrow")}</Eyebrow>
@@ -99,17 +98,26 @@ export default async function Home() {
             </div>
           </div>
         }
-        media={<ImageSlot label={t.markup("heroHeadline", { em: (chunks) => chunks })} />}
+        media={
+          <SiteImage
+            src={hero}
+            alt={t.markup("heroHeadline", { em: (chunks) => chunks })}
+            priority
+            float
+          />
+        }
       />
 
       <section className="container">
         <Reveal>
           <div className="flex flex-wrap justify-center gap-x-10 gap-y-8">
-            {CATEGORY_ITEMS.map(({ labelKey }) => (
+            {CATEGORY_ITEMS.map(({ labelKey, src }) => (
               <div key={labelKey} className="flex w-[150px] flex-col items-center gap-3.5 text-center">
-                <ImageSlot
-                  label={t(labelKey)}
-                  className="h-[150px] w-[150px] min-h-0 rounded-full p-2 text-[0.72rem]"
+                <SiteImage
+                  src={src}
+                  alt={t(labelKey)}
+                  className="h-[150px] w-[150px] min-h-0 rounded-full"
+                  float
                 />
                 <h3 className="m-0 text-base">{t(labelKey)}</h3>
                 <Link href="/services" className="text-[0.85rem] font-semibold text-primary">
@@ -165,8 +173,7 @@ export default async function Home() {
         </Reveal>
       </section>
 
-      <section className="container relative overflow-hidden">
-        <DecorativeShape style={{ width: "160px", height: "160px", top: "-40px", left: "50%" }} />
+      <section className="container">
         <Reveal>
           <div className="rounded-card bg-gradient-to-br from-primary to-primary-dark p-[clamp(2.5rem,5vw,4rem)] text-center text-text-light">
             <h2 className="text-text-light">{t("cateringCtaHeadline")}</h2>
@@ -179,7 +186,7 @@ export default async function Home() {
 
       <SplitRow
         className="container"
-        media={<ImageSlot label={t("aboutPreview")} />}
+        media={<SiteImage src={aboutHero} alt={t("aboutPreview")} />}
         content={
           <div>
             <p className={heroSupportingClass}>{t("aboutPreview")}</p>

@@ -66,7 +66,7 @@ const NOTES_MAX_LENGTH: usize = 500;
 
 fn is_valid_email(value: &str) -> bool {
     // Deliberately loose — just "looks like an email". Decision 10 scopes
-    // real validation hardening to roadmap.md Phase 16.
+    // real validation hardening to roadmap.md Phase 17.
     match value.split_once('@') {
         Some((local, domain)) => !local.is_empty() && domain.contains('.'),
         None => false,
@@ -257,7 +257,7 @@ pub async fn create_order(
             (None, Some(price)) => (price, None),
             // A flat-priced item submitted with an option id, or an
             // option-priced item submitted with none — the menu changed
-            // shape (Phase 13 doesn't exist yet, but future-proof it).
+            // shape (Phase 14 doesn't exist yet, but future-proof it).
             _ => {
                 unavailable.push(UnavailableItem {
                     menu_item_id: item.menu_item_id,

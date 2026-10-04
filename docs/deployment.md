@@ -124,7 +124,7 @@ docker compose exec api cargo run --bin create_admin -- --email owner@zainstreat
 ## Seeding the production database
 
 `apps/api/seed.sql` holds the real client menu (categories, menu items,
-price options — see Phase 7). Since no admin CMS exists yet (Phase 13) to
+price options — see Phase 7). Since no admin CMS exists yet (Phase 14) to
 edit the live menu any other way, this file is also used to (re)populate
 production. Running it **replaces** all categories/menu items/price
 options (it opens with `TRUNCATE ... CASCADE`), so only run it when that's
@@ -186,4 +186,4 @@ Lightsail's automatic daily instance snapshot add-on is enabled on the
 instance (Lightsail console → instance → **Snapshots**). This is the
 current backup mechanism for the whole box, including the `postgres` and
 `minio` data volumes. Restoring from a snapshot has **not** been tested
-yet — Phase 17 verifies an actual restore once real data exists.
+yet — Phase 18 verifies an actual restore once real data exists.
