@@ -124,7 +124,12 @@ export function AdminImageUpload({
 
   return (
     <div className="flex flex-col gap-3">
-      <span className="block text-sm font-semibold">Photo</span>
+      <div>
+        <span className="block text-sm font-semibold">Photo (required)</span>
+        <p className="m-0 mt-0.5 text-sm text-text-muted">
+          JPEG, PNG, or WebP — you&apos;ll be able to crop it to a square before saving.
+        </p>
+      </div>
 
       {localFile ? (
         <div className="flex flex-col gap-3">
@@ -169,13 +174,36 @@ export function AdminImageUpload({
             // eslint-disable-next-line @next/next/no-img-element -- a freshly uploaded photo's URL isn't guaranteed to be a configured next/image remote pattern until this page is reloaded.
             <img src={uploadedUrl} alt="" className="h-20 w-20 rounded-card object-cover" />
           )}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            onChange={handleFileSelected}
-            className="text-sm"
-          />
+          <label
+            htmlFor="menu-item-photo"
+            className="flex max-w-[360px] flex-1 cursor-pointer flex-col items-center gap-2 rounded-card border-2 border-dashed border-text-muted/40 bg-background-soft px-4 py-6 text-center transition-colors hover:border-primary"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+              className="h-6 w-6 text-text-muted"
+            >
+              <path d="M12 16V4" />
+              <path d="M7 9l5-5 5 5" />
+              <path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" />
+            </svg>
+            <span className="text-sm font-semibold">
+              {uploadedUrl ? "Click to replace this photo" : "Click to upload a photo"}
+            </span>
+            <input
+              ref={fileInputRef}
+              id="menu-item-photo"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handleFileSelected}
+              className="sr-only"
+            />
+          </label>
         </div>
       )}
 

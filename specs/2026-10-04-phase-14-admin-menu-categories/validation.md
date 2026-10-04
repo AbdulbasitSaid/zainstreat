@@ -35,6 +35,10 @@
       `23514`/"menu item category" branch (plan.md Group 2, open risk 5)
       maps to `AppError::CategoryArchived`, not the generic `Database`
       500 path.
+- [ ] `cargo test menu_item_create_rejects_a_missing_image_url` (Decision
+      18, plan.md Group 24) passes: `image_url: null` on create → `400
+      validation_error`, `fields[0].field == "image_url"`,
+      `fields[0].message == "required"`.
 - [ ] Confirm every write handler in `routes/admin/categories.rs` and
       `routes/admin/menu_items.rs` (`update_category`, `archive_category`,
       `update_menu_item`, `update_availability`, `archive_menu_item`)
@@ -92,6 +96,19 @@ Start from the Phase 7 seed data (some flat-priced items, some with
       `/admin/menu` and the public menu page. `curl -I` the returned
       `image_url` directly → `200`, correct `Content-Type`, and a
       `Cache-Control: public, max-age=31536000, immutable` header.
+- [ ] **Photo is required, and obviously so (Decision 18):** on
+      `/admin/menu/new`, the "Photo" label reads "Photo (required)" with
+      helper copy beneath it, and the empty-state control is a clearly
+      clickable bordered upload area (icon + "Click to upload a photo"),
+      not a bare native file input. Submitting with no photo chosen shows
+      "A photo is required before you can save this item." under the
+      uploader without a network round trip (no spinner, no server
+      error). Attempting to bypass the client check via a raw `curl -X
+      POST http://localhost:8080/api/admin/menu-items` with
+      `"image_url": null` → `400 validation_error`,
+      `fields[0].field == "image_url"`. Editing an existing seeded item
+      without touching its photo still saves normally (no forced
+      re-upload of pre-existing photos).
 - [ ] **Oversized/wrong-type upload:** selecting a file over 5 MiB, or a
       non-image file, shows a clear error in the upload component rather
       than a silent failure or an unhandled JSON-parse exception (the

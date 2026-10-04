@@ -86,7 +86,10 @@ async fn menu_item_create_requires_a_session(pool: PgPool) {
 async fn menu_item_create_with_flat_price_succeeds(pool: PgPool) {
     let cookie = login(&pool).await;
     let category_id = insert_category(&pool, "Rice").await;
-    let body = create_item(&pool, &cookie, flat_price_payload(category_id, "Jollof", "12.50")).await;
+    let url = upload_image(&pool, &cookie).await;
+    let mut payload = flat_price_payload(category_id, "Jollof", "12.50");
+    payload["image_url"] = json!(url);
+    let body = create_item(&pool, &cookie, payload).await;
     assert_eq!(body["price"], "12.50");
     assert_eq!(body["price_options"], json!([]));
 }
@@ -95,6 +98,7 @@ async fn menu_item_create_with_flat_price_succeeds(pool: PgPool) {
 async fn menu_item_create_with_price_options_succeeds(pool: PgPool) {
     let cookie = login(&pool).await;
     let category_id = insert_category(&pool, "Rice").await;
+    let url = upload_image(&pool, &cookie).await;
     let payload = json!({
         "category_id": category_id,
         "name": "Jollof",
@@ -104,7 +108,7 @@ async fn menu_item_create_with_price_options_succeeds(pool: PgPool) {
             { "label": "Small", "price": "8.00" },
             { "label": "Large", "price": "14.00" },
         ],
-        "image_url": null,
+        "image_url": url,
         "is_featured": false,
         "updated_at": "2026-01-01T00:00:00Z",
     });
@@ -172,11 +176,29 @@ async fn menu_item_create_rejects_a_negative_or_zero_price(pool: PgPool) {
 async fn menu_item_create_rejects_an_archived_or_unknown_category(pool: PgPool) {
     let cookie = login(&pool).await;
     let category_id = insert_category(&pool, "Rice").await;
+    let url = upload_image(&pool, &cookie).await;
     sqlx::query!("UPDATE categories SET deleted_at = now() WHERE id = $1", category_id)
         .execute(&pool)
         .await
         .unwrap();
 
+    let mut payload = flat_price_payload(category_id, "Jollof", "10.00");
+    payload["image_url"] = json!(url);
+    let (status, body, _set) = post_with_cookie(
+        pool,
+        "/api/admin/menu-items",
+        payload,
+        Some(&cookie),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(body["fields"][0]["field"], "category_id");
+}
+
+#[sqlx::test]
+async fn menu_item_create_rejects_a_missing_image_url(pool: PgPool) {
+    let cookie = login(&pool).await;
+    let category_id = insert_category(&pool, "Rice").await;
     let (status, body, _set) = post_with_cookie(
         pool,
         "/api/admin/menu-items",
@@ -185,7 +207,8 @@ async fn menu_item_create_rejects_an_archived_or_unknown_category(pool: PgPool) 
     )
     .await;
     assert_eq!(status, StatusCode::BAD_REQUEST);
-    assert_eq!(body["fields"][0]["field"], "category_id");
+    assert_eq!(body["fields"][0]["field"], "image_url");
+    assert_eq!(body["fields"][0]["message"], "required");
 }
 
 #[sqlx::test]
@@ -255,6 +278,7 @@ async fn menu_item_update_grandfathers_a_preexisting_non_api_image_url(pool: PgP
 async fn menu_item_update_replaces_price_options(pool: PgPool) {
     let cookie = login(&pool).await;
     let category_id = insert_category(&pool, "Rice").await;
+    let url = upload_image(&pool, &cookie).await;
     let payload = json!({
         "category_id": category_id,
         "name": "Jollof",
@@ -264,7 +288,7 @@ async fn menu_item_update_replaces_price_options(pool: PgPool) {
             { "label": "Small", "price": "8.00" },
             { "label": "Large", "price": "14.00" },
         ],
-        "image_url": null,
+        "image_url": url,
         "is_featured": false,
         "updated_at": "2026-01-01T00:00:00Z",
     });
@@ -277,7 +301,7 @@ async fn menu_item_update_replaces_price_options(pool: PgPool) {
         "description": null,
         "price": null,
         "price_options": [{ "label": "Medium", "price": "10.00" }],
-        "image_url": null,
+        "image_url": url,
         "is_featured": false,
         "updated_at": created["updated_at"],
     });
@@ -317,10 +341,13 @@ async fn menu_item_update_replaces_price_options(pool: PgPool) {
 async fn menu_item_update_404s_for_an_unknown_id(pool: PgPool) {
     let cookie = login(&pool).await;
     let category_id = insert_category(&pool, "Rice").await;
+    let url = upload_image(&pool, &cookie).await;
+    let mut payload = flat_price_payload(category_id, "Jollof", "10.00");
+    payload["image_url"] = json!(url);
     let (status, _body) = patch_with_cookie(
         pool,
         "/api/admin/menu-items/999999",
-        flat_price_payload(category_id, "Jollof", "10.00"),
+        payload,
         Some(&cookie),
     )
     .await;
@@ -331,11 +358,15 @@ async fn menu_item_update_404s_for_an_unknown_id(pool: PgPool) {
 async fn menu_item_update_rejects_a_stale_updated_at(pool: PgPool) {
     let cookie = login(&pool).await;
     let category_id = insert_category(&pool, "Rice").await;
-    let created = create_item(&pool, &cookie, flat_price_payload(category_id, "Jollof", "10.00")).await;
+    let url = upload_image(&pool, &cookie).await;
+    let mut create_payload = flat_price_payload(category_id, "Jollof", "10.00");
+    create_payload["image_url"] = json!(url);
+    let created = create_item(&pool, &cookie, create_payload).await;
     let id = created["id"].as_i64().unwrap();
     let original_updated_at = created["updated_at"].clone();
 
     let mut first_update = flat_price_payload(category_id, "Jollof Updated", "11.00");
+    first_update["image_url"] = json!(url);
     first_update["updated_at"] = original_updated_at.clone();
     let (status, first_body) = patch_with_cookie(
         pool.clone(),
@@ -347,6 +378,7 @@ async fn menu_item_update_rejects_a_stale_updated_at(pool: PgPool) {
     assert_eq!(status, StatusCode::OK);
 
     let mut second_update = flat_price_payload(category_id, "Jollof Second", "12.00");
+    second_update["image_url"] = json!(url);
     second_update["updated_at"] = original_updated_at;
     let (status, conflict_body) = patch_with_cookie(
         pool,
@@ -364,7 +396,10 @@ async fn menu_item_update_rejects_a_stale_updated_at(pool: PgPool) {
 async fn availability_toggle_rejects_a_stale_updated_at(pool: PgPool) {
     let cookie = login(&pool).await;
     let category_id = insert_category(&pool, "Rice").await;
-    let created = create_item(&pool, &cookie, flat_price_payload(category_id, "Jollof", "10.00")).await;
+    let url = upload_image(&pool, &cookie).await;
+    let mut payload = flat_price_payload(category_id, "Jollof", "10.00");
+    payload["image_url"] = json!(url);
+    let created = create_item(&pool, &cookie, payload).await;
     let id = created["id"].as_i64().unwrap();
     let original_updated_at = created["updated_at"].clone();
 
@@ -393,11 +428,15 @@ async fn availability_toggle_rejects_a_stale_updated_at(pool: PgPool) {
 async fn menu_item_archive_rejects_a_stale_updated_at(pool: PgPool) {
     let cookie = login(&pool).await;
     let category_id = insert_category(&pool, "Rice").await;
-    let created = create_item(&pool, &cookie, flat_price_payload(category_id, "Jollof", "10.00")).await;
+    let url = upload_image(&pool, &cookie).await;
+    let mut create_payload = flat_price_payload(category_id, "Jollof", "10.00");
+    create_payload["image_url"] = json!(url);
+    let created = create_item(&pool, &cookie, create_payload).await;
     let id = created["id"].as_i64().unwrap();
     let original_updated_at = created["updated_at"].clone();
 
     let mut rename = flat_price_payload(category_id, "Jollof Renamed", "10.00");
+    rename["image_url"] = json!(url);
     rename["updated_at"] = original_updated_at.clone();
     let (status, _body) = patch_with_cookie(
         pool.clone(),
@@ -524,7 +563,10 @@ async fn menu_item_archive_does_not_delete_its_image(pool: PgPool) {
 async fn availability_toggle_flips_is_available_only(pool: PgPool) {
     let cookie = login(&pool).await;
     let category_id = insert_category(&pool, "Rice").await;
-    let created = create_item(&pool, &cookie, flat_price_payload(category_id, "Jollof", "10.00")).await;
+    let url = upload_image(&pool, &cookie).await;
+    let mut payload = flat_price_payload(category_id, "Jollof", "10.00");
+    payload["image_url"] = json!(url);
+    let created = create_item(&pool, &cookie, payload).await;
     let id = created["id"].as_i64().unwrap();
 
     let (status, body) = patch_with_cookie(
@@ -544,7 +586,10 @@ async fn availability_toggle_flips_is_available_only(pool: PgPool) {
 async fn menu_item_archive_sets_deleted_at_and_is_archived_true(pool: PgPool) {
     let cookie = login(&pool).await;
     let category_id = insert_category(&pool, "Rice").await;
-    let created = create_item(&pool, &cookie, flat_price_payload(category_id, "Jollof", "10.00")).await;
+    let url = upload_image(&pool, &cookie).await;
+    let mut payload = flat_price_payload(category_id, "Jollof", "10.00");
+    payload["image_url"] = json!(url);
+    let created = create_item(&pool, &cookie, payload).await;
     let id = created["id"].as_i64().unwrap();
 
     let (status, body, _set) = post_with_cookie(
@@ -567,7 +612,10 @@ async fn menu_item_archive_sets_deleted_at_and_is_archived_true(pool: PgPool) {
 async fn archived_menu_item_is_excluded_from_the_public_menu(pool: PgPool) {
     let cookie = login(&pool).await;
     let category_id = insert_category(&pool, "Rice").await;
-    let created = create_item(&pool, &cookie, flat_price_payload(category_id, "Jollof", "10.00")).await;
+    let url = upload_image(&pool, &cookie).await;
+    let mut payload = flat_price_payload(category_id, "Jollof", "10.00");
+    payload["image_url"] = json!(url);
+    let created = create_item(&pool, &cookie, payload).await;
     let id = created["id"].as_i64().unwrap();
 
     let (status, _body, _set) = post_with_cookie(

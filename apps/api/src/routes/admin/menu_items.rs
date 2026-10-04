@@ -151,11 +151,15 @@ async fn validate_menu_item(
     // endpoint, so the bypass this closes (an attacker- or bug-supplied
     // external URL actually reaching storage) stays closed without
     // bricking edits to every pre-existing row.
-    if let Some(url) = &payload.image_url
-        && existing_image_url != Some(url.as_str())
-        && !is_valid_media_url(url, &media.public_base_url)
-    {
-        errors.push(FieldError { field: "image_url".into(), message: "invalid".into() });
+    match &payload.image_url {
+        None => errors.push(FieldError { field: "image_url".into(), message: "required".into() }),
+        Some(url)
+            if existing_image_url != Some(url.as_str())
+                && !is_valid_media_url(url, &media.public_base_url) =>
+        {
+            errors.push(FieldError { field: "image_url".into(), message: "invalid".into() });
+        }
+        Some(_) => {}
     }
 
     // requirement.md Decision 7 addendum (open risk 5) — this remains the

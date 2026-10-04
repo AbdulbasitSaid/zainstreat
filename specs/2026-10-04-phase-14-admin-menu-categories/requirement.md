@@ -366,6 +366,58 @@ file unique to any other unmerged branch).
     `now()`) and avoids a second "did this change" source of truth that
     could drift out of sync with it.
 
+18. **Addendum, decided with the user 2026-10-04: a photo is now required
+    for every menu item created or edited through the admin UI —
+    `image_url` can no longer be submitted as `null`.** Decision 13
+    originally treated `image_url` as optional, with `placehold.co` as
+    `ImageSlot`'s fallback for items with none. In practice this made it
+    easy for an admin to save an item with no photo and not notice,
+    since nothing in the form signaled a photo was expected. Enforced in
+    `validate_menu_item` (`apps/api/src/routes/admin/menu_items.rs`): a
+    `None` `image_url` now adds `{field: "image_url", message:
+    "required"}` to the same `400 validation_error` response the other
+    field checks already return, applied uniformly to `create_menu_item`
+    and `update_menu_item` — no edit-only carve-out needed, since the
+    full-replace `PATCH` payload already always carries the row's current
+    `image_url` forward (every seed row already has one); this only closes
+    the gap for a genuinely missing photo. No database migration: same
+    application-layer-only precedent as Decision 5's flat-price/
+    price-options invariant, not a `NOT NULL` column constraint — there's
+    no principled reason to enforce this one invariant at the database
+    layer while that one stays application-only.
+
+    `placehold.co` / `ImageSlot`'s fallback (Decision 13) is left in
+    place, not removed — a defensive fallback for the rare row a direct
+    database edit leaves without a photo (same `psql`-escape-hatch spirit
+    as this phase's other admin-UI-can't-produce-this-state paths, see Out
+    of scope), not a path the admin UI can produce going forward.
+
+    **Frontend UX, same addendum** — the create/edit form makes the
+    requirement obvious up front rather than discoverable only after a
+    rejected submit:
+    - `AdminImageUpload`'s label changes from "Photo" to "Photo
+      (required)", with one line of helper copy beneath it stating the
+      accepted formats and that the photo can be cropped before saving.
+    - The empty-state control (previously a bare `<input type="file">`)
+      becomes a clearly clickable bordered upload area with an icon and
+      prompt text ("Click to upload a photo") — a native file input alone
+      gave no visual cue that this was a required step rather than any
+      other small, skippable form control.
+    - `admin-menu-item-form.tsx`'s `handleSubmit` gains a client-side
+      pre-check for `imageUrl === null`, mirroring the existing
+      `category_id` pre-check already in that function — blocks
+      submission and shows an inline error under the uploader without a
+      round trip, for the common case of an admin who simply hasn't
+      picked a file yet.
+    - The existing inline error under the uploader now distinguishes the
+      new `"required"` message ("A photo is required before you can save
+      this item.") from the pre-existing `"invalid"` message (Decision
+      14's addendum, unchanged: "That photo could not be used — try
+      uploading again.").
+    - No change to the upload/crop mechanics themselves (Decision 1,
+      Decision 14's addendum) — this is additive required-ness and
+      presentation only.
+
 ## Out of scope
 
 - Un-archiving a category or menu item. There is no roadmap bullet for

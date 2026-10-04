@@ -1562,6 +1562,62 @@ Decision 15).
 - No database migration **beyond Group 1a** (added 2026-10-04 for open
   risk 5 — see this plan's intro).
 
+## Group 24 — Addendum 2026-10-04: required photo
+
+Depends on: Groups 8, 21 (already implemented on disk). `requirement.md`
+Decision 18. Three small, additive edits — no new files, no migration.
+
+**`apps/api/src/routes/admin/menu_items.rs`**, inside `validate_menu_item`
+(currently around line 154's `is_valid_media_url` check): add a branch
+ahead of that check that rejects a missing photo outright —
+
+```rust
+match &payload.image_url {
+    None => errors.push(FieldError { field: "image_url".into(), message: "required".into() }),
+    Some(url) if existing_image_url != Some(url.as_str()) && !is_valid_media_url(url, &media.public_base_url) => {
+        errors.push(FieldError { field: "image_url".into(), message: "invalid".into() });
+    }
+    Some(_) => {}
+}
+```
+
+(Replaces the existing `if let Some(url) = &payload.image_url { ... }`
+block — the `None` arm is the only new behavior; the `Some` arm's
+grandfathering logic is unchanged.)
+
+**`apps/web/components/admin-image-upload.tsx`**: change the label at
+line 127 from `"Photo"` to `"Photo (required)"` and add a one-line helper
+`<p>` beneath it ("JPEG, PNG, or WebP — you'll be able to crop it to a
+square before saving."). Replace the bare empty-state `<input
+type="file">` (lines 172–178) with a bordered, clickable dropzone-style
+label wrapping a visually-hidden file input — an icon plus "Click to
+upload a photo" text — so the control reads as an actionable required
+step rather than a small native input easy to overlook. The crop/upload
+logic (`handleFileSelected`, `handleConfirmCrop`, etc.) is untouched;
+only the empty-state markup changes.
+
+**`apps/web/components/admin-menu-item-form.tsx`**: in `handleSubmit`
+(currently lines 45–53's `category_id` pre-check), add a parallel
+pre-check —
+
+```ts
+if (imageUrl === null) {
+  setFieldErrors([{ field: "image_url", message: "required" }]);
+  return;
+}
+```
+
+— before the existing `setSubmitting(true)`. Update the `fieldError("image_url")`
+render (currently line 176–178) to branch on the message: `"required"` →
+"A photo is required before you can save this item."; anything else
+(the existing `"invalid"` case) → the current "That photo could not be
+used — try uploading again." copy, unchanged.
+
+**`apps/api/tests/admin_menu_items.rs`**: one new test,
+`menu_item_create_rejects_a_missing_image_url` — `image_url: null` on an
+otherwise-valid create payload → `400 validation_error`,
+`fields[0].field == "image_url"`, `fields[0].message == "required"`.
+
 ## Verification
 
 See `validation.md`.

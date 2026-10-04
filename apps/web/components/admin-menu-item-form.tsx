@@ -52,6 +52,11 @@ export function AdminMenuItemForm({
       return;
     }
 
+    if (imageUrl === null) {
+      setFieldErrors([{ field: "image_url", message: "required" }]);
+      return;
+    }
+
     setSubmitting(true);
 
     // An empty price field would otherwise serialize as `""`, which fails
@@ -174,7 +179,11 @@ export function AdminMenuItemForm({
 
       <AdminImageUpload currentImageUrl={imageUrl} onUploaded={setImageUrl} />
       {fieldError("image_url") && (
-        <p className="m-0 -mt-4 text-sm text-primary-dark">That photo could not be used — try uploading again.</p>
+        <p className="m-0 -mt-4 text-sm text-primary-dark">
+          {fieldError("image_url") === "required"
+            ? "A photo is required before you can save this item."
+            : "That photo could not be used — try uploading again."}
+        </p>
       )}
 
       <label className="flex items-center gap-2 text-sm font-semibold">
