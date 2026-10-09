@@ -232,8 +232,23 @@ phase replaces.
 
 ## Phase 16 — WhatsApp CTAs
 
-- `wa.me` deep links placed in header, hero, contact page, and footer
-  (per `tech-stack.md`).
+Hero (Phase 5/12), the footer (Phase 5), and the contact page (Phase 5/15)
+already grew bare `https://wa.me/<number>` links ad hoc while those phases
+were built. This phase closes the actual gaps: the still-missing header
+CTA, and the prefilled `?text=` message `tech-stack.md` already specifies
+but no existing link implements.
+
+- A new icon-only WhatsApp CTA in the header (`site-header.tsx`), visible
+  on both desktop and mobile — the one placement from README §9.1 that
+  doesn't exist yet.
+- `apps/web/lib/whatsapp.ts`: a shared `WHATSAPP_NUMBER` constant and a
+  `buildWhatsAppLink(message)` helper, replacing the number hardcoded
+  three times (hero, footer, contact page).
+- All four placements (header, hero, footer, contact page) link through
+  `buildWhatsAppLink` with the same generic prefilled message (translated
+  per locale), and consistently open in a new tab
+  (`target="_blank" rel="noopener noreferrer"` — the existing hero link is
+  missing this today).
 
 ## Phase 17 — Polish & Non-Functional Requirements
 
