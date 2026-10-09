@@ -12,7 +12,8 @@
     "navLabel": "Hoofdnavigatie",
     "openMenu": "Menu openen",
     "closeMenu": "Menu sluiten",
-    "cart": "Winkelwagen"
+    "cart": "Winkelwagen",
+    "whatsappLabel": "WhatsApp"
   },
   "SiteFooter": {
     "tagline": "Heerlijk Eten. Onvergetelijke Momenten. Uitstekende Service.",
@@ -266,5 +267,8 @@
     "fresh": "Dagelijks Vers Bereid",
     "catering": "Catering & Evenementenverhuur",
     "whatsapp": "Bestellen via WhatsApp"
+  },
+  "Whatsapp": {
+    "prefilledMessage": "Hallo Zain's Treat n More! Ik wil graag meer weten over jullie menu en diensten."
   }
 }

@@ -8,6 +8,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { MotionProvider } from "@/components/motion-provider";
 import { PageTransition } from "@/components/page-transition";
 import { CustomCursor } from "@/components/custom-cursor";
+import { WhatsAppFloatButton } from "@/components/whatsapp-float-button";
 import { CartProvider } from "@/lib/cart-context";
 import { bodyFont, displayFont } from "@/lib/fonts";
 import "../globals.css";
@@ -43,6 +44,7 @@ export default async function LocaleLayout({
             <SiteHeader />
             <PageTransition>{children}</PageTransition>
             <SiteFooter />
+            <WhatsAppFloatButton />
           </CartProvider>
         </NextIntlClientProvider>
       </body>

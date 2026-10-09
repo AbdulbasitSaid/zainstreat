@@ -12,7 +12,8 @@
     "navLabel": "Main navigation",
     "openMenu": "Open menu",
     "closeMenu": "Close menu",
-    "cart": "Cart"
+    "cart": "Cart",
+    "whatsappLabel": "WhatsApp"
   },
   "SiteFooter": {
     "tagline": "Great Food. Memorable Moments. Exceptional Service.",
@@ -266,5 +267,8 @@
     "fresh": "Freshly Prepared Daily",
     "catering": "Catering & Event Rentals",
     "whatsapp": "WhatsApp Ordering"
+  },
+  "Whatsapp": {
+    "prefilledMessage": "Hi Zain's Treat n More! I'd like to know more about your menu and services."
   }
 }
