@@ -252,20 +252,39 @@ but no existing link implements.
 
 ## Phase 17 — Polish & Non-Functional Requirements
 
-- SEO: page titles, meta descriptions, Open Graph tags, semantic HTML,
-  clean URLs (`/`, `/about`, `/services`, `/menu`, `/order`, `/contact`,
-  `/terms`, `/food-regulations`).
-  (Note: since Phase 3 introduced locale-prefixed routing, every URL above
-  actually lives under `/en/...` or `/nl/...` — e.g. `/en/menu`, `/nl/menu`.
-  This is a necessary small addendum to this phase's own requirement.md
-  when it's written.)
-- Accessibility: keyboard navigation, visible focus states, form labels,
-  alt text, sufficient contrast.
-- Image optimization pass (formats, lazy loading).
-- Responsive QA across mobile, tablet, desktop.
-- Input validation/sanitization hardening on all forms and API endpoints.
-- Wire in email sending (order confirmations, contact/catering
-  notifications) via `lettre` + transactional email provider.
+- SEO: `generateMetadata` (title/description) added to every public page
+  that's still missing it (Home, About, Services, Contact, Terms, Food
+  Regulations — Menu/Cart/Order already had it since their own phases); a
+  sitewide `metadataBase` + default Open Graph image (the logo) on the
+  root locale layout; a locale-aware `app/sitemap.ts` and `app/robots.ts`.
+  Clean URLs are already satisfied by the existing App Router structure
+  (`/en|nl/`, `/about`, `/services`, `/menu`, `/order`, `/contact`,
+  `/terms`, `/food-regulations` — locale-prefixed since Phase 3).
+- Accessibility: `aria-invalid`/`aria-describedby` wiring on the Contact
+  and Order forms' error messages, explicit `focus-visible` styling on
+  the header's nav links/hamburger button, plus a manual keyboard-nav/
+  contrast pass — no new a11y-testing dependency.
+- Image optimization pass: `next.config.ts` AVIF/WebP `images.formats`,
+  enabling `next/image`'s optimizer for production-served uploaded photos
+  (currently always bypassed; the dev-only unreachable-host case is now
+  isolated instead of blanket-disabled), `sizes` props on menu/cart
+  images, and an audit of `priority` vs. default lazy-loading on
+  above/below-the-fold images.
+- Responsive QA across mobile, tablet, desktop — manual pass, any bugs
+  found get fixed within this same phase.
+- Input validation/sanitization hardening: tightens `is_valid_email` in
+  `apps/api/src/validation.rs` (flagged in its own comment as deferred to
+  this phase) with real structural checks, no new crate; confirms
+  existing React-escaping/honeypot/rate-limit protections are sufficient
+  otherwise.
+- Wire in email sending (order confirmations to the customer,
+  contact/catering notifications to the business) via `lettre`'s SMTP
+  transport against **Amazon SES** (supersedes this doc's original
+  "Resend or Postmark" naming — see `tech-stack.md`'s Email section).
+  Fire-and-forget: a failed send is logged, never blocks or fails the
+  underlying order/enquiry request. Ships with placeholder
+  sender/business-notify addresses; real domain verification + SES
+  production-access request is a manual pre-launch step, not phase code.
 
 ## Phase 18 — Production Hardening & Final Rollout
 
@@ -278,6 +297,11 @@ scratch.
   smaller/distroless base image where reasonable, resource limits).
 - Verify a Lightsail snapshot can actually be restored (test restore) now
   that real menu/order data exists.
+- Swap Phase 17's placeholder `EMAIL_FROM_ADDRESS` /
+  `EMAIL_BUSINESS_NOTIFY_ADDRESS` values for real ones, verify the
+  sending domain in the SES console, and request SES production access
+  (exit the sandbox) — flagged as an open risk in that phase's
+  requirement.md so it isn't missed here.
 - Production smoke test against the README §43 Definition of Done
   checklist, run against the live domain (not localhost).
 

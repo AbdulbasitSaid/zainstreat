@@ -261,16 +261,45 @@ rationale) — the `minio` container ran unused since Phase 1 until then:
   crate was added to `apps/api` for this (see that phase's requirement.md
   Decision 14 addendum for why cropping stays off the Rust side).
 
-## Email (P1 — order confirmations, contact/catering notifications)
+## Email (wired in Phase 17 — order confirmations, contact/catering notifications)
 
-- **`lettre`** crate, sending through a transactional email provider (e.g.
-  Resend or Postmark) rather than a raw SMTP relay, for better
-  deliverability.
+- **`lettre`** crate, using its SMTP transport against **Amazon SES**'s
+  SMTP endpoint (`email-smtp.<region>.amazonaws.com:587`, STARTTLS) with
+  SES-generated SMTP credentials (distinct from IAM access keys) — not
+  Resend or Postmark, this doc's originally-named options (see
+  `specs/2026-10-09-phase-17-polish/requirement.md` Decision 1 for why).
+- Chosen over the `aws-sdk-sesv2` crate: `lettre` was already the
+  pinned dependency (named below before Phase 17 existed), and SES's SMTP
+  interface needs no AWS SDK/credential-chain code at all — just a host,
+  port, and a username/password pair, kept as env vars the same way every
+  other secret in this project already is (see Hosting & Deployment's
+  `.env.example` convention).
+- Same AWS region as the Lightsail instance (`eu-central-1`, Frankfurt) —
+  SES is available there, so no cross-region data-residency question.
+- A missing/incomplete SES env-var set (local dev, by default) disables
+  email entirely — `EmailConfig::from_env()` returns `None`, every
+  send-site becomes a no-op logged at `tracing::warn!` once at startup,
+  not an error. No local SMTP catcher (e.g. MailHog) is introduced; this
+  phase didn't ask for one and dev doesn't need to see real outgoing mail
+  to verify the rest of the flow.
+- **Fire-and-forget delivery**: every send happens in a spawned task
+  (`tokio::spawn`) after the triggering DB write already committed. A
+  failed send is logged (`tracing::error!`) and never fails, blocks, or
+  rolls back the customer-facing request — the order/enquiry itself is
+  the source of truth (`mission.md`); email is a courtesy notification on
+  top of it, decided with the user during Phase 17 planning.
+- Ships this phase with **placeholder** `EMAIL_FROM_ADDRESS` /
+  `EMAIL_BUSINESS_NOTIFY_ADDRESS` values and no verified sending domain —
+  AWS SES accounts start in a sandbox that only delivers to verified
+  recipients until production access is requested. Verifying the real
+  domain and requesting SES production access is a manual, pre-launch
+  operations step (same "configured once by hand, never committed"
+  posture as Phase 2's GHCR PAT), not something this phase's code does.
 
-This is P1 (README §33/§46 priority), not required for the MVP's core
-ordering flow, but the dependency is named here so the `orders` and
-`contact`/`catering` workflows can wire it in without a follow-up stack
-decision.
+This was P1 (README §33/§46 priority) before Phase 17 existed as a
+roadmap phase; the dependency was named here early so the `orders` and
+`contact`/`catering` workflows could wire it in without a follow-up stack
+decision once this phase actually arrived.
 
 ## Spam/Abuse Mitigation (Phase 15)
 
@@ -384,7 +413,7 @@ runners absorb that cost for free, and the box's job shrinks to just
 | Admin auth | argon2 + tower-sessions (Postgres-backed sessions) |
 | Image/object storage | MinIO (S3-compatible, self-hosted) via `aws-sdk-s3`, server-side upload/serve proxy (Phase 14) |
 | Image cropping | `react-easy-crop` — client-side fixed 1:1 crop before upload (Phase 14) |
-| Email (P1) | lettre + transactional email provider |
+| Email | lettre (SMTP transport) + Amazon SES, fire-and-forget (Phase 17) |
 | Spam/abuse mitigation | `tower_governor` (per-IP rate limit, custom `X-Forwarded-For` key extractor) + honeypot field (Phase 15) |
 | WhatsApp | `wa.me` deep links |
 | Hosting | AWS Lightsail VPS (`eu-central-1`, Frankfurt), Docker Compose |
