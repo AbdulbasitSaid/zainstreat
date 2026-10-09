@@ -1,5 +1,6 @@
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
+import { buildWhatsAppLink } from "@/lib/whatsapp";
 
 function InstagramIcon() {
   return (
@@ -36,6 +37,7 @@ function WhatsAppIcon() {
 
 export function SiteFooter() {
   const t = useTranslations("SiteFooter");
+  const tw = useTranslations("Whatsapp");
   const year = new Date().getFullYear();
 
   return (
@@ -83,7 +85,7 @@ export function SiteFooter() {
                 <InstagramIcon />
               </a>
               <a
-                href="https://wa.me/31630545277"
+                href={buildWhatsAppLink(tw("prefilledMessage"))}
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={t("whatsappLabel")}

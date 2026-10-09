@@ -10,6 +10,7 @@ import { LocaleToggle } from "@/components/locale-toggle";
 import { ButtonLink } from "@/components/button";
 import { CartIcon } from "@/components/cart-icon";
 import { CartBadge } from "@/components/cart-badge";
+import { buildWhatsAppLink } from "@/lib/whatsapp";
 
 const NAV_ITEMS = [
   { href: "/", key: "home" },
@@ -31,8 +32,25 @@ function getIsDesktopSnapshot() {
   return window.matchMedia(DESKTOP_QUERY).matches;
 }
 
+function WhatsAppIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      aria-hidden="true"
+      className="h-5 w-5"
+    >
+      <path d="M7 16.5 4.5 19l.9-3.3A8 8 0 1 1 7 16.5Z" />
+      <path d="M9 10.3c0 2.6 2.1 4.7 4.7 4.7" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function SiteHeader() {
   const t = useTranslations("SiteHeader");
+  const tw = useTranslations("Whatsapp");
   const pathname = usePathname();
   const shouldReduceMotion = useReducedMotion();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -157,6 +175,17 @@ export function SiteHeader() {
           </li>
           <li className="px-4 py-2 min-[769px]:px-0 min-[769px]:py-0">
             <LocaleToggle />
+          </li>
+          <li className="px-4 py-2 min-[769px]:px-0 min-[769px]:py-0">
+            <a
+              href={buildWhatsAppLink(tw("prefilledMessage"))}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={t("whatsappLabel")}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full text-whatsapp-dark hover:bg-background-soft"
+            >
+              <WhatsAppIcon />
+            </a>
           </li>
           <li className="px-4 pt-2 min-[769px]:px-0 min-[769px]:pt-0">
             <ButtonLink href="/contact" className="w-full justify-center min-[769px]:w-auto">

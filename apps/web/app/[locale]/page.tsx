@@ -7,6 +7,7 @@ import { ButtonLink, buttonClasses } from "@/components/button";
 import { MenuItemCard } from "@/components/menu-item-card";
 import { Link } from "@/i18n/navigation";
 import { getMenuItems } from "@/lib/api";
+import { buildWhatsAppLink } from "@/lib/whatsapp";
 import hero from "@/assets/images/hero.jpg";
 import categoryMeals from "@/assets/images/category-meals.jpg";
 import categorySnacks from "@/assets/images/category-snacks.jpg";
@@ -66,6 +67,7 @@ const CATEGORY_ITEMS = [
 
 export default async function Home() {
   const t = await getTranslations("HomePage");
+  const tw = await getTranslations("Whatsapp");
   const heroHeadingClass = "mb-4 text-[clamp(2.5rem,5vw,4.25rem)]";
   const heroSupportingClass = "max-w-[48ch] text-[clamp(1.05rem,1.5vw,1.25rem)] text-text-muted";
 
@@ -89,7 +91,9 @@ export default async function Home() {
               <ButtonLink href="/contact">{t("orderNow")}</ButtonLink>
               <ButtonLink href="/contact" variant="secondary">{t("bookCatering")}</ButtonLink>
               <a
-                href="https://wa.me/31630545277"
+                href={buildWhatsAppLink(tw("prefilledMessage"))}
+                target="_blank"
+                rel="noopener noreferrer"
                 role="button"
                 className={buttonClasses({ variant: "outline", color: "whatsapp" })}
               >

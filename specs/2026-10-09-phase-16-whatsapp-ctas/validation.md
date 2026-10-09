@@ -22,16 +22,22 @@
 
 ### Live dev stack (`docker compose up`) — manual smoke test
 
-- [ ] **Header, desktop (≥769px):** a WhatsApp icon button is visible in
-      the header nav, between the locale toggle and "Order Now"; clicking
-      it opens `https://wa.me/31630545277?text=...` in a new tab, with the
+- [ ] **Header:** no WhatsApp icon/list-item appears in the header nav on
+      either desktop (≥769px) or mobile (<769px, hamburger panel) — the
+      header reverts to its pre-Phase-16 shape (requirement.md Decision 4,
+      revised).
+- [ ] **Floating button, all pages/breakpoints:** a circular green
+      WhatsApp button using the official brand glyph is fixed to the
+      bottom-right corner of the viewport, visible on scroll on every
+      public page (`/`, `/menu`, `/cart`, `/order`, `/services`,
+      `/contact`); clicking it opens
+      `https://wa.me/31630545277?text=...` in a new tab, with the
       prefilled message visible in WhatsApp's own compose box (or the
       `wa.me` landing page if not logged into WhatsApp Web).
-- [ ] **Header, mobile (<769px):** opening the hamburger menu shows the
-      same WhatsApp icon button inside the expanded panel, in the same
-      position relative to the locale toggle and "Order Now"; the GSAP
-      open/close animation still works smoothly with the new list item
-      present (no layout jump).
+- [ ] **Floating button doesn't obscure critical UI:** check it doesn't
+      overlap the cart/checkout CTA on `/cart` and `/order`, or the
+      contact form's submit button on `/contact`, at common viewport
+      sizes (mobile ~375px, desktop ~1440px).
 - [ ] **Hero:** `/en` and `/nl` — the existing "WhatsApp Us"/"WhatsApp Ons"
       hero button now opens in a new tab (previously navigated away in the
       same tab) with the prefilled message.
@@ -61,11 +67,13 @@
 
 ## Definition of done
 
-Every one of README §9.1/§21's four WhatsApp CTA placements — header,
-hero, contact page, footer — links to the same business WhatsApp number
-through one shared `apps/web/lib/whatsapp.ts` helper, each opening a new
-tab with the same translated, prefilled conversation starter rather than
-a bare, contextless chat window. The header, which had no WhatsApp CTA at
-all before this phase, now has one, visible on both desktop and mobile.
-Nothing about this phase touches `apps/api`, the database, or any other
-public-facing page's visual layout beyond the one new header icon.
+Hero, contact page, and footer links to the same business WhatsApp
+number through one shared `apps/web/lib/whatsapp.ts` helper, each opening
+a new tab with the same translated, prefilled conversation starter rather
+than a bare, contextless chat window. The header-nav placement originally
+built for this phase is removed; in its place, a single global floating
+WhatsApp button (official brand glyph, `--color-whatsapp` background)
+sits fixed in the bottom-right corner on every public page
+(requirement.md Decision 4, revised). Nothing about this phase touches
+`apps/api`, the database, or any other public-facing page's visual layout
+beyond that one floating button.

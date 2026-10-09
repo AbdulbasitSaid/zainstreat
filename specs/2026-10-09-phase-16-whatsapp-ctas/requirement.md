@@ -103,19 +103,40 @@ unique to any other unmerged branch).
    - `nl`: "Hallo Zain's Treat n More! Ik wil graag meer weten over jullie
      menu en diensten."
 
-4. **New header CTA: an icon-only button, visible on both mobile and
-   desktop** — decided with the user. It's added as a new `<li>` inside
-   `site-header.tsx`'s existing nav `<ul>` (the same list that already
-   holds the cart icon, locale toggle, and "Order Now" button), placed
-   after the locale toggle and before "Order Now" so the food-ordering CTA
-   stays the most prominent, right-most action. Being inside that `<ul>`
-   means it's automatically covered by the existing GSAP
-   height/opacity mobile-menu animation (`site-header.tsx`'s `useGSAP`
-   block) — no new animation code needed. Styled like the existing cart
-   icon button (`inline-flex h-10 w-10 items-center justify-center
-   rounded-full ... hover:bg-background-soft`), using `text-whatsapp-dark`
-   for the icon color against the header's light background (the footer's
-   icon treatment assumes a dark background and isn't reused as-is).
+4. **Superseded 2026-10-09 (post-implementation revision) — see Decision 4
+   (revised) below.** Originally: a header-nav icon-only button, visible
+   on both mobile and desktop, added as a new `<li>` inside
+   `site-header.tsx`'s existing nav `<ul>`. This was implemented, then
+   replaced per the revision below before this phase was validated.
+
+4. **(Revised) New global floating WhatsApp CTA, not a header-nav item.**
+   Decided with the user after reviewing the header-icon implementation:
+   the WhatsApp CTA is instead a `fixed` floating action button pinned to
+   the bottom-right corner of the viewport, rendered once in
+   `apps/web/app/[locale]/layout.tsx` (a sibling of `SiteHeader` and
+   `SiteFooter`, inside `CartProvider`) so it persists across every page
+   and scroll position rather than living only inside the header
+   component. The header's nav `<ul>` no longer gets a WhatsApp list item
+   — `site-header.tsx`'s `WhatsAppIcon` function, its `tw` translation
+   hook, and the `<li>` added for the original Decision 4 are all removed.
+   The floating button:
+   - Uses WhatsApp's official brand glyph (the recognizable
+     speech-bubble/phone mark from WhatsApp's own branding) as an inline
+     SVG — not the hand-drawn `WhatsAppIcon` originally written for the
+     header button.
+   - Is a filled circle using the existing `--color-whatsapp` design token
+     as its background (matching the brand's green-circle treatment) with
+     the glyph in white, rather than the header icon's transparent/
+     hover-background treatment (that styling assumed a nav list item,
+     which no longer applies).
+   - Keeps the same `buildWhatsAppLink(tw("prefilledMessage"))` href,
+     `target="_blank" rel="noopener noreferrer"`, and `aria-label` (reusing
+     `SiteHeader.whatsappLabel`) as the original header implementation —
+     only the placement and visual treatment change, not the link
+     behavior or i18n plumbing from Decisions 2-3.
+   - Is a plain anchor with no scroll-triggered show/hide behavior and no
+     GSAP animation — out of scope for this revision (see "Out of scope"
+     below).
 
 5. **Consistent `target="_blank" rel="noopener noreferrer"` on every
    placement.** The footer and contact page links already have this; the
@@ -154,7 +175,14 @@ unique to any other unmerged branch).
   number ever changes, it's a one-line edit to `lib/whatsapp.ts`, not a
   deploy-config change.
 - Restyling the footer icon or the contact page's info-list link into a
-  button to visually match the header/hero treatment — Decision 6.
+  button to visually match the hero treatment — Decision 6.
+- Scroll-triggered show/hide, enter/exit animation, or a dismiss/close
+  control for the floating button (Decision 4 revised) — it's a plain
+  always-visible fixed anchor. Revisit only if the client reports it
+  obscuring content on a specific page.
+- Re-adding any WhatsApp affordance inside `site-header.tsx` — Decision 4
+  (revised) removes it from the header entirely in favor of the single
+  global floating button.
 - Any homepage section beyond the existing hero CTA — README §10's
   recommended homepage section order lists a separate, later "WhatsApp
   CTA" section (between "About Preview" and "Footer"); the roadmap's
