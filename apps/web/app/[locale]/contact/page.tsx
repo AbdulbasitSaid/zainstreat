@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { Reveal } from "@/components/reveal";
 import { SplitRow } from "@/components/split-row";
@@ -6,6 +7,20 @@ import { SiteImage } from "@/components/site-image";
 import { ContactFormsTabs } from "@/components/contact-forms-tabs";
 import contact from "@/assets/images/contact.jpg";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "ContactPage" });
+
+  return {
+    title: t("metaTitle"),
+    description: t("metaDescription"),
+  };
+}
 
 export default async function ContactPage({
   searchParams,

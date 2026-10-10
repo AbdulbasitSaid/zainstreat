@@ -52,6 +52,29 @@ Until all of the above exists, the `deploy` job in the workflow will fail
 at the SSH step (or the secrets simply won't be set) — that's expected
 for a repo that hasn't had its server bootstrapped yet.
 
+## Email (Amazon SES)
+
+Same "configured once by hand, never committed" posture as the GHCR PAT
+above. Order confirmations and contact/catering business notifications
+(Phase 17) go out through `lettre`'s SMTP transport against Amazon SES;
+until this is done, the API just logs every send as a no-op.
+
+1. Verify a sending domain in the SES console (Simple Email Service →
+   Identities → Create identity), adding the DNS records it gives you at
+   the domain's DNS provider.
+2. Generate SMTP credentials: SES console → "SMTP settings" → "Create SMTP
+   credentials" — these are distinct from any IAM access keys and are the
+   only credential pair the API needs.
+3. Request production access to leave the sandbox (SES console → Account
+   dashboard → "Request production access") — new SES accounts can only
+   send to pre-verified recipients until this is granted.
+4. Set `SES_SMTP_HOST`, `SES_SMTP_USERNAME`, `SES_SMTP_PASSWORD`,
+   `EMAIL_FROM_ADDRESS`, and `EMAIL_BUSINESS_NOTIFY_ADDRESS` in the deploy
+   host's `.env` (see `.env.example`). **Never commit this file.**
+
+A manual, pre-launch, do-it-once step — tracked as a Phase 18 Definition
+of Done item (`specs/roadmap.md`), not something this phase's code does.
+
 ## Manual / break-glass rollback
 
 Use this if a bad deploy needs to be reverted outside the normal

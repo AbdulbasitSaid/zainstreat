@@ -184,8 +184,14 @@ export function ContactForm() {
           className="field"
           value={values.name}
           onChange={(e) => update("name", e.target.value)}
+          aria-invalid={!!errors.name}
+          aria-describedby={errors.name ? "contact-name-error" : undefined}
         />
-        {errors.name && <p className={FIELD_ERROR_CLASS}>{t(`errors.${errors.name}`, { field: labelFor("name") })}</p>}
+        {errors.name && (
+          <p id="contact-name-error" className={FIELD_ERROR_CLASS}>
+            {t(`errors.${errors.name}`, { field: labelFor("name") })}
+          </p>
+        )}
       </div>
 
       <div className="mb-5">
@@ -196,8 +202,14 @@ export function ContactForm() {
           className="field"
           value={values.email}
           onChange={(e) => update("email", e.target.value)}
+          aria-invalid={!!errors.email}
+          aria-describedby={errors.email ? "contact-email-error" : undefined}
         />
-        {errors.email && <p className={FIELD_ERROR_CLASS}>{t(`errors.${errors.email}`, { field: labelFor("email") })}</p>}
+        {errors.email && (
+          <p id="contact-email-error" className={FIELD_ERROR_CLASS}>
+            {t(`errors.${errors.email}`, { field: labelFor("email") })}
+          </p>
+        )}
       </div>
 
       <div className="mb-5">
@@ -208,8 +220,14 @@ export function ContactForm() {
           className="field"
           value={values.phone}
           onChange={(e) => update("phone", e.target.value)}
+          aria-invalid={!!errors.phone}
+          aria-describedby={errors.phone ? "contact-phone-error" : undefined}
         />
-        {errors.phone && <p className={FIELD_ERROR_CLASS}>{t(`errors.${errors.phone}`, { field: labelFor("phone") })}</p>}
+        {errors.phone && (
+          <p id="contact-phone-error" className={FIELD_ERROR_CLASS}>
+            {t(`errors.${errors.phone}`, { field: labelFor("phone") })}
+          </p>
+        )}
       </div>
 
       <div className="mb-5">
@@ -219,6 +237,8 @@ export function ContactForm() {
           className="field"
           value={values.subject}
           onChange={(e) => update("subject", e.target.value)}
+          aria-invalid={!!errors.subject}
+          aria-describedby={errors.subject ? "contact-subject-error" : undefined}
         >
           {SUBJECTS.map((value) => (
             <option key={value} value={value}>
@@ -227,7 +247,9 @@ export function ContactForm() {
           ))}
         </select>
         {errors.subject && (
-          <p className={FIELD_ERROR_CLASS}>{t(`errors.${errors.subject}`, { field: labelFor("subject") })}</p>
+          <p id="contact-subject-error" className={FIELD_ERROR_CLASS}>
+            {t(`errors.${errors.subject}`, { field: labelFor("subject") })}
+          </p>
         )}
       </div>
 
@@ -240,9 +262,13 @@ export function ContactForm() {
           maxLength={MESSAGE_MAX_LENGTH}
           value={values.message}
           onChange={(e) => update("message", e.target.value)}
+          aria-invalid={!!errors.message}
+          aria-describedby={errors.message ? "contact-message-error" : undefined}
         />
         {errors.message && (
-          <p className={FIELD_ERROR_CLASS}>{t(`errors.${errors.message}`, { field: labelFor("message") })}</p>
+          <p id="contact-message-error" className={FIELD_ERROR_CLASS}>
+            {t(`errors.${errors.message}`, { field: labelFor("message") })}
+          </p>
         )}
       </div>
 

@@ -34,6 +34,8 @@
     "whatsappLabel": "WhatsApp"
   },
   "HomePage": {
+    "metaTitle": "Zain's Treat n More | Halal Maaltijden, Snacks & Catering",
+    "metaDescription": "Ontdek halal maaltijden, snacks en catering van Zain's Treat n More. Bekijk het menu en bestel binnen enkele minuten online.",
     "heroEyebrow": "Catering- en Evenementenspecialisten",
     "heroHeadline": "Heerlijk Eten. <em>Onvergetelijke</em> Momenten. Uitstekende Service.",
     "heroSupporting": "Verse halal maaltijden, heerlijke snacks, professionele catering en evenementendiensten voor jouw bijzondere momenten.",
@@ -120,6 +122,8 @@
     }
   },
   "AboutPage": {
+    "metaTitle": "Over Ons | Zain's Treat n More",
+    "metaDescription": "Maak kennis met Zain's Treat n More — ons verhaal, onze waarden en onze toewijding aan halal, hygiënisch en kwalitatief voedsel.",
     "whoWeAre": "Wie Wij <em>Zijn</em>",
     "ourMission": "Onze Missie",
     "missionCopy": "Heerlijk, hygiënisch bereid halal eten en betrouwbare cateringdiensten leveren, terwijl we klanten helpen onvergetelijke momenten te creëren.",
@@ -138,6 +142,8 @@
     "offer5": "Maaltijdbezorging"
   },
   "ServicesPage": {
+    "metaTitle": "Onze Diensten | Zain's Treat n More",
+    "metaDescription": "Maaltijden, snacks, catering en evenementenverhuur van Zain's Treat n More — vraag een offerte aan voor uw volgende evenement.",
     "heading": "Onze <em>Diensten</em>",
     "mealsHeading": "Maaltijden",
     "mealsCopy": "Vers bereide maaltijden voor individuen, gezinnen en groepen.",
@@ -151,6 +157,8 @@
     "requestQuote": "Vraag Offerte Aan"
   },
   "ContactPage": {
+    "metaTitle": "Neem Contact Op | Zain's Treat n More",
+    "metaDescription": "Neem contact op met Zain's Treat n More voor bestellingen, cateringaanvragen of algemene vragen.",
     "heading": "Neem <em>Contact</em> Op",
     "phoneLabel": "Telefoon",
     "phoneValue": "+31 6 30545277",
@@ -222,6 +230,8 @@
     }
   },
   "TermsPage": {
+    "metaTitle": "Algemene Voorwaarden | Zain's Treat n More",
+    "metaDescription": "Lees de algemene voorwaarden voor het bestellen bij en gebruiken van de website van Zain's Treat n More.",
     "heading": "Algemene Voorwaarden",
     "legalReviewNotice": "Concept voorwaarden — in afwachting van beoordeling door een juridisch professional vóór livegang.",
     "orderingHeading": "Bestellen",
@@ -246,6 +256,8 @@
     "changesCopy": "Zain's Treat n More kan te allen tijde menu-items, diensten en prijzen wijzigen zonder voorafgaande kennisgeving."
   },
   "FoodRegulationsPage": {
+    "metaTitle": "Voedselregels | Zain's Treat n More",
+    "metaDescription": "Halal-certificering, hygiënenormen, ingrediëntenherkomst en allergeneninformatie voor Zain's Treat n More.",
     "heading": "Voedselvoorschriften",
     "halalHeading": "Halal",
     "halalCopy": "Onze maaltijden worden bereid in overeenstemming met halal-vereisten, als onderdeel van onze toewijding aan de gemeenschap die we dienen.",

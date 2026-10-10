@@ -18,6 +18,7 @@ const nextConfig: NextConfig = {
         ? [{ protocol: "https" as const, hostname: `api.${process.env.DOMAIN}` }]
         : []),
     ],
+    formats: ["image/avif", "image/webp"],
     // placehold.co serves image/svg+xml, which next/image's optimizer
     // blocks by default (SVGs can embed scripts). Sandboxed CSP below is
     // Next's own documented mitigation — allows rendering without

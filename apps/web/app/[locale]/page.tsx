@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { Reveal } from "@/components/reveal";
 import { SiteImage } from "@/components/site-image";
@@ -64,6 +65,20 @@ const CATEGORY_ITEMS = [
   { labelKey: "servicesCatering", src: categoryCatering },
   { labelKey: "servicesEventRentals", src: categoryEventRentals },
 ] as const;
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "HomePage" });
+
+  return {
+    title: t("metaTitle"),
+    description: t("metaDescription"),
+  };
+}
 
 export default async function Home() {
   const t = await getTranslations("HomePage");

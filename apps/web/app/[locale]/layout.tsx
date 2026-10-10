@@ -14,7 +14,14 @@ import { bodyFont, displayFont } from "@/lib/fonts";
 import "../globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.DOMAIN ? `https://${process.env.DOMAIN}` : "http://localhost:3000"),
   title: "Zain's Treat n More",
+  description:
+    "Halal meals, snacks, catering, and event rentals from Zain's Treat n More — browse the menu and order online.",
+  openGraph: {
+    siteName: "Zain's Treat n More",
+    images: ["/logo.png"],
+  },
 };
 
 export function generateStaticParams() {

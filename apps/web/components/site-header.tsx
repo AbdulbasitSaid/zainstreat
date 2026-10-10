@@ -97,7 +97,7 @@ export function SiteHeader() {
       <nav className="container flex items-center justify-between py-3.5" aria-label={t("navLabel")}>
         <Logo />
         <button
-          className="relative z-10 inline-flex h-10 w-10 flex-col items-center justify-center gap-1.5 rounded-full text-primary min-[769px]:hidden"
+          className="relative z-10 inline-flex h-10 w-10 flex-col items-center justify-center gap-1.5 rounded-full text-primary min-[769px]:hidden focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-accent focus-visible:outline-offset-2"
           aria-expanded={isMenuOpen}
           aria-controls="primary-navigation"
           aria-label={t(isMenuOpen ? "closeMenu" : "openMenu")}
@@ -136,7 +136,7 @@ export function SiteHeader() {
                 <Link
                   href={item.href}
                   aria-current={isActive ? "page" : undefined}
-                  className={`block rounded-xl px-4 py-3 text-base font-semibold tracking-wide transition-colors min-[769px]:bg-transparent min-[769px]:px-0 min-[769px]:py-1 min-[769px]:text-sm min-[769px]:hover:text-primary ${
+                  className={`block rounded-xl px-4 py-3 text-base font-semibold tracking-wide transition-colors min-[769px]:bg-transparent min-[769px]:px-0 min-[769px]:py-1 min-[769px]:text-sm min-[769px]:hover:text-primary focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-accent focus-visible:outline-offset-2 ${
                     isActive ? "text-primary" : "text-text hover:bg-background-soft min-[769px]:hover:bg-transparent"
                   }`}
                 >

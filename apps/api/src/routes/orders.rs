@@ -1,3 +1,4 @@
+use crate::email::EmailConfig;
 use crate::error::{AppError, FieldError, UnavailableItem};
 use crate::validation::{is_valid_email, is_valid_phone};
 use axum::{extract::State, http::StatusCode, Json};
@@ -140,6 +141,7 @@ struct PricedLine {
 
 pub async fn create_order(
     State(pool): State<PgPool>,
+    State(email): State<EmailConfig>,
     Json(payload): Json<CreateOrderRequest>,
 ) -> Result<(StatusCode, Json<OrderResponse>), AppError> {
     let field_errors = validate(&payload);
@@ -299,6 +301,15 @@ pub async fn create_order(
     }
 
     tx.commit().await?;
+
+    email.spawn_send(
+        payload.customer_email.clone(),
+        "Your order confirmation — Zain's Treat n More".to_string(),
+        format!(
+            "Hi {},\n\nThanks for your order! We've received order #{} and will be in touch shortly.\n\nTotal: €{}\n\n— Zain's Treat n More",
+            payload.customer_name, order.id, total,
+        ),
+    );
 
     Ok((
         StatusCode::CREATED,

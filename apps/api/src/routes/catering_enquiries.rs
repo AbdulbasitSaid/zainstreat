@@ -1,3 +1,4 @@
+use crate::email::EmailConfig;
 use crate::error::{AppError, FieldError};
 use crate::validation::{is_valid_email, is_valid_phone};
 use axum::extract::State;
@@ -95,6 +96,7 @@ fn validate(payload: &CreateCateringEnquiryRequest) -> Vec<FieldError> {
 
 pub async fn create_catering_enquiry(
     State(pool): State<PgPool>,
+    State(email): State<EmailConfig>,
     Json(payload): Json<CreateCateringEnquiryRequest>,
 ) -> Result<(StatusCode, Json<CateringEnquiryResponse>), AppError> {
     // Honeypot tripped: pretend success, touch nothing. Checked before
@@ -131,6 +133,25 @@ pub async fn create_catering_enquiry(
     )
     .fetch_one(&pool)
     .await?;
+
+    if let Some(to) = email.business_notify_address() {
+        email.spawn_send(
+            to,
+            format!("New catering enquiry from {}", payload.name.trim()),
+            format!(
+                "Name: {}\nPhone: {}\nEmail: {}\nEvent type: {}\nEvent date: {}\nGuests: {}\nLocation: {}\nServices: {}\n\n{}",
+                payload.name.trim(),
+                payload.phone.trim(),
+                payload.email.trim(),
+                payload.event_type,
+                payload.event_date,
+                payload.guest_count,
+                payload.location.trim(),
+                payload.services_required.join(", "),
+                payload.message.as_deref().map(str::trim).unwrap_or(""),
+            ),
+        );
+    }
 
     Ok((StatusCode::CREATED, Json(CateringEnquiryResponse { id: row.id, created_at: row.created_at })))
 }

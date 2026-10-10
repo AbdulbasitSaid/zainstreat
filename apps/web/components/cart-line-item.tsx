@@ -21,6 +21,8 @@ export function CartLineItem({ line }: { line: CartLine }) {
             alt={line.name}
             width={64}
             height={64}
+            sizes="64px"
+            unoptimized={line.imageUrl.startsWith("http://")}
             className="h-full w-full object-cover"
           />
         ) : (

@@ -34,6 +34,8 @@
     "whatsappLabel": "WhatsApp"
   },
   "HomePage": {
+    "metaTitle": "Zain's Treat n More | Halal Meals, Snacks & Catering",
+    "metaDescription": "Discover halal meals, snacks, and catering from Zain's Treat n More. Browse the menu and order online in minutes.",
     "heroEyebrow": "Catering & Event Specialists",
     "heroHeadline": "Great Food. <em>Memorable</em> Moments. Exceptional Service.",
     "heroSupporting": "Fresh halal meals, delicious snacks, professional catering, and event services made for your special moments.",
@@ -120,6 +122,8 @@
     }
   },
   "AboutPage": {
+    "metaTitle": "About Us | Zain's Treat n More",
+    "metaDescription": "Learn about Zain's Treat n More — our story, values, and commitment to halal, hygienic, quality food.",
     "whoWeAre": "Who We <em>Are</em>",
     "ourMission": "Our Mission",
     "missionCopy": "To provide delicious, hygienically prepared halal food and dependable catering services while helping customers create memorable occasions.",
@@ -138,6 +142,8 @@
     "offer5": "Meal delivery"
   },
   "ServicesPage": {
+    "metaTitle": "Our Services | Zain's Treat n More",
+    "metaDescription": "Meals, snacks, catering, and event rental services from Zain's Treat n More — request a quote for your next event.",
     "heading": "Our <em>Services</em>",
     "mealsHeading": "Meals",
     "mealsCopy": "Freshly prepared meals for individuals, families, and groups.",
@@ -151,6 +157,8 @@
     "requestQuote": "Request a Quote"
   },
   "ContactPage": {
+    "metaTitle": "Contact Us | Zain's Treat n More",
+    "metaDescription": "Get in touch with Zain's Treat n More for orders, catering enquiries, or general questions.",
     "heading": "Contact <em>Us</em>",
     "phoneLabel": "Phone",
     "phoneValue": "+31 6 30545277",
@@ -222,6 +230,8 @@
     }
   },
   "TermsPage": {
+    "metaTitle": "Terms & Conditions | Zain's Treat n More",
+    "metaDescription": "Read the terms and conditions for ordering from and using the Zain's Treat n More website.",
     "heading": "Terms & Conditions",
     "legalReviewNotice": "Draft terms — pending review by a legal professional before go-live.",
     "orderingHeading": "Ordering",
@@ -246,6 +256,8 @@
     "changesCopy": "Zain's Treat n More may update menu items, services, and prices at any time without prior notice."
   },
   "FoodRegulationsPage": {
+    "metaTitle": "Food Regulations | Zain's Treat n More",
+    "metaDescription": "Halal certification, hygiene standards, ingredient sourcing, and allergen information for Zain's Treat n More.",
     "heading": "Food Regulations",
     "halalHeading": "Halal",
     "halalCopy": "Our meals are prepared in line with halal requirements as part of our commitment to serving the community we belong to.",

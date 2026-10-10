@@ -1,10 +1,26 @@
+import type { Metadata } from "next";
 import { useTranslations } from "next-intl";
+import { getTranslations } from "next-intl/server";
 import { Reveal } from "@/components/reveal";
 import { SiteImage } from "@/components/site-image";
 import { SplitRow } from "@/components/split-row";
 import { CheckList } from "@/components/check-list";
 import aboutHero from "@/assets/images/about-hero.jpg";
 import aboutMission from "@/assets/images/about-mission.jpg";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "AboutPage" });
+
+  return {
+    title: t("metaTitle"),
+    description: t("metaDescription"),
+  };
+}
 
 export default function AboutPage() {
   const t = useTranslations("AboutPage");
