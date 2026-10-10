@@ -22,15 +22,16 @@ export function MenuItemCard({ item }: { item: MenuItem }) {
             alt={item.name}
             width={600}
             height={400}
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 400px"
             // Phase 14's uploaded photos are absolute URLs served by the API
-            // (apps/api's media route); the backend already serves a fixed
-            // pre-cropped square and never generates resized variants, so
-            // next/image's own optimizer has nothing to gain here — and in
-            // dev, that optimizer runs server-side inside the `web`
-            // container, which can't reach the api container at the
-            // browser-facing `localhost:8080` host. Relative seed-data
-            // paths (same origin) are unaffected and keep optimizing.
-            unoptimized={item.image_url.startsWith("http")}
+            // (apps/api's media route). In dev, next/image's server-side
+            // optimizer runs inside the `web` container, which can't reach
+            // the api container at the browser-facing `localhost:8080` host
+            // — so only that dev-only scheme stays unoptimized. Production's
+            // `https://api.$DOMAIN` URLs now get real format conversion
+            // (Phase 17 Decision 9). Relative seed-data paths (same origin)
+            // are unaffected and keep optimizing.
+            unoptimized={item.image_url.startsWith("http://")}
             className="h-[180px] w-full object-cover"
           />
         ) : (

@@ -1,4 +1,6 @@
+import type { Metadata } from "next";
 import { useTranslations } from "next-intl";
+import { getTranslations } from "next-intl/server";
 import { SiteImage } from "@/components/site-image";
 import { SplitRow } from "@/components/split-row";
 import { PageHero } from "@/components/page-hero";
@@ -17,6 +19,20 @@ function SplitRowIndex({ children }: { children: string }) {
       {children}
     </span>
   );
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "ServicesPage" });
+
+  return {
+    title: t("metaTitle"),
+    description: t("metaDescription"),
+  };
 }
 
 export default function ServicesPage() {

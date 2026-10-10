@@ -108,11 +108,10 @@ export function AdminMenuList({ items: initialItems }: { items: AdminMenuItem[] 
                       alt={item.name}
                       width={48}
                       height={48}
-                      // See components/menu-item-card.tsx — uploaded photos
-                      // are a fixed server-served square with no resized
-                      // variants, and dev's next/image optimizer can't reach
-                      // the api container at this browser-facing host.
-                      unoptimized={item.image_url.startsWith("http")}
+                      sizes="48px"
+                      // See components/menu-item-card.tsx — only dev's
+                      // unreachable-host case stays unoptimized.
+                      unoptimized={item.image_url.startsWith("http://")}
                       className="h-12 w-12 rounded-card object-cover"
                     />
                   ) : (

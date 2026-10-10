@@ -1,3 +1,4 @@
+use crate::email::EmailConfig;
 use crate::error::{AppError, FieldError};
 use crate::validation::{is_valid_email, is_valid_phone};
 use axum::{extract::State, http::StatusCode, Json};
@@ -63,6 +64,7 @@ fn validate(payload: &CreateContactMessageRequest) -> Vec<FieldError> {
 
 pub async fn create_contact_message(
     State(pool): State<PgPool>,
+    State(email): State<EmailConfig>,
     Json(payload): Json<CreateContactMessageRequest>,
 ) -> Result<(StatusCode, Json<ContactMessageResponse>), AppError> {
     // Honeypot tripped — see catering_enquiries.rs's identical check for the rationale.
@@ -92,6 +94,21 @@ pub async fn create_contact_message(
     )
     .fetch_one(&pool)
     .await?;
+
+    if let Some(to) = email.business_notify_address() {
+        email.spawn_send(
+            to,
+            format!("New contact message from {}", payload.name.trim()),
+            format!(
+                "Name: {}\nEmail: {}\nPhone: {}\nSubject: {}\n\n{}",
+                payload.name.trim(),
+                payload.email.trim(),
+                payload.phone.trim(),
+                payload.subject,
+                payload.message.trim(),
+            ),
+        );
+    }
 
     Ok((StatusCode::CREATED, Json(ContactMessageResponse { id: row.id, created_at: row.created_at })))
 }

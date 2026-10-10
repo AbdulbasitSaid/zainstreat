@@ -93,8 +93,9 @@ async fn main() {
     }
 
     let media = api::MediaConfig { client, bucket, public_base_url };
+    let email = api::email::EmailConfig::from_env();
 
-    let app = match api::build_app(pool, cookie_secure, media).await {
+    let app = match api::build_app(pool, cookie_secure, media, email).await {
         Ok(app) => app,
         Err(error) => {
             tracing::error!(%error, "failed to build application");

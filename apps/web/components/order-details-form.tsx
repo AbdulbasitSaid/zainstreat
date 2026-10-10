@@ -119,8 +119,14 @@ export function OrderDetailsForm({
           className="field"
           value={values.name}
           onChange={(e) => update("name", e.target.value)}
+          aria-invalid={!!errors.name}
+          aria-describedby={errors.name ? "order-name-error" : undefined}
         />
-        {errors.name && <p className={FIELD_ERROR_CLASS}>{t(`errors.${errors.name}`, { field: t("nameLabel") })}</p>}
+        {errors.name && (
+          <p id="order-name-error" className={FIELD_ERROR_CLASS}>
+            {t(`errors.${errors.name}`, { field: t("nameLabel") })}
+          </p>
+        )}
       </div>
 
       <div>
@@ -131,8 +137,14 @@ export function OrderDetailsForm({
           className="field"
           value={values.email}
           onChange={(e) => update("email", e.target.value)}
+          aria-invalid={!!errors.email}
+          aria-describedby={errors.email ? "order-email-error" : undefined}
         />
-        {errors.email && <p className={FIELD_ERROR_CLASS}>{t(`errors.${errors.email}`, { field: t("emailLabel") })}</p>}
+        {errors.email && (
+          <p id="order-email-error" className={FIELD_ERROR_CLASS}>
+            {t(`errors.${errors.email}`, { field: t("emailLabel") })}
+          </p>
+        )}
       </div>
 
       <div>
@@ -143,8 +155,14 @@ export function OrderDetailsForm({
           className="field"
           value={values.phone}
           onChange={(e) => update("phone", e.target.value)}
+          aria-invalid={!!errors.phone}
+          aria-describedby={errors.phone ? "order-phone-error" : undefined}
         />
-        {errors.phone && <p className={FIELD_ERROR_CLASS}>{t(`errors.${errors.phone}`, { field: t("phoneLabel") })}</p>}
+        {errors.phone && (
+          <p id="order-phone-error" className={FIELD_ERROR_CLASS}>
+            {t(`errors.${errors.phone}`, { field: t("phoneLabel") })}
+          </p>
+        )}
       </div>
 
       <fieldset className="flex flex-col gap-2">
@@ -177,9 +195,13 @@ export function OrderDetailsForm({
             className="field"
             value={values.deliveryAddress}
             onChange={(e) => update("deliveryAddress", e.target.value)}
+            aria-invalid={!!errors.deliveryAddress}
+            aria-describedby={errors.deliveryAddress ? "order-address-error" : undefined}
           />
           {errors.deliveryAddress && (
-            <p className={FIELD_ERROR_CLASS}>{t(`errors.${errors.deliveryAddress}`, { field: t("addressLabel") })}</p>
+            <p id="order-address-error" className={FIELD_ERROR_CLASS}>
+              {t(`errors.${errors.deliveryAddress}`, { field: t("addressLabel") })}
+            </p>
           )}
         </div>
       )}
@@ -193,8 +215,14 @@ export function OrderDetailsForm({
           maxLength={NOTES_MAX_LENGTH}
           value={values.notes}
           onChange={(e) => update("notes", e.target.value)}
+          aria-invalid={!!errors.notes}
+          aria-describedby={errors.notes ? "order-notes-error" : undefined}
         />
-        {errors.notes && <p className={FIELD_ERROR_CLASS}>{t(`errors.${errors.notes}`, { field: t("notesLabel") })}</p>}
+        {errors.notes && (
+          <p id="order-notes-error" className={FIELD_ERROR_CLASS}>
+            {t(`errors.${errors.notes}`, { field: t("notesLabel") })}
+          </p>
+        )}
       </div>
 
       <Button type="submit" className="self-start">{t("continueToReview")}</Button>

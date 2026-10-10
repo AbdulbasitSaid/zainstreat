@@ -2,12 +2,48 @@ const ASCENDING_DIGITS: &str = "01234567890123456789";
 const DESCENDING_DIGITS: &str = "09876543210987654321";
 
 pub fn is_valid_email(value: &str) -> bool {
-    // Deliberately loose — just "looks like an email". Decision 10 scopes
-    // real validation hardening to roadmap.md Phase 17.
-    match value.split_once('@') {
-        Some((local, domain)) => !local.is_empty() && domain.contains('.'),
-        None => false,
+    if value.is_empty() || value.len() > 254 {
+        return false;
     }
+
+    let Some((local, domain)) = value.split_once('@') else { return false };
+    if local.is_empty() || local.len() > 64 || domain.contains('@') {
+        return false;
+    }
+    if !is_valid_email_local_part(local) || !is_valid_email_domain(domain) {
+        return false;
+    }
+
+    true
+}
+
+fn is_valid_email_local_part(local: &str) -> bool {
+    if local.starts_with('.') || local.ends_with('.') || local.contains("..") {
+        return false;
+    }
+    local
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '%' | '+' | '-'))
+}
+
+fn is_valid_email_domain(domain: &str) -> bool {
+    if domain.starts_with('.') || domain.ends_with('.') || domain.contains("..") {
+        return false;
+    }
+    let labels: Vec<&str> = domain.split('.').collect();
+    if labels.len() < 2 {
+        return false;
+    }
+    let Some(tld) = labels.last() else { return false };
+    if tld.len() < 2 || !tld.chars().all(|c| c.is_ascii_alphabetic()) {
+        return false;
+    }
+    labels.iter().all(|label| {
+        !label.is_empty()
+            && !label.starts_with('-')
+            && !label.ends_with('-')
+            && label.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')
+    })
 }
 
 pub fn is_valid_phone(value: &str) -> bool {
@@ -45,4 +81,26 @@ pub fn is_valid_phone(value: &str) -> bool {
     }
 
     true
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn accepts_valid_emails() {
+        assert!(is_valid_email("name@example.com"));
+        assert!(is_valid_email("a.b+c@sub.example.co.uk"));
+    }
+
+    #[test]
+    fn rejects_invalid_emails() {
+        assert!(!is_valid_email(""));
+        assert!(!is_valid_email("no-at-sign"));
+        assert!(!is_valid_email("a@b"));
+        assert!(!is_valid_email("a@.com"));
+        assert!(!is_valid_email("a@b..com"));
+        assert!(!is_valid_email("a@b-.com"));
+        assert!(!is_valid_email(&format!("{}@example.com", "a".repeat(300))));
+    }
 }
