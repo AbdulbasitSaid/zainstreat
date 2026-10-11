@@ -1,8 +1,8 @@
 # Deployment
 
 Production runs on a single AWS Lightsail instance (Amazon Linux 2023,
-2 GB RAM, `eu-central-1`) reachable at `zainstreat.com` /
-`api.zainstreat.com`.
+4 GB RAM, `eu-central-1`; upgraded from 2 GB in Phase 18) reachable at
+`zainstreat.com` / `api.zainstreat.com`.
 Images are built on GitHub's runners, pushed to a private GHCR registry,
 and pulled by the server — the server never builds anything itself.
 
@@ -16,7 +16,9 @@ and pulled by the server — the server never builds anything itself.
      `zainstreat-api` (private packages).
    - **deploy**: SSHes into the server as the `deploy` user and runs
      `docker compose -f docker-compose.yml -f docker-compose.prod.yml
-     pull && ... up -d` in `/opt/zainstreat`.
+     pull && ... up -d` in `/opt/zainstreat`, then `docker image prune -f`
+     to drop the superseded (dangling) images so disk use doesn't grow
+     with every deploy.
 3. Watch progress under the repo's **Actions** tab. No manual approval
    step — this is true continuous deployment, and there's no test suite
    yet to gate it on.
@@ -30,8 +32,9 @@ The workflow above only works once the following exists. None of it is
 created by code in this repo — see `specs/2026-10-01-phase-2-aws-deployment/
 plan.md` for full step-by-step detail; summarized here:
 
-- **Lightsail instance** (`plan.md` Group 0): Amazon Linux 2023, 2 GB
-  plan, `eu-central-1`, a static IP attached, firewall restricted to
+- **Lightsail instance** (`plan.md` Group 0): Amazon Linux 2023, 4 GB
+  plan (originally 2 GB; see "Resizing the instance" below),
+  `eu-central-1`, a static IP attached, firewall restricted to
   `22`/`80`/`443`, automatic daily snapshot add-on enabled.
 - **Server bootstrap** (`plan.md` Group 1): Docker Engine + Compose
   plugin installed (Docker's official steps, not `docker.io`), this repo
@@ -47,6 +50,24 @@ plan.md` for full step-by-step detail; summarized here:
   only. Never committed.
 - **DNS** (`plan.md` Group 3): `@` and `api` A records at the domain's
   existing DNS provider pointed at the Lightsail static IP.
+- **Swap + persistent journal** (Phase 18 `plan.md` Group 3): a 2 GB
+  `/swapfile` (in `/etc/fstab`) with `vm.swappiness=10`
+  (`/etc/sysctl.d/99-swappiness.conf`), and `Storage=persistent`,
+  `SystemMaxUse=200M` in `/etc/systemd/journald.conf.d/10-persistent.conf`,
+  so `journalctl -k -b -1` still has the previous boot's kernel log after
+  a hang. Lightsail images ship with neither.
+- **Off-box monitoring** (Phase 18 `plan.md` Group 8): Lightsail metric
+  alarms emailed to the owner's verified notification contact (CPU ≥ 70%
+  for 2 of 2 periods, burst capacity ≤ 20%, instance and system status
+  check failures ≥ 1), plus an external free-tier HTTP uptime monitor
+  polling `https://zainstreat.com/en` and
+  `https://api.zainstreat.com/health` every 5 minutes.
+
+Every container in `docker-compose.prod.yml` has a `mem_limit` (with
+`memswap_limit` equal to it) and `cpus` ceiling, sized for the 4 GB box,
+so one runaway service gets OOM-killed and restarted
+(`restart: unless-stopped`) instead of hanging the whole host. The dev
+compose file stays unlimited.
 
 Until all of the above exists, the `deploy` job in the workflow will fail
 at the SSH step (or the secrets simply won't be set) — that's expected
@@ -74,6 +95,62 @@ until this is done, the API just logs every send as a no-op.
 
 A manual, pre-launch, do-it-once step — tracked as a Phase 18 Definition
 of Done item (`specs/roadmap.md`), not something this phase's code does.
+
+## When the site is down
+
+Written after the 2026-10-11 outage, where the whole box (site, API, and
+Dozzle) stopped answering and no evidence survived the reboot. Follow
+this in order so the next one leaves evidence behind.
+
+1. **Confirm from off-box.** Check the uptime monitor and Lightsail
+   console → instance → **Metrics**. Look at **CPU utilization** *and*
+   **Burst capacity (percentage)**. Burst capacity at 0% means CPU-credit
+   exhaustion; moderate CPU with everything unresponsive usually means
+   memory pressure. Screenshot both for the outage window.
+2. **Reboot** from the Lightsail console. If it isn't back in ~5 minutes,
+   **Stop** then **Start** (keeps the static IP and the disk).
+3. **Capture evidence** as soon as SSH works (admin user):
+   ```bash
+   uptime; free -m; swapon --show; df -h /
+   # Previous boot's kernel log: OOM-killer activity, hung tasks
+   sudo journalctl -k -b -1 --no-pager | grep -iE "out of memory|oom|killed process|hung_task|blocked for more than" | tail -40
+   sudo journalctl --list-boots | tail -5
+   cd /opt/zainstreat   # sudo -i first if Permission denied
+   C="docker compose -f docker-compose.yml -f docker-compose.prod.yml"
+   $C ps -a
+   docker stats --no-stream
+   docker system df
+   # Which URLs were being hit before the hang
+   $C logs --since 6h caddy | grep -o '"uri":"[^"]*"' | sort | uniq -c | sort -rn | head -25
+   $C logs --since 6h caddy | grep -o '"User-Agent":\["[^"]*"' | sort | uniq -c | sort -rn | head -15
+   $C logs --since 6h web | tail -100
+   ```
+4. **Record findings**: save the output and the metrics screenshots, and
+   note the cause (memory / disk / burst credits / crawler / other). If a
+   container's `mem_limit` turns out to be too low for normal traffic,
+   raise it in `docker-compose.prod.yml` and redeploy.
+
+## Resizing the instance
+
+Lightsail can't resize an instance in place. A resize is a restore from a
+snapshot onto a bigger plan, so it also tests the backups:
+
+1. **Stop** the old instance, so nothing is written between the snapshot
+   and the cutover.
+2. Instance → **Snapshots** → **Create snapshot**; wait for *Available*.
+3. From the snapshot → **Create new instance**, same region/AZ, bigger
+   plan.
+4. On the new instance: check **Networking** → firewall is exactly
+   `22`/`80`/`443` (IPv4 *and* IPv6), and turn **Automatic snapshots**
+   back on. Neither is guaranteed to carry over. Lightsail alarms are per
+   instance too, so recreate them.
+5. **Networking** → static IP → detach from the old instance → attach to
+   the new one. DNS and the `DEPLOY_HOST` secret don't change.
+6. SSH in (same disk, same users and keys), `up -d` the stack, and check
+   `free -m`, `/health`, the live menu (MinIO data), and `/admin` orders
+   (Postgres data).
+7. Keep the old instance **stopped, not deleted**, for 7 days. Rollback
+   is moving the static IP back and starting it.
 
 ## Manual / break-glass rollback
 
@@ -208,5 +285,7 @@ rebuild or redeploy needed.
 Lightsail's automatic daily instance snapshot add-on is enabled on the
 instance (Lightsail console → instance → **Snapshots**). This is the
 current backup mechanism for the whole box, including the `postgres` and
-`minio` data volumes. Restoring from a snapshot has **not** been tested
-yet — Phase 18 verifies an actual restore once real data exists.
+`minio` data volumes. Restoring from a snapshot was tested on
+<!-- TODO(Phase 18 Group 2): fill in date + outcome after the 4 GB upgrade -->
+**PENDING**: the Phase 18 4 GB upgrade (see "Resizing the instance") is
+that restore; record its date and outcome here once it's done.

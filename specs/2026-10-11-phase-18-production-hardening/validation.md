@@ -33,25 +33,25 @@
 
 ### Repo changes (Groups 4–7), local
 
-- [ ] `docker compose -f docker-compose.yml -f docker-compose.prod.yml
+- [x] `docker compose -f docker-compose.yml -f docker-compose.prod.yml
       config` succeeds, and in its output: every one of `postgres`,
       `minio`, `api`, `web`, `caddy`, `dozzle` has `mem_limit`,
       `memswap_limit` (equal to `mem_limit`), and `cpus` matching
       requirement.md Decision 4; `web.volumes` is **only**
       `web_cache:/app/.next/cache` (no `./apps/web` bind mount, no
       `web_node_modules`); top-level `volumes` includes `web_cache`.
-- [ ] `docker build -t zt-web-test apps/web` and `docker build -t
+- [x] `docker build -t zt-web-test apps/web` and `docker build -t
       zt-api-test apps/api` both succeed.
-- [ ] `docker run --rm zt-web-test whoami` → `node`; `docker run --rm
+- [x] `docker run --rm zt-web-test whoami` → `node`; `docker run --rm
       --entrypoint whoami zt-api-test` → `app`.
-- [ ] `docker run --rm zt-web-test stat -c '%U' /app/.next/cache` →
+- [x] `docker run --rm zt-web-test stat -c '%U' /app/.next/cache` →
       `node`.
-- [ ] `grep -n 'formats' apps/web/next.config.ts` shows
+- [x] `grep -n 'formats' apps/web/next.config.ts` shows
       `["image/webp"]` only (no `avif`); `minimumCacheTTL: 2592000` is
       present.
-- [ ] `grep -n 'image prune' .github/workflows/deploy.yml` → exactly one
+- [x] `grep -n 'image prune' .github/workflows/deploy.yml` → exactly one
       `docker image prune -f` line, **without** `-a` or `--volumes`.
-- [ ] `/validate` passes (lint, build, live dev smoke test). Dev compose
+- [x] `/validate` passes (lint, build, live dev smoke test). Dev compose
       is unchanged, so dev must behave exactly as before.
 
 ### Repo changes (Groups 4–7), after deploy to production

@@ -18,7 +18,13 @@ const nextConfig: NextConfig = {
         ? [{ protocol: "https" as const, hostname: `api.${process.env.DOMAIN}` }]
         : []),
     ],
-    formats: ["image/avif", "image/webp"],
+    // WebP only: AVIF encoding through sharp is CPU/memory-heavy and was
+    // a likely trigger of the 2026-10-11 outage (Phase 18 Decision 5).
+    formats: ["image/webp"],
+    // 30 days. Menu photos are served immutable by the API
+    // (apps/api/src/routes/media.rs) and static images only change on a
+    // deploy, so re-encoding sooner is wasted CPU (Phase 18).
+    minimumCacheTTL: 2592000,
     // placehold.co serves image/svg+xml, which next/image's optimizer
     // blocks by default (SVGs can embed scripts). Sandboxed CSP below is
     // Next's own documented mitigation — allows rendering without
