@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { ImageSlot } from "@/components/image-slot";
@@ -10,12 +11,17 @@ import { useCart, type CartLine } from "@/lib/cart-context";
 export function CartLineItem({ line }: { line: CartLine }) {
   const t = useTranslations("Cart");
   const { setQuantity, removeLine } = useCart();
+  // A stored imageUrl can outlive its object: replacing a menu photo
+  // deletes the old one (Phase 19). Fall back to the placeholder. Keyed by
+  // URL so a re-add that refreshes imageUrl gets to try the new photo.
+  const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null);
+  const imageFailed = failedImageUrl === line.imageUrl;
   const lineTotal = (Number.parseFloat(line.unitPrice) * line.quantity).toFixed(2);
 
   return (
     <li className="flex items-center gap-4 border-b border-text/10 py-4 last:border-0">
       <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-card">
-        {line.imageUrl ? (
+        {line.imageUrl && !imageFailed ? (
           <Image
             src={line.imageUrl}
             alt={line.name}
@@ -23,6 +29,7 @@ export function CartLineItem({ line }: { line: CartLine }) {
             height={64}
             sizes="64px"
             unoptimized={line.imageUrl.startsWith("http://")}
+            onError={() => setFailedImageUrl(line.imageUrl)}
             className="h-full w-full object-cover"
           />
         ) : (

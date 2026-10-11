@@ -90,6 +90,8 @@ jobs:
         with:
           context: ./apps/web
           push: true
+          build-args: |
+            DOMAIN=${{ vars.DOMAIN }}
           tags: |
             ghcr.io/${{ steps.owner.outputs.lc }}/zainstreat-web:latest
             ghcr.io/${{ steps.owner.outputs.lc }}/zainstreat-web:${{ github.sha }}

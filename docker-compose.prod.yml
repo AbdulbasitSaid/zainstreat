@@ -55,6 +55,8 @@ services:
     command: !reset null
     ports: !reset []
     environment:
+      # Only dynamically rendered metadata reads this; remotePatterns,
+      # robots.txt and sitemap.xml use the build-time value (Dockerfile ARG DOMAIN).
       DOMAIN: ${DOMAIN}
     mem_limit: 1g
     memswap_limit: 1g
