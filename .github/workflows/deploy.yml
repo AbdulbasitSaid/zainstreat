@@ -133,3 +133,6 @@ jobs:
             docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
             docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
             docker compose -f docker-compose.yml -f docker-compose.prod.yml restart caddy
+            # Dangling (superseded :latest) images only — never volumes or
+            # a running container's image (Phase 18 Decision 9).
+            docker image prune -f

@@ -352,12 +352,16 @@ alongside, not a replacement for, the online ordering system.
 
 ## Hosting & Deployment
 
-- **AWS Lightsail VPS**, Ubuntu LTS blueprint, **`eu-central-1` (Frankfurt)**
-  — AWS has no region physically in the Netherlands; Frankfurt is the
-  closest full region and the standard low-latency choice for NL-based
-  traffic. 2 GB RAM plan (comfortable headroom for Postgres + MinIO + the
-  `web`/`api` containers + Caddy running concurrently), with a static IP
-  attached.
+- **AWS Lightsail VPS**, Amazon Linux 2023 blueprint (what Phase 2
+  actually provisioned; this line originally said Ubuntu LTS),
+  **`eu-central-1` (Frankfurt)**. AWS has no region physically in the
+  Netherlands; Frankfurt is the closest full region and the standard
+  low-latency choice for NL-based traffic. **4 GB RAM plan** (Phase 18;
+  originally 2 GB), with a static IP attached, a 2 GB swap file
+  (`vm.swappiness=10`), and a persistent systemd journal.
+- **Per-container memory/CPU limits** (`mem_limit` = `memswap_limit`,
+  `cpus`) on every service in `docker-compose.prod.yml` (Phase 18). Dev
+  stays unlimited.
 - Lightsail's built-in firewall allows only `22` (SSH), `80`, and `443` —
   no other ports are exposed publicly.
 - All services run via **Docker Compose**:
@@ -393,6 +397,33 @@ bookkeeping to maintain for a single-box deployment. Raw EC2 would offer
 more flexibility the business doesn't need yet; it can be revisited if the
 app ever outgrows one Lightsail instance.
 
+_Why 4 GB with per-container limits, not just a bigger box:_ decided in
+Phase 18 after the 2026-10-11 outage. The 2 GB box went fully
+unresponsive (most likely memory exhaustion: six unlimited containers,
+no swap, and Phase 17's on-the-fly AVIF encoding). More RAM buys
+headroom; the limits make sure a single runaway container gets
+OOM-killed and restarted instead of taking down SSH, Caddy, and every
+other service with it.
+
+## Monitoring & Alerting
+
+- **Lightsail metric alarms** (CPU utilization, burst capacity
+  percentage, instance/system status checks), emailed to the owner.
+  Configured in the console, not in code.
+- **External HTTP uptime monitor** (any free-tier hosted service, chosen
+  by hand) on `https://zainstreat.com` and
+  `https://api.zainstreat.com/health`. Off-box, so it still fires when
+  the box itself can't report anything.
+- **Dozzle** (Phase 8) for live log viewing, plus a **persistent systemd
+  journal** on the host, so the previous boot's kernel/OOM log survives
+  a hang-and-reboot.
+
+_Why not the CloudWatch agent / off-box log shipping:_ offered in Phase 18
+and declined. It adds an agent, IAM credentials, and per-GB cost for a
+single small box. The persistent journal plus Lightsail metrics are
+expected to be enough to diagnose the next outage; revisit if they
+aren't.
+
 _Why build in CI and push to GHCR instead of building on the box:_ a 2 GB
 Lightsail instance is shared with Postgres, MinIO, and live traffic —
 running a Rust release compile and a Next.js build on it too is wasteful
@@ -416,7 +447,8 @@ runners absorb that cost for free, and the box's job shrinks to just
 | Email | lettre (SMTP transport) + Amazon SES, fire-and-forget (Phase 17) |
 | Spam/abuse mitigation | `tower_governor` (per-IP rate limit, custom `X-Forwarded-For` key extractor) + honeypot field (Phase 15) |
 | WhatsApp | `wa.me` deep links |
-| Hosting | AWS Lightsail VPS (`eu-central-1`, Frankfurt), Docker Compose |
+| Hosting | AWS Lightsail VPS, 4 GB (`eu-central-1`, Frankfurt), Docker Compose with per-container memory/CPU limits |
+| Monitoring | Lightsail metric alarms + external HTTP uptime monitor + persistent systemd journal (Phase 18) |
 | CI/CD | GitHub Actions → private GHCR → SSH deploy (dedicated `deploy` user) |
 | Backups | Lightsail automatic daily snapshots |
 | Reverse proxy / TLS | Caddy (automatic HTTPS) |

@@ -293,8 +293,27 @@ the GitHub Actions CI/CD pipeline already exist from Phase 2 — this phase
 hardens what's running on them rather than standing anything up from
 scratch.
 
-- Harden `apps/web/Dockerfile` and `apps/api/Dockerfile` (non-root user,
-  smaller/distroless base image where reasonable, resource limits).
+Expanded after the 2026-10-11 production outage (the instance went fully
+unresponsive, most likely from memory exhaustion; see
+`specs/2026-10-11-phase-18-production-hardening/requirement.md`):
+
+- Incident recovery + evidence capture, and a written "When the site is
+  down" runbook in `docs/deployment.md`.
+- Upgrade the Lightsail instance from 2 GB to **4 GB** (snapshot → new
+  instance → move the static IP). This doubles as the snapshot-restore
+  test below.
+- Host hardening: 2 GB swap file and a persistent systemd journal.
+- Per-container memory/CPU limits in `docker-compose.prod.yml`.
+- Reduce `next/image` optimizer load: WebP only (drop Phase 17's AVIF),
+  a 30-day `minimumCacheTTL`, and a `web_cache` volume so the cache
+  survives deploys.
+- Deploys prune dangling images.
+- Off-box monitoring: Lightsail metric alarms (CPU, burst capacity,
+  status checks) plus an external HTTP uptime monitor, both emailing the
+  owner.
+- Harden `apps/web/Dockerfile` and `apps/api/Dockerfile` (non-root user;
+  Debian-slim bases kept rather than distroless; resource limits applied
+  in compose).
 - Verify a Lightsail snapshot can actually be restored (test restore) now
   that real menu/order data exists.
 - Swap Phase 17's placeholder `EMAIL_FROM_ADDRESS` /
