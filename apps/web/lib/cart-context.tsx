@@ -62,8 +62,17 @@ function cartReducer(lines: CartLine[], action: CartAction): CartLine[] {
       const key = lineKey(action.line.itemId, action.line.priceOptionId);
       const existing = lines.find((line) => line.key === key);
       if (existing) {
+        // Refresh display fields too: an admin may have replaced the photo
+        // (and deleted the old object) since this line was stored (Phase 19).
         return lines.map((line) =>
-          line.key === key ? { ...line, quantity: line.quantity + action.quantity } : line,
+          line.key === key
+            ? {
+                ...line,
+                name: action.line.name,
+                imageUrl: action.line.imageUrl,
+                quantity: line.quantity + action.quantity,
+              }
+            : line,
         );
       }
       return [...lines, { ...action.line, key, quantity: action.quantity }];

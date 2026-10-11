@@ -324,6 +324,22 @@ unresponsive, most likely from memory exhaustion; see
 - Production smoke test against the README §43 Definition of Done
   checklist, run against the live domain (not localhost).
 
+## Phase 19 — Menu Photo Fix
+
+Added after a 2026-10-11 production bug: replacing a menu photo in admin
+broke it on the public site (see
+`specs/2026-10-11-phase-19-menu-photo-fix/requirement.md`).
+
+- Pass `DOMAIN` into the web image at build time (CI build arg →
+  Dockerfile `ARG`), so `next/image`'s `remotePatterns` allows
+  `api.$DOMAIN`. Standalone output saves `next.config.ts` at build time.
+  The same fix corrects `robots.txt`/`sitemap.xml`, which currently point
+  to `localhost`.
+- Fail the web Docker build if `DOMAIN` is missing.
+- Cart thumbnails fall back to the placeholder when a photo was replaced,
+  and re-adding an item refreshes its stored photo.
+- Remove a dead A record (`18.192.249.64`) from DNS.
+
 ## Beyond MVP (not in this roadmap)
 
 Deliberately deferred — see README §39 for detail:

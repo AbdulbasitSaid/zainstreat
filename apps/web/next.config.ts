@@ -11,8 +11,10 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "placehold.co" },
       // Dev: the API container's published port, same convention default
       // as API_PORT everywhere else. Prod: api.$DOMAIN, Caddy-fronted
-      // (requirement.md Decision 2) — DOMAIN is passed into the web
-      // service's environment for exactly this (docker-compose.prod.yml).
+      // (requirement.md Decision 2). DOMAIN must be set at `next build`
+      // (Dockerfile build arg from CI's vars.DOMAIN, Phase 19): standalone
+      // output saves this config at build time, so a runtime-only DOMAIN
+      // never reaches the allowlist.
       { protocol: "http", hostname: "localhost", port: "8080" },
       ...(process.env.DOMAIN
         ? [{ protocol: "https" as const, hostname: `api.${process.env.DOMAIN}` }]
