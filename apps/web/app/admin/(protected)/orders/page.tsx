@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { isOrderStatus, ORDERS_PAGE_SIZE, ORDER_STATUSES } from "@/lib/admin-orders";
+import { isOrderStatus, ORDERS_PAGE_SIZE, ORDER_STATUSES, STATUS_LABELS } from "@/lib/admin-orders";
 import { getAdminOrders } from "@/lib/admin-orders-api";
 import { AdminStatusBadge } from "@/components/admin-status-badge";
 import { formatDateTime, formatPrice } from "@/lib/format";
@@ -47,14 +47,14 @@ export default async function AdminOrdersPage({
               status === value ? "bg-primary text-white" : "bg-card text-text hover:bg-background-soft"
             }`}
           >
-            {value ?? "All"}
+            {value ? STATUS_LABELS[value] : "All"}
           </Link>
         ))}
       </div>
 
       {orders.length === 0 ? (
         <p className="m-0 text-text-muted">
-          {status ? `No ${status} orders.` : "No orders yet."}
+          {status ? `No orders with status "${STATUS_LABELS[status]}".` : "No orders yet."}
         </p>
       ) : (
         <div className="overflow-x-auto">
@@ -77,7 +77,7 @@ export default async function AdminOrdersPage({
                       href={`/admin/orders/${order.id}`}
                       className="font-semibold text-primary underline focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-accent focus-visible:outline-offset-2"
                     >
-                      #{order.id}
+                      {order.payment_reference}
                     </Link>
                   </td>
                   <td className="py-3 pr-4">{order.customer_name}</td>

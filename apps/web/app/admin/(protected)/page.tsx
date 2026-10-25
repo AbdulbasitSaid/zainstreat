@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { ORDER_STATUSES } from "@/lib/admin-orders";
+import { STATUS_LABELS, type OrderStatus } from "@/lib/admin-orders";
 import { getAdminOrdersSummary } from "@/lib/admin-orders-api";
 import { AdminStatusBadge } from "@/components/admin-status-badge";
 import { formatDateTime, formatPrice } from "@/lib/format";
@@ -8,6 +8,18 @@ import { formatDateTime, formatPrice } from "@/lib/format";
 export const metadata: Metadata = {
   title: "Dashboard | Zain's Admin",
 };
+
+// Payment claims first: they're the one status waiting on the owner
+// (Phase 20 Decision 12).
+const DASHBOARD_STATUSES: OrderStatus[] = [
+  "payment_claimed",
+  "awaiting_payment",
+  "processing",
+  "ready_for_collection",
+  "out_for_delivery",
+  "completed",
+  "cancelled",
+];
 
 export default async function AdminDashboardPage() {
   const summary = await getAdminOrdersSummary();
@@ -23,16 +35,19 @@ export default async function AdminDashboardPage() {
           </p>
           <p className="m-0 text-3xl font-semibold text-primary">{summary.today}</p>
         </div>
-        {ORDER_STATUSES.map((status) => (
+        {DASHBOARD_STATUSES.map((status) => (
           <Link
             key={status}
             href={`/admin/orders?status=${status}`}
-            className="rounded-card bg-card p-5 transition-transform duration-150 ease-out-expo hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-accent focus-visible:outline-offset-2"
+            className={`rounded-card p-5 ${
+              status === "payment_claimed" && summary.counts[status] > 0
+                ? "bg-accent-light ring-2 ring-primary"
+                : "bg-card"
+            } transition-transform duration-150 ease-out-expo hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-accent focus-visible:outline-offset-2`}
           >
-            {/* `capitalize`, not `uppercase` — both set text-transform, so
-                combining them silently drops one. */}
-            <p className="m-0 text-xs font-semibold capitalize tracking-wider text-text-muted">
-              {status}
+            <p className="m-0 text-xs font-semibold uppercase tracking-wider text-text-muted">
+              {STATUS_LABELS[status]}
+              {status === "payment_claimed" && summary.counts[status] > 0 && " · needs action"}
             </p>
             <p className="m-0 text-3xl font-semibold">{summary.counts[status]}</p>
           </Link>
