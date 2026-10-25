@@ -6,9 +6,12 @@ run and checked on its own before moving to the next. No calendar estimates
 — phases are ordered by what has to exist before the next thing can be
 built, per `mission.md` and `tech-stack.md`.
 
-Future work beyond the MVP (payments, notifications at scale, customer
-accounts, analytics, etc.) is intentionally excluded — see "Beyond MVP"
-below.
+Future work beyond the MVP (customer accounts, loyalty, inventory, etc.)
+is intentionally excluded — see "Beyond MVP" below. Phases 20–28 were
+added from the 2026-10-18 client call
+(`specs/client-notes/2026-10-18-client-call.md`), which pulled
+bank-transfer payments, order tracking, owner notifications and analytics
+forward from "Beyond MVP" ahead of the public launch.
 
 ## Phase 1 — Scaffolding
 
@@ -340,15 +343,131 @@ broke it on the public site (see
   and re-adding an item refreshes its stored photo.
 - Remove a dead A record (`18.192.249.64`) from DNS.
 
+## Phase 20 — Bank-Transfer Payment & Order Lifecycle
+
+From the 2026-10-18 client call: food is paid **before** it's prepared,
+and only verified payments are processed. No payment provider yet — the
+customer pays by bank transfer and the owner verifies the bank alert by
+hand. No VAT is added (the business is under the KOR scheme).
+
+- Order lifecycle reworked around payment, with branches for pickup and
+  delivery: *awaiting payment* → *payment claimed* (customer says they
+  paid) → *confirmed / processing* (owner verified the payment; one
+  admin action, automatically moving the order to processing) → *ready
+  for collection* (pickup) or *on the way* (delivery) → *completed*, plus
+  *cancelled*. Replaces the current `new/confirmed/preparing/ready/
+  completed/cancelled` CHECK values via a migration that maps existing
+  orders.
+- An invoice for each order (order number, items, total, the business's
+  bank account details and payment reference), shown on the confirmation
+  page and emailed to the customer. States clearly that only verified
+  payments are processed.
+- An "I've paid" action for the customer on their order.
+- Admin: a "Confirm payment" action and status transitions that follow
+  the order's pickup/delivery type. The checkout's existing
+  pickup/delivery choice (Phase 10) drives the branch.
+- The owner is emailed on every new order and every "I've paid" claim.
+
+## Phase 21 — Customer Order Tracking & Status Emails
+
+- A public order-status page reachable by an unguessable link (no
+  customer accounts), showing the order's progress through the Phase 20
+  lifecycle.
+- An email to the customer on each status change (payment confirmed,
+  ready for collection / on the way, completed), linking to that page.
+- Completion: the customer can confirm they received or collected the
+  order. The owner can also complete it from admin.
+- New orders appear in admin without a reload while it's open (polling
+  is enough; real push is Phase 26).
+
+## Phase 22 — Catering Quotations
+
+Event orders stay out of the cart flow (`mission.md`). This phase builds
+on Phase 15's catering enquiry.
+
+- Admin: turn a catering enquiry into a quotation (line items, total,
+  notes) and send it to the customer by email.
+- Customer accepts the quote via a link. From there it follows the same
+  bank-transfer → owner confirms → processing → pickup/delivery →
+  completed lifecycle as Phase 20/21.
+
+## Phase 23 — French Locale
+
+- Add `fr` as a third public locale alongside `en`/`nl` (`next-intl`
+  routing, `messages/fr.json`, language toggle, sitemap,
+  `Accept-Language` detection). Admin and the API stay English-only.
+- Translate the customer emails into French as well.
+
+## Phase 24 — Admin-Editable Site Content
+
+- Admin can replace site imagery that is currently hardcoded: homepage
+  images, the kitchen photo, the contact-page photo, and the **logo**,
+  all uploaded to MinIO like menu photos (Phase 14).
+- Admin can edit the homepage text, per locale.
+- Swap all remaining stock/placeholder homepage imagery for the client's
+  real food photos (some supplied already; the client is sending the
+  rest).
+
+## Phase 25 — Analytics & Search Presence
+
+- Google Analytics (GA4) on the public site only (never `/admin`), with a
+  cookie-consent banner, which GDPR/Dutch rules require for analytics
+  cookies.
+- Google Search Console: verify the domain and submit the sitemap. The
+  client wants to be findable on Google but **without publishing the
+  business address** for now, so no address in structured data or
+  Google Business Profile.
+- A follow-up SEO pass based on what Search Console and Analytics show.
+
+## Phase 26 — Installable Admin (PWA) & Push Notifications
+
+To be investigated first: the client uses an iPhone, and iOS only
+supports web push for home-screen-installed PWAs (iOS 16.4+).
+
+- Web app manifest and service worker so the admin can be installed to
+  the home screen.
+- Web push to the owner for new orders and payment claims, even when the
+  admin isn't open. Tapping a notification opens the order in admin.
+
+## Phase 27 — WhatsApp Owner Notifications
+
+- WhatsApp Business (Cloud) API integration on the client's existing
+  WhatsApp Business account: the owner gets a WhatsApp message for new
+  orders, payment claims and catering enquiries, with a link to the
+  admin.
+- Fire-and-forget like email (Phase 17): a failed send is logged and
+  never blocks an order.
+
+## Phase 28 — Move to Client-Owned AWS Account
+
+Deadline-driven: the developer's AWS free trial expires a few weeks
+after 2026-10-18, so this phase may need to happen before Phases 26–27.
+
+- Recreate the Lightsail instance, static IP, snapshots, alarms and SES
+  identity in the client's own AWS account. Migrate Postgres and MinIO
+  data, repoint DNS and the CI deploy secrets.
+- Update `docs/deployment.md`. Decommission the old instance only after
+  the new one is verified live.
+
+## Later — iDEAL Payments
+
+Agreed in the 2026-10-18 call but blocked on the client opening a
+payment-provider account (needs their business details).
+
+- iDEAL as a second checkout payment option next to bank transfer,
+  confirmed automatically by webhook instead of manual verification.
+- VAT: a payment platform reports revenue, so VAT must be handled for
+  these payments (added to the price or absorbed by the business).
+  Decide before building.
+
 ## Beyond MVP (not in this roadmap)
 
 Deliberately deferred — see README §39 for detail:
 
-- **Phase 2 (later):** online payments, WhatsApp/email order notifications
-  at scale, customer order tracking, delivery fee calculation, event
-  booking calendar, discount codes, catering packages.
+- **Phase 2 (later):** delivery fee calculation, event booking calendar,
+  discount codes, catering packages.
 - **Phase 3 (later):** customer accounts, order history, loyalty program,
   multiple administrators/staff roles, inventory management, sales
-  reports/analytics.
+  reports.
 - **Phase 4 (later):** broader food-business operations platform (kitchen
   workflow, pickup/delivery operations, integrated notifications).
