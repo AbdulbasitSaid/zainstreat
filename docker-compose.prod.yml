@@ -39,6 +39,7 @@ services:
       LOG_FORMAT: ${LOG_FORMAT:-json}
       COOKIE_SECURE: ${COOKIE_SECURE:-true}
       PUBLIC_API_URL: https://api.${DOMAIN}
+      PUBLIC_SITE_URL: https://${DOMAIN}
     mem_limit: 256m
     memswap_limit: 256m
     cpus: 1.0
