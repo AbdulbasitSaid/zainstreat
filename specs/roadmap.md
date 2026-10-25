@@ -368,6 +368,12 @@ hand. No VAT is added (the business is under the KOR scheme).
   pickup/delivery choice (Phase 10) drives the branch.
 - The owner is emailed on every new order and every "I've paid" claim.
 
+Planned in `specs/2026-10-25-phase-20-bank-transfer-payment/`: one
+`processing` status covers "confirmed / processing"; the "I've paid"
+action lives on an unguessable `/order/<token>` page that Phase 21
+extends into full tracking; bank details come from API env vars; the
+payment reference is `ZTM-<order id>`.
+
 ## Phase 21 — Customer Order Tracking & Status Emails
 
 - A public order-status page reachable by an unguessable link (no
