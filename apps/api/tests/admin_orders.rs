@@ -249,6 +249,12 @@ async fn pickup_and_delivery_follow_their_own_branch(pool: PgPool) {
     for (delivery_type, handover) in [("pickup", "ready_for_collection"), ("delivery", "out_for_delivery")] {
         let id = insert_order_of_type(&pool, "Ada", "awaiting_payment", "10.00", delivery_type).await;
         for next in ["processing", handover, "completed"] {
+            // The detail's `next_statuses` is what the admin UI renders as
+            // buttons, so it must offer exactly the step being taken.
+            let (_, detail) =
+                get_with_cookie(pool.clone(), &format!("/api/admin/orders/{id}"), Some(&cookie)).await;
+            assert_eq!(detail["next_statuses"], json!([next, "cancelled"]), "{delivery_type}: before {next}");
+
             let (status, body) = patch_with_cookie(
                 pool.clone(),
                 &format!("/api/admin/orders/{id}/status"),
@@ -259,6 +265,10 @@ async fn pickup_and_delivery_follow_their_own_branch(pool: PgPool) {
             assert_eq!(status, StatusCode::OK, "{delivery_type}: -> {next}");
             assert_eq!(body["status"], next);
         }
+
+        let (_, detail) =
+            get_with_cookie(pool.clone(), &format!("/api/admin/orders/{id}"), Some(&cookie)).await;
+        assert_eq!(detail["next_statuses"], json!([]), "{delivery_type}: completed is terminal");
     }
 }
 
