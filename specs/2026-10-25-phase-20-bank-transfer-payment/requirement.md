@@ -185,26 +185,56 @@
 
 ## Open risks flagged during planning
 
+Each risk ends with how it was handled during implementation
+(2026-10-25).
+
 1. **The real bank details are needed from the client** (account holder
    name, IBAN, and BIC if wanted) before production. Until they're in the
    server `.env`, the invoice shows the WhatsApp fallback.
+   *Mitigated, client input still needed.* `BANK_IBAN` is normalised
+   (spaces removed, upper-cased) and checked against the ISO 13616 mod-97
+   checksum at startup (`payment::normalize_iban`). An invalid value is
+   treated as unset and logs `ERROR BANK_IBAN is not a valid IBAN`, so a
+   typo can never show customers a wrong account.
 2. **Is this a legal invoice?** KOR participants are exempt from Dutch
    invoicing requirements, so a "payment request" with no VAT line should
    be fine. The client may still want their KvK number on it. Confirm
    with the client. Adding it later is a one-line copy change.
+   *Mitigated, client input still needed.* A new optional env var,
+   `BUSINESS_KVK`, prints "KvK: …" under the bank details on the invoice
+   page and in the email. Whatever the client answers, it's a config
+   change, not a code change.
 3. **SES sandbox.** Phase 18 asked for SES production access. If it
    hasn't been granted, customer invoice emails reach only verified
    addresses. The confirmation page and token page still show the
    invoice either way.
+   *Open: check before deploy.* `aws sesv2 get-account --region
+   eu-central-1` must show `"ProductionAccessEnabled": true`. This
+   couldn't be checked during implementation because the local AWS
+   session had expired.
 4. **Status list now in three places** (CHECK constraint, Rust
    `ORDER_STATUSES` + `allowed_next`, TS mirror). This drift risk was
    already noted in Phase 13 (open risk 7). An API integration test that
    walks every allowed and disallowed transition limits it.
+   *Resolved.* The TS transition mirror is gone. `GET
+   /api/admin/orders/{id}` returns `next_statuses` (from `admin_next`),
+   and `AdminOrderActions` renders exactly that list. A new
+   `tests/order_status_schema.rs` reads `orders_status_check` back with
+   `pg_get_constraintdef` and fails if it differs from `ORDER_STATUSES`.
+   The only list left unchecked is the TS `ORDER_STATUSES` used for
+   labels; there's no web test runner, and the badge's
+   `Record<OrderStatus, …>` types make a missing label a compile error.
 5. **Existing production orders.** The Decision 2 mapping is
    mechanical. Any real `new` orders become `awaiting_payment` even if
    they were already handled by phone. Check the production order list
    before deploying and tidy up by hand if needed.
+   *Open: ops step before merge.* plan.md 7.3 now has a read-only
+   preview query that shows each open order's old and new status. Tidy
+   up in `/admin` before the merge, while the old dropdown still allows
+   any move.
 6. **`sqlx` needs its `uuid` feature** to read the `UUID` column. The
    `uuid` crate is already a dependency (Phase 14), so this only enables
    a feature and isn't a new technology decision. `tech-stack.md` is
    unchanged.
+   *Resolved.* Enabled in `Cargo.toml` (plus `uuid`'s `serde` feature),
+   and the offline `.sqlx` release build passes.

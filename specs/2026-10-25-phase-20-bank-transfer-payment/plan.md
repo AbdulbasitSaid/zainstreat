@@ -292,8 +292,32 @@ Depends on: Groups 1–6.
 7.2. Get the bank details from the client (risk 1), along with whether
      they want their KvK number on the invoice (risk 2).
 
-7.3. Before merging: look at production's current orders (risk 5). Add
-     `BANK_ACCOUNT_NAME`/`BANK_IBAN`/`BANK_BIC` to the server's `.env`
+7.3. Before merging: look at production's current orders (risk 5). This
+     read-only query previews exactly what the migration will do to each
+     order. Run it on the server through
+     `docker compose -f docker-compose.yml -f docker-compose.prod.yml exec postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"`:
+
+```sql
+SELECT id, created_at::date, customer_name, delivery_type, total, status AS old_status,
+       CASE
+           WHEN status = 'new' THEN 'awaiting_payment'
+           WHEN status IN ('confirmed', 'preparing') THEN 'processing'
+           WHEN status = 'ready' AND delivery_type = 'pickup' THEN 'ready_for_collection'
+           WHEN status = 'ready' THEN 'out_for_delivery'
+           ELSE status
+       END AS new_status
+FROM orders
+WHERE status NOT IN ('completed', 'cancelled')
+ORDER BY id;
+```
+
+     Any `new` order that was already handled by phone should be moved to
+     `completed` or `cancelled` in `/admin` **before** the merge, while
+     the old free dropdown still allows it. After the merge, the guided
+     buttons can't jump straight there.
+
+     Add `BANK_ACCOUNT_NAME`/`BANK_IBAN`/`BANK_BIC` (and `BUSINESS_KVK`
+     if the client wants it, risk 2) to the server's `.env`
      (`PUBLIC_SITE_URL` comes from prod compose). Take a manual Lightsail
      snapshot, because this migration rewrites data.
 

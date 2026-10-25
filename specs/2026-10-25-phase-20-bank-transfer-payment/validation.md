@@ -34,6 +34,15 @@
       `completed` → `409`. `"bogus"` → `422`.
 - [x] `GET /api/admin/orders/summary` → `counts` has exactly the seven
       new keys.
+- [x] `GET /api/admin/orders/{id}` → `next_statuses` lists exactly the
+      next step plus `cancelled`, and `[]` once the order is terminal
+      (risk 4). `tests/order_status_schema.rs` passes.
+- [x] With `BANK_IBAN` set to a bad checksum, the API logs
+      `BANK_IBAN is not a valid IBAN` and `payment` is `null`. With
+      `nl91 abna 0417 1643 00`, `payment.iban` is `NL91ABNA0417164300`
+      (risk 1).
+- [x] With `BUSINESS_KVK` set, `payment.kvk` is returned and
+      `/en/order/<token>` shows "KvK: …" (`/nl`: "KvK-nummer: …") (risk 2).
 - [ ] With SES configured locally (or the logs read in disabled mode),
       placing an order triggers a customer invoice email (bank details,
       reference, "only verified payments" line, `/order/<token>` link)
@@ -79,11 +88,15 @@
 
 ### Production, after deploy (Group 7)
 
+- [ ] `aws sesv2 get-account --region eu-central-1` shows
+      `"ProductionAccessEnabled": true` (risk 3).
+- [ ] The plan.md 7.3 preview query was run on production, and any
+      already-handled `new` orders were tidied up before the merge (risk 5).
 - [ ] The server `.env` has `BANK_ACCOUNT_NAME`/`BANK_IBAN` (and
-      `BANK_BIC` if wanted). A Lightsail snapshot was taken before the
-      merge.
+      `BANK_BIC`/`BUSINESS_KVK` if wanted). A Lightsail snapshot was
+      taken before the merge.
 - [ ] The API container logs show the migration applied and **no**
-      "bank details not set" warning.
+      "bank details not set" warning or "not a valid IBAN" error.
 - [ ] Place a real €-small test order on `https://zainstreat.com`. The
       customer email arrives with the right IBAN/reference and a working
       `https://zainstreat.com/order/<token>` link, and the owner gets the
