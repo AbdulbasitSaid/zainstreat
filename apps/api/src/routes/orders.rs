@@ -392,6 +392,9 @@ fn invoice_email_body(order: &OrderResponse, placed_at: &str, site_url: &str) ->
                 "Reference: {}\n\nPlease use this exact reference so we can match your payment.\n\n",
                 payment.reference,
             ));
+            if let Some(kvk) = &payment.kvk {
+                body.push_str(&format!("KvK: {kvk}\n\n"));
+            }
         }
         None => body.push_str(
             "Please contact us on WhatsApp for our bank details.\n\n",

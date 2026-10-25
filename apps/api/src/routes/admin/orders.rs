@@ -153,6 +153,9 @@ pub struct AdminOrderResponse {
     pub payment_reference: String,
     pub payment_claimed_at: Option<DateTime<Utc>>,
     pub payment_confirmed_at: Option<DateTime<Utc>>,
+    /// The admin UI renders these as buttons, so `admin_next` has no
+    /// TypeScript mirror to drift from (Phase 20 open risk 4).
+    pub next_statuses: &'static [&'static str],
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub items: Vec<AdminOrderItemResponse>,
@@ -193,6 +196,8 @@ pub async fn get_order(
     .fetch_all(&pool)
     .await?;
 
+    let next_statuses = admin_next(&order.status, &order.delivery_type);
+
     Ok(Json(AdminOrderResponse {
         id: order.id,
         customer_name: order.customer_name,
@@ -208,6 +213,7 @@ pub async fn get_order(
         payment_reference: payment_reference(order.id),
         payment_claimed_at: order.payment_claimed_at,
         payment_confirmed_at: order.payment_confirmed_at,
+        next_statuses,
         created_at: order.created_at,
         updated_at: order.updated_at,
         items,

@@ -1,7 +1,8 @@
 /// Mirrors the CHECK constraint on `orders.status` in
 /// `migrations/20261025120000_order_payment_lifecycle.up.sql`, and is
 /// mirrored in turn by `ORDER_STATUSES` in `apps/web/lib/orders.ts`.
-/// Adding a status means editing all three (Phase 20 open risk 4).
+/// Adding a status means editing all three (Phase 20 open risk 4);
+/// `tests/order_status_schema.rs` fails if this list and the CHECK drift.
 pub const ORDER_STATUSES: [&str; 7] = [
     "awaiting_payment",
     "payment_claimed",
