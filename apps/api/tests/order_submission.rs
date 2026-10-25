@@ -41,6 +41,11 @@ async fn happy_path_flat_priced_item_pickup(pool: PgPool) {
     assert_eq!(body["subtotal"], "26.00");
     assert_eq!(body["items"][0]["item_name"], "Jollof Rice");
     assert_eq!(body["items"][0]["unit_price"], "13.00");
+    assert_eq!(body["status"], "awaiting_payment");
+    assert!(uuid::Uuid::parse_str(body["public_token"].as_str().unwrap()).is_ok());
+    assert_eq!(body["payment_reference"], format!("ZTM-{}", body["id"]));
+    // Bank details aren't set in the test env, so the WhatsApp fallback applies.
+    assert!(body.as_object().unwrap().contains_key("payment"));
 
     let order_count: i64 = sqlx::query_scalar!("SELECT COUNT(*) FROM orders")
         .fetch_one(&pool)

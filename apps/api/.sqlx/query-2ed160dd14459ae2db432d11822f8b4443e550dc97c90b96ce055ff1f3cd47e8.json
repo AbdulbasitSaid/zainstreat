@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        UPDATE orders\n        SET status = $2, updated_at = now()\n        WHERE id = $1\n        RETURNING id, customer_name, delivery_type, total, status,\n                  created_at as \"created_at: DateTime<Utc>\"\n        ",
+  "query": "\n        UPDATE orders\n        SET status = $2,\n            updated_at = now(),\n            payment_confirmed_at = CASE WHEN $2 = 'processing' THEN now() ELSE payment_confirmed_at END\n        WHERE id = $1\n        RETURNING id, customer_name, delivery_type, total, status,\n                  created_at as \"created_at: DateTime<Utc>\"\n        ",
   "describe": {
     "columns": [
       {
@@ -49,5 +49,5 @@
       false
     ]
   },
-  "hash": "7468801d948421360900be2fcba8ae2f0f7a4bc65c5ae6ba2badc397ca3406b6"
+  "hash": "2ed160dd14459ae2db432d11822f8b4443e550dc97c90b96ce055ff1f3cd47e8"
 }

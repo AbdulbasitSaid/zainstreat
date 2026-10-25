@@ -1,4 +1,5 @@
 use api::email::EmailConfig;
+use api::payment::PaymentConfig;
 use api::{build_app, MediaConfig};
 use argon2::password_hash::PasswordHasher;
 use argon2::Argon2;
@@ -48,7 +49,7 @@ async fn test_media_config() -> MediaConfig {
 }
 
 async fn send_raw(pool: PgPool, request: Request<Body>) -> (StatusCode, HeaderMap, Vec<u8>) {
-    let app = build_app(pool, false, test_media_config().await, EmailConfig::from_env())
+    let app = build_app(pool, false, test_media_config().await, EmailConfig::from_env(), PaymentConfig::from_env())
         .await
         .expect("failed to build app in test");
     send_on_raw(app, request).await
@@ -63,7 +64,7 @@ async fn send_raw(pool: PgPool, request: Request<Body>) -> (StatusCode, HeaderMa
 /// layered state) to actually exercise rate limiting across requests.
 #[allow(dead_code)]
 pub async fn build_test_app(pool: PgPool) -> axum::Router {
-    build_app(pool, false, test_media_config().await, EmailConfig::from_env())
+    build_app(pool, false, test_media_config().await, EmailConfig::from_env(), PaymentConfig::from_env())
         .await
         .expect("failed to build app in test")
 }
