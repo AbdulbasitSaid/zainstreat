@@ -50,10 +50,10 @@
 
 ### Public site (Groups 4–5)
 
-- [ ] Placing an order on `/en/order` shows the invoice: items, total,
+- [x] Placing an order on `/en/order` shows the invoice: items, total,
       account name, IBAN, reference `ZTM-<id>`, the verified-payments
       notice, no VAT line, and the "I've paid" button.
-- [ ] Pressing "I've paid" shows the thanks message, and the button
+- [x] Pressing "I've paid" shows the thanks message, and the button
       disappears after the refresh.
 - [x] Opening `/en/order/<token>` in a fresh private window shows the same
       invoice and the current status. `/nl/order/<token>` shows it in Dutch.
@@ -65,22 +65,23 @@
       `/en/order` (checkout) still renders.
 - [x] With `BANK_IBAN` unset, the invoice shows the WhatsApp fallback
       instead of empty bank fields.
-- [ ] An old `zainstreat:last-order:v1` entry in sessionStorage is
+- [x] An old `zainstreat:last-order:v1` entry in sessionStorage is
       ignored (no crash, no token-less invoice).
 
 ### Admin (Group 6)
 
-- [ ] The order detail of an `awaiting_payment` delivery order shows
+- [x] The order detail of an `awaiting_payment` delivery order shows
       "Confirm payment" and "Cancel order". After confirming, it shows
       "Mark on the way", then "Mark completed", then no actions.
-- [ ] A pickup order shows "Ready for collection" in place of "Mark on the way".
-- [ ] "Cancel order" asks for a second click before it sends anything.
-- [ ] The detail page shows the reference and the claimed/confirmed times.
-- [ ] The dashboard shows seven tiles with `payment_claimed` first, and
+- [x] A pickup order shows "Ready for collection" in place of "Mark on the way".
+- [x] "Cancel order" asks for a second click before it sends anything.
+- [x] The detail page shows the reference and the claimed/confirmed times.
+- [x] The dashboard shows seven tiles with `payment_claimed` first, and
       that tile is highlighted when its count is above 0. The list's
       filter offers all seven with readable labels.
-- [ ] `grep -rn "preparing\|admin-order-status-select" apps/web apps/api/src`
-      finds nothing.
+- [x] `grep -rn "preparing\|admin-order-status-select" apps/web apps/api/src`
+      finds nothing (the only matches are the English phrase "start
+      preparing your order" in the verified-payments copy, not the status).
 
 ### Sweep
 
