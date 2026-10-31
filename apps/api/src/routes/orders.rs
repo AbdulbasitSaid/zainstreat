@@ -1,5 +1,7 @@
 use crate::email::EmailConfig;
 use crate::error::{AppError, FieldError, UnavailableItem};
+use crate::order_emails::{invoice_email, tracking_url, Locale};
+use crate::order_status::CUSTOMER_COMPLETABLE;
 use crate::payment::{payment_reference, PaymentConfig, PaymentInstructions};
 use crate::validation::{is_valid_email, is_valid_phone};
 use axum::{
@@ -35,6 +37,9 @@ pub struct CreateOrderRequest {
     pub delivery_address: Option<String>,
     pub notes: Option<String>,
     pub items: Vec<CreateOrderItemRequest>,
+    /// The site language the customer ordered in, for their emails. Missing
+    /// means `en` (Phase 22 Decision 5).
+    pub locale: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -47,6 +52,8 @@ pub struct OrderItemResponse {
     #[serde(with = "rust_decimal::serde::str")]
     pub subtotal: Decimal,
 }
+
+type Timestamp = chrono::DateTime<chrono::Utc>;
 
 #[derive(Debug, Serialize)]
 pub struct OrderResponse {
@@ -71,6 +78,14 @@ pub struct OrderResponse {
     pub payment_reference: String,
     /// `None` when no bank details are configured (Decision 5).
     pub payment: Option<PaymentInstructions>,
+    /// When each tracking step was reached (Phase 22 Decision 4).
+    pub payment_claimed_at: Option<Timestamp>,
+    pub payment_confirmed_at: Option<Timestamp>,
+    pub ready_at: Option<Timestamp>,
+    pub completed_at: Option<Timestamp>,
+    pub cancelled_at: Option<Timestamp>,
+    /// `customer` or `admin`, once completed.
+    pub completed_by: Option<String>,
 }
 
 const NAME_MIN_LENGTH: usize = 2;
@@ -117,6 +132,12 @@ fn validate(payload: &CreateOrderRequest) -> Vec<FieldError> {
 
     if payload.items.is_empty() {
         errors.push(FieldError { field: "items".into(), message: "empty".into() });
+    }
+
+    if let Some(locale) = &payload.locale
+        && Locale::parse(locale).is_none()
+    {
+        errors.push(FieldError { field: "locale".into(), message: "invalid".into() });
     }
     for (index, item) in payload.items.iter().enumerate() {
         if item.quantity <= 0 {
@@ -259,15 +280,16 @@ pub async fn create_order(
         DeliveryType::Pickup => "pickup",
         DeliveryType::Delivery => "delivery",
     };
+    let locale = payload.locale.as_deref().and_then(Locale::parse).unwrap_or(Locale::En);
 
     let order = sqlx::query!(
         r#"
         INSERT INTO orders
             (customer_name, customer_email, customer_phone, delivery_type,
-             delivery_address, notes, subtotal, delivery_fee, total)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+             delivery_address, notes, subtotal, delivery_fee, total, locale)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         RETURNING id, status, public_token,
-                  created_at as "created_at: chrono::DateTime<chrono::Utc>",
+                  created_at as "created_at: Timestamp",
                   to_char(created_at AT TIME ZONE 'Europe/Amsterdam', 'DD-MM-YYYY HH24:MI') as "placed_at!"
         "#,
         payload.customer_name,
@@ -279,6 +301,7 @@ pub async fn create_order(
         subtotal,
         delivery_fee,
         total,
+        locale.as_str(),
     )
     .fetch_one(&mut *tx)
     .await?;
@@ -333,19 +356,23 @@ pub async fn create_order(
         public_token: order.public_token,
         payment_reference: payment_reference(order.id),
         payment: payment.instructions(order.id),
+        payment_claimed_at: None,
+        payment_confirmed_at: None,
+        ready_at: None,
+        completed_at: None,
+        cancelled_at: None,
+        completed_by: None,
     };
 
-    email.spawn_send(
-        response.customer_email.clone(),
-        format!("Your invoice for order {} — Zain's Treat n More", response.payment_reference),
-        invoice_email_body(&response, &order.placed_at, email.site_url()),
-    );
+    let url = tracking_url(email.site_url(), locale, response.public_token);
+    let (subject, body) = invoice_email(locale, &response, &order.placed_at, &url);
+    email.spawn_send(response.customer_email.clone(), subject, body);
 
     if let Some(business_address) = email.business_notify_address() {
         email.spawn_send(
             business_address,
             format!("New order {} — €{}", response.payment_reference, response.total),
-            new_order_owner_email_body(&response, email.site_url()),
+            new_order_owner_email_body(&response, email.admin_url()),
         );
     }
 
@@ -359,60 +386,9 @@ fn delivery_line(order: &OrderResponse) -> String {
     }
 }
 
-/// The customer's invoice email (Phase 20 Decision 8). Plain text and
-/// English only, like every other email (Phase 17); no VAT line (KOR).
-fn invoice_email_body(order: &OrderResponse, placed_at: &str, site_url: &str) -> String {
-    let mut body = format!(
-        "Hi {},\n\nThanks for your order! Here is your invoice.\n\nOrder: {}\nDate: {}\n{}\n\n",
-        order.customer_name,
-        order.payment_reference,
-        placed_at,
-        delivery_line(order),
-    );
-
-    for item in &order.items {
-        let name = match &item.option_label {
-            Some(label) => format!("{} ({label})", item.item_name),
-            None => item.item_name.clone(),
-        };
-        body.push_str(&format!("{} x {name} — €{}\n", item.quantity, item.subtotal));
-    }
-    body.push_str(&format!("\nTotal: €{}\n\n", order.total));
-
-    match &order.payment {
-        Some(payment) => {
-            body.push_str(&format!(
-                "Please pay by bank transfer:\nAccount name: {}\nIBAN: {}\n",
-                payment.account_name, payment.iban,
-            ));
-            if let Some(bic) = &payment.bic {
-                body.push_str(&format!("BIC: {bic}\n"));
-            }
-            body.push_str(&format!(
-                "Reference: {}\n\nPlease use this exact reference so we can match your payment.\n\n",
-                payment.reference,
-            ));
-            if let Some(kvk) = &payment.kvk {
-                body.push_str(&format!("KvK: {kvk}\n\n"));
-            }
-        }
-        None => body.push_str(
-            "Please contact us on WhatsApp for our bank details.\n\n",
-        ),
-    }
-
-    body.push_str(&format!(
-        "We only start preparing your order once your payment has been verified.\n\n\
-         After paying, let us know on your order page:\n{site_url}/order/{}\n\n\
-         — Zain's Treat n More",
-        order.public_token,
-    ));
-    body
-}
-
-fn new_order_owner_email_body(order: &OrderResponse, site_url: &str) -> String {
+fn new_order_owner_email_body(order: &OrderResponse, admin_url: &str) -> String {
     format!(
-        "New order {} from {} ({}).\n{}\nTotal: €{}\n\nIt is awaiting payment. Check the bank for a transfer with reference {}.\n\n{site_url}/admin/orders/{}",
+        "New order {} from {} ({}).\n{}\nTotal: €{}\n\nIt is awaiting payment. Check the bank for a transfer with reference {}.\n\n{admin_url}/orders/{}",
         order.payment_reference,
         order.customer_name,
         order.customer_phone,
@@ -438,7 +414,13 @@ async fn load_order_by_token(
         r#"
         SELECT id, customer_name, customer_email, customer_phone, delivery_type,
                delivery_address, notes, subtotal, delivery_fee, total, status, public_token,
-               created_at as "created_at: chrono::DateTime<chrono::Utc>"
+               completed_by,
+               created_at as "created_at: Timestamp",
+               payment_claimed_at as "payment_claimed_at: Timestamp",
+               payment_confirmed_at as "payment_confirmed_at: Timestamp",
+               ready_at as "ready_at: Timestamp",
+               completed_at as "completed_at: Timestamp",
+               cancelled_at as "cancelled_at: Timestamp"
         FROM orders
         WHERE public_token = $1
         "#,
@@ -478,6 +460,12 @@ async fn load_order_by_token(
         public_token: order.public_token,
         payment_reference: payment_reference(order.id),
         payment: payment.instructions(order.id),
+        payment_claimed_at: order.payment_claimed_at,
+        payment_confirmed_at: order.payment_confirmed_at,
+        ready_at: order.ready_at,
+        completed_at: order.completed_at,
+        cancelled_at: order.cancelled_at,
+        completed_by: order.completed_by,
     })
 }
 
@@ -529,15 +517,49 @@ pub async fn claim_payment(
             business_address,
             format!("Payment claimed for order {} — €{}", order.payment_reference, order.total),
             format!(
-                "{} says they've paid order {} (€{}).\n\nCheck the bank for a transfer with reference {}, then confirm the payment in admin:\n{}/admin/orders/{}",
+                "{} says they've paid order {} (€{}).\n\nCheck the bank for a transfer with reference {}, then confirm the payment in admin:\n{}/orders/{}",
                 order.customer_name,
                 order.payment_reference,
                 order.total,
                 order.payment_reference,
-                email.site_url(),
+                email.admin_url(),
                 order_id,
             ),
         );
+    }
+
+    Ok(Json(order))
+}
+
+/// The customer's "I've received / collected it" (Phase 22 Decision 8).
+/// Idempotent like `claim_payment`: the guarded UPDATE decides, so a double
+/// click completes the order once. No email either way.
+pub async fn confirm_received(
+    State(pool): State<PgPool>,
+    State(payment): State<PaymentConfig>,
+    Path(token): Path<String>,
+) -> Result<Json<OrderResponse>, AppError> {
+    let token = parse_token(&token)?;
+
+    let completed = sqlx::query_scalar!(
+        r#"
+        UPDATE orders
+        SET status = 'completed', completed_at = now(), completed_by = 'customer', updated_at = now()
+        WHERE public_token = $1 AND status = ANY($2)
+        RETURNING id
+        "#,
+        token,
+        &CUSTOMER_COMPLETABLE.map(String::from) as &[String],
+    )
+    .fetch_optional(&pool)
+    .await?;
+
+    let order = load_order_by_token(&pool, &payment, token).await?;
+
+    match completed {
+        Some(order_id) => tracing::info!(order_id, "customer confirmed receipt"),
+        None if order.status != "completed" => return Err(AppError::InvalidStatusTransition),
+        None => {}
     }
 
     Ok(Json(order))

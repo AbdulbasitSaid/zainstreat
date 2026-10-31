@@ -367,3 +367,91 @@ async fn summary_counts_every_status_and_recent_orders(pool: PgPool) {
     assert_eq!(body["today"], 3);
     assert!(body["recent"].as_array().unwrap().len() <= 5);
 }
+
+async fn patch_status(pool: &PgPool, cookie: &str, id: i64, status: &str) -> (StatusCode, serde_json::Value) {
+    patch_with_cookie(
+        pool.clone(),
+        &format!("/api/admin/orders/{id}/status"),
+        json!({ "status": status }),
+        Some(cookie),
+    )
+    .await
+}
+
+/// Phase 22 Decision 4: each step stamps its time for the tracking page.
+#[sqlx::test]
+async fn status_steps_stamp_their_timestamps(pool: PgPool) {
+    let cookie = login(&pool).await;
+
+    for (delivery_type, handover) in [("pickup", "ready_for_collection"), ("delivery", "out_for_delivery")] {
+        let id = insert_order_of_type(&pool, "Ada", "awaiting_payment", "10.00", delivery_type).await;
+        for next in ["processing", handover, "completed"] {
+            assert_eq!(patch_status(&pool, &cookie, id, next).await.0, StatusCode::OK);
+        }
+
+        let (_, detail) = get_with_cookie(pool.clone(), &format!("/api/admin/orders/{id}"), Some(&cookie)).await;
+        for field in ["payment_confirmed_at", "ready_at", "completed_at"] {
+            assert!(detail[field].is_string(), "{delivery_type}: {field}");
+        }
+        assert!(detail["cancelled_at"].is_null());
+        assert_eq!(detail["completed_by"], "admin");
+    }
+
+    let cancelled = insert_order(&pool, "Bo", "processing", "10.00").await;
+    assert_eq!(patch_status(&pool, &cookie, cancelled, "cancelled").await.0, StatusCode::OK);
+    let (_, detail) = get_with_cookie(pool.clone(), &format!("/api/admin/orders/{cancelled}"), Some(&cookie)).await;
+    assert!(detail["cancelled_at"].is_string());
+}
+
+/// Phase 22 Decision 8: only an order the customer completed can be
+/// reopened, back to its ready status.
+#[sqlx::test]
+async fn customer_completed_orders_can_be_reopened(pool: PgPool) {
+    let cookie = login(&pool).await;
+    let id = insert_order_of_type(&pool, "Ada", "completed", "10.00", "delivery").await;
+    sqlx::query!(
+        "UPDATE orders SET completed_by = 'customer', completed_at = now(), ready_at = now() WHERE id = $1",
+        id
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let (_, detail) = get_with_cookie(pool.clone(), &format!("/api/admin/orders/{id}"), Some(&cookie)).await;
+    assert_eq!(detail["next_statuses"], json!(["out_for_delivery"]));
+
+    let (status, body) = patch_status(&pool, &cookie, id, "out_for_delivery").await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["status"], "out_for_delivery");
+
+    let (_, detail) = get_with_cookie(pool.clone(), &format!("/api/admin/orders/{id}"), Some(&cookie)).await;
+    assert!(detail["completed_at"].is_null());
+    assert!(detail["completed_by"].is_null());
+    assert!(detail["ready_at"].is_string());
+}
+
+#[sqlx::test]
+async fn admin_completed_orders_cannot_be_reopened(pool: PgPool) {
+    let cookie = login(&pool).await;
+    let id = insert_order(&pool, "Ada", "completed", "10.00").await;
+    sqlx::query!("UPDATE orders SET completed_by = 'admin' WHERE id = $1", id)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let (status, body) = patch_status(&pool, &cookie, id, "ready_for_collection").await;
+    assert_eq!(status, StatusCode::CONFLICT);
+    assert_eq!(body["error"], "invalid_status_transition");
+}
+
+#[sqlx::test]
+async fn summary_lists_the_orders_waiting_on_payment_confirmation(pool: PgPool) {
+    let first = insert_order(&pool, "Ada", "payment_claimed", "10.00").await;
+    insert_order(&pool, "Bo", "awaiting_payment", "10.00").await;
+    let second = insert_order(&pool, "Cy", "payment_claimed", "10.00").await;
+
+    let cookie = login(&pool).await;
+    let (status, body) = get_with_cookie(pool, "/api/admin/orders/summary", Some(&cookie)).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["claimed_ids"], json!([first, second]));
+}

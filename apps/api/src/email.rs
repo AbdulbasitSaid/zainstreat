@@ -7,9 +7,11 @@ use std::sync::Arc;
 pub struct EmailConfig {
     settings: Option<Arc<SesSettings>>,
     site_url: Arc<str>,
+    admin_url: Arc<str>,
 }
 
 const DEFAULT_SITE_URL: &str = "http://localhost:3000";
+const DEFAULT_ADMIN_URL: &str = "http://cms.localhost:3000";
 
 struct SesSettings {
     smtp_host: String,
@@ -35,16 +37,21 @@ impl EmailConfig {
         let business_notify_address = non_blank("EMAIL_BUSINESS_NOTIFY_ADDRESS");
         // Optional, for links in emails — a missing value never turns email
         // off (Phase 20 Decision 10).
-        let site_url: Arc<str> = non_blank("PUBLIC_SITE_URL")
-            .map(|url| url.trim_end_matches('/').to_string())
-            .unwrap_or_else(|| DEFAULT_SITE_URL.to_string())
-            .into();
+        let base_url = |key: &str, default: &str| -> Arc<str> {
+            non_blank(key)
+                .map(|url| url.trim_end_matches('/').to_string())
+                .unwrap_or_else(|| default.to_string())
+                .into()
+        };
+        let site_url = base_url("PUBLIC_SITE_URL", DEFAULT_SITE_URL);
+        // The admin lives on its own host (Phase 21 Decision 20).
+        let admin_url = base_url("PUBLIC_ADMIN_URL", DEFAULT_ADMIN_URL);
 
         let (Some(smtp_host), Some(smtp_username), Some(smtp_password), Some(from_address), Some(business_notify_address)) =
             (smtp_host, smtp_username, smtp_password, from_address, business_notify_address)
         else {
             tracing::warn!("email sending disabled: SES env vars not fully set");
-            return Self { settings: None, site_url };
+            return Self { settings: None, site_url, admin_url };
         };
 
         Self {
@@ -56,12 +63,18 @@ impl EmailConfig {
                 business_notify_address,
             })),
             site_url,
+            admin_url,
         }
     }
 
     /// The public site's base URL, no trailing slash.
     pub fn site_url(&self) -> &str {
         &self.site_url
+    }
+
+    /// The admin's base URL (`cms.` host), no trailing slash.
+    pub fn admin_url(&self) -> &str {
+        &self.admin_url
     }
 
     pub fn business_notify_address(&self) -> Option<String> {

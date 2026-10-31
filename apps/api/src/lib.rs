@@ -1,5 +1,6 @@
 pub mod email;
 pub mod error;
+pub mod order_emails;
 pub mod order_status;
 pub mod payment;
 pub mod rate_limit;
