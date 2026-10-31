@@ -1,0 +1,37 @@
+name: GHCR image exists
+description: >
+  Fail unless every given ghcr.io image:tag exists. Asks the registry API
+  directly with a short-lived pull token instead of `docker login`, so no
+  credentials are written to the runner's disk.
+inputs:
+  images:
+    description: Space-separated image names under ghcr.io (e.g. "owner/zainstreat-api owner/zainstreat-web")
+    required: true
+  tag:
+    required: true
+  token:
+    description: A token that can read the packages (github.token with packages:read)
+    required: true
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        IMAGES: ${{ inputs.images }}
+        TAG: ${{ inputs.tag }}
+        GH_TOKEN: ${{ inputs.token }}
+      run: |
+        accept="application/vnd.oci.image.index.v1+json,application/vnd.oci.image.manifest.v1+json,application/vnd.docker.distribution.manifest.list.v2+json,application/vnd.docker.distribution.manifest.v2+json"
+        for image in $IMAGES; do
+          pull=$(curl -fsS -u "token:$GH_TOKEN" "https://ghcr.io/token?scope=repository:$image:pull" | jq -r .token) \
+            || { echo "::error::Couldn't get a GHCR pull token for $image."; exit 1; }
+          echo "::add-mask::$pull"
+          code=$(curl -s -o /dev/null -w '%{http_code}' -I \
+            -H "Authorization: Bearer $pull" -H "Accept: $accept" \
+            "https://ghcr.io/v2/$image/manifests/$TAG")
+          case "$code" in
+            200) echo "ghcr.io/$image:$TAG exists." ;;
+            404) echo "::error::ghcr.io/$image:$TAG doesn't exist. Was it built by the Build workflow?"; exit 1 ;;
+            *)   echo "::error::GHCR answered $code for ghcr.io/$image:$TAG."; exit 1 ;;
+          esac
+        done

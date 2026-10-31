@@ -469,7 +469,9 @@ domain.
 
 _Why OIDC for AWS access from Actions:_ short-lived credentials scoped to
 one role, so there are no AWS access keys stored in GitHub to rotate or
-leak.
+leak. The role trusts GitHub's immutable subject for this repo
+(`repo:AbdulbasitSaid@16627656/zainstreat@1400619975:*`), which a renamed
+or recreated repo can't match.
 
 ## Summary Table
 
