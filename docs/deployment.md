@@ -26,12 +26,14 @@ is for emergencies only (see the end of this document).
    `zainstreat-web:<sha>` (with `DOMAIN` baked in, Phase 19). If staging
    is up, it also builds `zainstreat-web-staging:<sha>` for staging's
    domain and deploys staging.
-3. Check staging, then run **Promote** (`promote.yml`) with that full
-   commit SHA. It checks the images exist and that `cms.zainstreat.com`
-   resolves, then waits for a reviewer to approve the `production`
-   Environment before deploying. It never rebuilds.
+3. Check staging, then run **Promote** (`promote.yml`) from `master`,
+   leaving `sha` **empty** to ship the latest `master` commit. It checks
+   the images exist and that `cms.zainstreat.com` resolves, then waits
+   for a reviewer to approve the `production` Environment before
+   deploying. It never rebuilds. If Build hasn't finished for the newest
+   commit yet, Promote says the image doesn't exist; wait and re-run.
 
-**Rollback** is **Promote** with an earlier SHA. Repo → **Deployments** →
+**Rollback** is **Promote** with an earlier full 40-character SHA. Repo → **Deployments** →
 `production` lists what ran when.
 
 Every deploy goes through `_deploy.yml`, which:

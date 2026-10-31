@@ -1,14 +1,16 @@
 name: Promote
 
 # Phase 21: the only way production changes. Deploys images build.yml
-# already built for a commit — never rebuilds. Rollback is this workflow
-# with an earlier SHA (see the Deployments page for what ran when).
+# already built for a commit — never rebuilds. Leave `sha` empty to ship
+# the latest master commit; rollback is this workflow with an earlier SHA
+# (see the Deployments page for what ran when).
 on:
   workflow_dispatch:
     inputs:
       sha:
-        description: Full commit SHA to deploy (for rollback, an earlier one from the Deployments page)
-        required: true
+        description: Leave empty to deploy the latest master commit. For a rollback, a full earlier commit SHA from the Deployments page.
+        required: false
+        default: ""
       allow_env_changes:
         description: Comma-separated .env keys allowed to change value (leave empty unless a secret was deliberately changed)
         required: false
@@ -25,16 +27,26 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       repo: ${{ steps.check.outputs.repo }}
+      sha: ${{ steps.check.outputs.sha }}
     steps:
       - name: Check the SHA
         id: check
         env:
           OWNER: ${{ github.repository_owner }}
-          SHA: ${{ inputs.sha }}
+          INPUT_SHA: ${{ inputs.sha }}
+          HEAD_SHA: ${{ github.sha }}
         run: |
-          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::sha must be a full 40-character commit SHA."; exit 1; }
-          echo "owner=${OWNER,,}" >> "$GITHUB_OUTPUT"
-          echo "repo=ghcr.io/${OWNER,,}" >> "$GITHUB_OUTPUT"
+          # Empty = the commit this run was started from (master's head).
+          # Pasted values often carry stray spaces or capitals.
+          sha=$(printf '%s' "$INPUT_SHA" | tr -d '[:space:]' | tr 'A-F' 'a-f')
+          sha=${sha:-$HEAD_SHA}
+          [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::sha must be empty (latest master) or a full 40-character commit SHA."; exit 1; }
+          echo "Deploying $sha"
+          {
+            echo "sha=$sha"
+            echo "owner=${OWNER,,}"
+            echo "repo=ghcr.io/${OWNER,,}"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -43,7 +55,7 @@ jobs:
         uses: ./.github/actions/ghcr-image-exists
         with:
           images: ${{ steps.check.outputs.owner }}/zainstreat-api ${{ steps.check.outputs.owner }}/zainstreat-web
-          tag: ${{ inputs.sha }}
+          tag: ${{ steps.check.outputs.sha }}
           token: ${{ github.token }}
 
       # Decision 22: without the cms record, Caddy's ACME attempts fail
@@ -64,6 +76,6 @@ jobs:
     secrets: inherit
     with:
       environment: production
-      api_image: ${{ needs.verify.outputs.repo }}/zainstreat-api:${{ inputs.sha }}
-      web_image: ${{ needs.verify.outputs.repo }}/zainstreat-web:${{ inputs.sha }}
+      api_image: ${{ needs.verify.outputs.repo }}/zainstreat-api:${{ needs.verify.outputs.sha }}
+      web_image: ${{ needs.verify.outputs.repo }}/zainstreat-web:${{ needs.verify.outputs.sha }}
       allow_env_changes: ${{ inputs.allow_env_changes }}
