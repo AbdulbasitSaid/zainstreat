@@ -98,7 +98,7 @@
    (built into Postgres 17). A minimal public page,
    `/{locale}/order/{token}`, shows the invoice, the current status (as a
    plain label), and the "I've paid" button. The invoice email links to
-   it. Phase 21 turns this same page and token into the full tracking
+   it. Phase 22 turns this same page and token into the full tracking
    page, so no new mechanism is needed later. The page is `noindex`,
    disallowed in `robots.txt`, and sets `referrer: no-referrer` so the
    token isn't leaked to `wa.me` and other outbound links.
@@ -139,7 +139,7 @@
    your order once your payment has been verified."* **No VAT line**
    (KOR). Plain-text email, English only. Both choices continue Phase 17
    (HTML email and per-locale emails stay deferred; French arrives in
-   Phase 23). No PDF: the page can be printed, and a PDF crate isn't worth
+   Phase 24). No PDF: the page can be printed, and a PDF crate isn't worth
    it yet.
 
 9. **Emails in this phase** (all fire-and-forget through the existing
@@ -151,7 +151,7 @@
    - Owner, payment claimed: "Customer says they've paid order ZTM-N
      (€X). Check the bank alert, then confirm payment in admin," plus the
      admin link.
-   Status-change emails to the customer belong to Phase 21.
+   Status-change emails to the customer belong to Phase 22.
 
 10. **New API env var `PUBLIC_SITE_URL`** (`https://${DOMAIN}` in prod
     compose, `http://localhost:3000` in dev) for links in emails.
@@ -159,7 +159,7 @@
     next-intl proxy sends them to the visitor's locale.
 
 11. **Completing an order is admin-only in this phase.** Customer
-    confirmation of receipt/collection is Phase 21.
+    confirmation of receipt/collection is Phase 22.
 
 12. **Admin UI.** The status dropdown is replaced by `AdminOrderActions`:
     one primary button for the next step ("Confirm payment", "Ready for
@@ -173,14 +173,14 @@
 ## Out of scope
 
 - The full order-tracking page, customer status emails, customer
-  "received/collected" confirmation, and admin auto-refresh: **Phase 21**.
+  "received/collected" confirmation, and admin auto-refresh: **Phase 22**.
 - iDEAL or any payment provider, and the VAT treatment that comes with it
   (client call: settle when iDEAL is built).
 - Automatically cancelling unpaid orders after some time.
 - Delivery fees (still `0`, Phase 10 Decision 9).
 - An admin-editable settings page for bank details (Decision 5 uses env
-  vars; Phase 24 is the admin-content phase).
-- Catering quotations paying through this flow: **Phase 22**.
+  vars; Phase 25 is the admin-content phase).
+- Catering quotations paying through this flow: **Phase 23**.
 - PDF invoices and HTML email templates.
 
 ## Open risks flagged during planning

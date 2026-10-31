@@ -391,6 +391,10 @@ Inserted 2026-10-31 (see
 
 ## Phase 22 — Customer Order Tracking & Status Emails
 
+Planned 2026-10-31 (see
+`specs/2026-10-31-phase-22-order-tracking/requirement.md`). Builds on
+Phase 20 (merged 2026-10-31) and Phase 21's Group 13 reconciliation.
+
 - A public order-status page reachable by an unguessable link (no
   customer accounts), showing the order's progress through the Phase 20
   lifecycle.
