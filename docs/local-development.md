@@ -4,6 +4,9 @@
 2. `docker compose up`
 3. Check:
    - Web: http://localhost:3000
+   - Admin: http://cms.localhost:3000 (the admin lives on the `cms.`
+     subdomain, as in production; browsers resolve `*.localhost`
+     natively, and `localhost:3000/admin` redirects there)
    - API health: http://localhost:8080/health
    - MinIO console: http://localhost:9001 (login with `MINIO_ROOT_USER` /
      `MINIO_ROOT_PASSWORD` from `.env`)

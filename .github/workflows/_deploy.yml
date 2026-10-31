@@ -1,0 +1,213 @@
+name: Deploy (reusable)
+
+# Phase 21: the one path every deploy goes through — staging (build.yml,
+# staging-up.yml) and production (promote.yml). Renders the server's .env
+# from the target GitHub Environment, checks it against the live one,
+# ships the compose files, pulls the given images and health-checks.
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: GitHub Environment to deploy (staging | production)
+        type: string
+        required: true
+      host:
+        description: Server IP; empty uses the Environment's DEPLOY_HOST variable
+        type: string
+        default: ""
+      domain:
+        description: Site domain; empty uses the DOMAIN repository variable
+        type: string
+        default: ""
+      api_image:
+        type: string
+        required: true
+      web_image:
+        type: string
+        required: true
+      allow_env_changes:
+        description: Comma-separated .env keys allowed to change value (Decision 14)
+        type: string
+        default: ""
+      enforce_env_parity:
+        description: "auto = enforce on production, report-only on staging"
+        type: string
+        default: auto
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    concurrency:
+      group: deploy-${{ inputs.environment }}
+      cancel-in-progress: false
+    env:
+      HOST: ${{ inputs.host || vars.DEPLOY_HOST }}
+      DOMAIN: ${{ inputs.domain || vars.DOMAIN }}
+      C: docker compose -f docker-compose.yml -f docker-compose.prod.yml
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check inputs
+        run: |
+          test -n "$HOST" || { echo "::error::No host: pass one or set DEPLOY_HOST on the ${{ inputs.environment }} Environment."; exit 1; }
+          test -n "$DOMAIN" || { echo "::error::No domain: pass one or set the DOMAIN repository variable."; exit 1; }
+
+      - name: Set up SSH
+        uses: ./.github/actions/ssh-target
+        with:
+          host: ${{ env.HOST }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      # Decision 18. A box built by infra/bootstrap.sh writes one of the two
+      # markers; production predates the script, so an existing
+      # docker-compose.yml also counts as ready.
+      - name: Wait for bootstrap
+        run: |
+          for i in $(seq 1 60); do
+            state=$(ssh target 'cd /opt/zainstreat 2>/dev/null || exit 0
+              if [ -f .bootstrap-failed ]; then echo failed
+              elif [ -f .bootstrap-done ] || [ -f docker-compose.yml ]; then echo ready
+              fi' 2>/dev/null || true)
+            case "$state" in
+              ready) echo "Server ready."; exit 0 ;;
+              failed) break ;;
+            esac
+            sleep 10
+          done
+          echo "::error::Bootstrap ${state:-timed out}. Last lines of its log:"
+          ssh target 'cat /opt/zainstreat/.bootstrap-failed 2>/dev/null; tail -n 100 /var/log/zainstreat-bootstrap.log' || true
+          exit 1
+
+      # Decision 14: every value single-quoted, so `$` is literal; values
+      # come in via env, never interpolated into the script.
+      - name: Render .env.next
+        env:
+          V_POSTGRES_USER: ${{ vars.POSTGRES_USER }}
+          V_POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          V_POSTGRES_DB: ${{ vars.POSTGRES_DB }}
+          V_MINIO_ROOT_USER: ${{ vars.MINIO_ROOT_USER }}
+          V_MINIO_ROOT_PASSWORD: ${{ secrets.MINIO_ROOT_PASSWORD }}
+          V_RUST_LOG: ${{ vars.RUST_LOG }}
+          V_LOG_FORMAT: ${{ vars.LOG_FORMAT }}
+          V_SES_SMTP_HOST: ${{ vars.SES_SMTP_HOST }}
+          V_SES_SMTP_USERNAME: ${{ secrets.SES_SMTP_USERNAME }}
+          V_SES_SMTP_PASSWORD: ${{ secrets.SES_SMTP_PASSWORD }}
+          V_EMAIL_FROM_ADDRESS: ${{ vars.EMAIL_FROM_ADDRESS }}
+          V_EMAIL_BUSINESS_NOTIFY_ADDRESS: ${{ vars.EMAIL_BUSINESS_NOTIFY_ADDRESS }}
+          V_DOZZLE_BASIC_AUTH_USER: ${{ vars.DOZZLE_BASIC_AUTH_USER }}
+          V_DOZZLE_BASIC_AUTH_HASH: ${{ secrets.DOZZLE_BASIC_AUTH_HASH }}
+          V_ACME_EMAIL: ${{ vars.ACME_EMAIL }}
+          V_NOINDEX: ${{ vars.NOINDEX || 'false' }}
+          V_COOKIE_SECURE: "true"
+          V_DOMAIN: ${{ env.DOMAIN }}
+          V_API_IMAGE: ${{ inputs.api_image }}
+          V_WEB_IMAGE: ${{ inputs.web_image }}
+        run: |
+          umask 077
+          python3 - <<'PY'
+          import os, sys
+          required = {"POSTGRES_USER", "POSTGRES_PASSWORD", "POSTGRES_DB",
+                      "MINIO_ROOT_USER", "MINIO_ROOT_PASSWORD", "DOMAIN",
+                      "ACME_EMAIL", "API_IMAGE", "WEB_IMAGE"}
+          lines, bad = [], []
+          for name, value in sorted(os.environ.items()):
+              if not name.startswith("V_"):
+                  continue
+              key = name[2:]
+              if not value:
+                  if key in required:
+                      bad.append(f"{key} is empty")
+                  continue
+              if "'" in value or "\n" in value or "\r" in value:
+                  bad.append(f"{key} contains a quote or newline")
+                  continue
+              lines.append(f"{key}='{value}'")
+          if bad:
+              for b in bad:
+                  print(f"::error::{b}")
+              sys.exit(1)
+          with open(".env.next", "w") as f:
+              f.write("# Generated by .github/workflows/_deploy.yml — do not edit on the server.\n")
+              f.write("\n".join(lines) + "\n")
+          print(f"Rendered {len(lines)} keys.")
+          PY
+
+      - name: Upload files
+        run: |
+          ssh target 'mkdir -p /opt/zainstreat/bin'
+          scp docker-compose.yml docker-compose.prod.yml Caddyfile .env.next \
+            infra/backup-stream.sh infra/env-parity.sh target:/opt/zainstreat/
+          ssh target 'cd /opt/zainstreat && chmod 600 .env.next \
+            && install -m 755 backup-stream.sh bin/backup-stream \
+            && install -m 755 env-parity.sh bin/env-parity \
+            && rm -f backup-stream.sh env-parity.sh'
+          rm -f .env.next
+
+      # Decision 15: the backup key may only run bin/backup-stream.
+      - name: Authorize backup key
+        env:
+          BACKUP_SSH_PUBLIC_KEY: ${{ vars.BACKUP_SSH_PUBLIC_KEY }}
+        run: |
+          if [ -z "$BACKUP_SSH_PUBLIC_KEY" ]; then
+            echo "::warning::BACKUP_SSH_PUBLIC_KEY not set on ${{ inputs.environment }}; backups won't be able to connect."
+            exit 0
+          fi
+          LINE="restrict,command=\"/opt/zainstreat/bin/backup-stream\" $BACKUP_SSH_PUBLIC_KEY zainstreat-backup"
+          printf '%s\n' "$LINE" | ssh target 'f=~/.ssh/authorized_keys
+            grep -v " zainstreat-backup$" "$f" > "$f.new" || true
+            cat >> "$f.new"
+            chmod 600 "$f.new" && mv "$f.new" "$f"'
+
+      - name: Env parity preflight
+        env:
+          ENFORCE: ${{ inputs.enforce_env_parity == 'auto' && (inputs.environment == 'production' && 'true' || 'false') || inputs.enforce_env_parity }}
+          ALLOWED: ${{ inputs.allow_env_changes }}
+        run: |
+          ssh target "/opt/zainstreat/bin/env-parity '$ENFORCE' '$ALLOWED'"
+          ssh target 'cd /opt/zainstreat && mv .env.next .env'
+
+      - name: Pull and start
+        env:
+          PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN || github.token }}
+        run: |
+          printf '%s\n' "$PULL_TOKEN" | ssh target "docker login ghcr.io -u '${{ github.actor }}' --password-stdin"
+          ssh target "set -e; cd /opt/zainstreat
+            trap 'docker logout ghcr.io >/dev/null' EXIT
+            $C pull
+            $C up -d --remove-orphans
+            $C restart caddy
+            # Superseded images only — never volumes (Phase 18 Decision 9).
+            docker image prune -f"
+
+      - name: Health check
+        run: |
+          urls="https://api.$DOMAIN/health https://$DOMAIN/en https://cms.$DOMAIN/login"
+          for i in $(seq 1 30); do
+            failed=""
+            for u in $urls; do
+              code=$(curl -s -o /dev/null -m 10 -w '%{http_code}' "$u" || true)
+              case "$code" in 2*|3*) ;; *) failed="$failed $u=$code" ;; esac
+            done
+            [ -z "$failed" ] && { echo "Healthy: $urls"; exit 0; }
+            echo "Waiting:$failed"
+            sleep 10
+          done
+          echo "::error::Not healthy after 5 minutes:$failed"
+          ssh target "cd /opt/zainstreat && $C ps && $C logs --tail 100 api web caddy" || true
+          exit 1
+
+      - name: Summary
+        run: |
+          {
+            echo "### Deployed to ${{ inputs.environment }}"
+            echo "- Site: https://$DOMAIN"
+            echo "- Admin: https://cms.$DOMAIN"
+            echo "- API image: \`${{ inputs.api_image }}\`"
+            echo "- Web image: \`${{ inputs.web_image }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"

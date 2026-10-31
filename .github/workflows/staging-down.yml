@@ -1,0 +1,53 @@
+name: Staging down
+
+# Phase 21: delete the ephemeral staging box so it stops costing money.
+# Its data goes with it; staging-up.yml reseeds a fresh one. The name is
+# hard-coded and the env=staging tag is checked (the IAM role also refuses
+# to delete anything untagged), so this can never touch production.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type DELETE STAGING to confirm
+        required: true
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: staging-up
+
+env:
+  INSTANCE: zainstreat-staging
+
+jobs:
+  delete:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify confirmation phrase
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          [ "$CONFIRM" = "DELETE STAGING" ] || { echo "::error::Confirmation phrase didn't match 'DELETE STAGING'."; exit 1; }
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Delete instance
+        run: |
+          if ! aws lightsail get-instance --instance-name "$INSTANCE" > /dev/null 2>&1; then
+            echo "$INSTANCE doesn't exist; nothing to do."
+            exit 0
+          fi
+          tag=$(aws lightsail get-instance --instance-name "$INSTANCE" --query "instance.tags[?key=='env'].value | [0]" --output text)
+          [ "$tag" = "staging" ] || { echo "::error::$INSTANCE isn't tagged env=staging (got '$tag'); refusing."; exit 1; }
+          aws lightsail delete-instance --instance-name "$INSTANCE" --force-delete-add-ons > /dev/null
+          for i in $(seq 1 30); do
+            aws lightsail get-instance --instance-name "$INSTANCE" > /dev/null 2>&1 || { echo "Deleted."; exit 0; }
+            sleep 10
+          done
+          echo "::error::$INSTANCE still exists after 5 minutes."
+          exit 1

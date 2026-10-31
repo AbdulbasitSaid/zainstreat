@@ -1,0 +1,74 @@
+name: Backup
+
+# Phase 21: nightly (production) and on-demand backups to S3. The runner
+# pulls a pg_dump and a MinIO archive over SSH using the backup key, whose
+# forced command (infra/backup-stream.sh) can do nothing else, and uploads
+# them with OIDC credentials — the server never holds AWS keys.
+on:
+  schedule:
+    - cron: "30 2 * * *"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Which server to back up
+        type: choice
+        options: [production, staging]
+        default: production
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    # production-backup: no reviewer (so the cron isn't stuck waiting), and
+    # holds only the backup key — never the deploy key (Decision 15).
+    environment: ${{ (inputs.environment || 'production') == 'production' && 'production-backup' || 'staging' }}
+    env:
+      TARGET: ${{ inputs.environment || 'production' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Find staging
+        id: staging
+        if: env.TARGET == 'staging'
+        uses: ./.github/actions/staging-host
+        with:
+          role-arn: ${{ vars.AWS_ROLE_ARN }}
+          region: ${{ vars.AWS_REGION }}
+          dns-suffix: ${{ vars.STAGING_DNS_SUFFIX }}
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Set up SSH
+        uses: ./.github/actions/ssh-target
+        with:
+          host: ${{ env.TARGET == 'staging' && steps.staging.outputs.ip || vars.DEPLOY_HOST }}
+          key: ${{ secrets.BACKUP_SSH_KEY }}
+
+      - name: Stream and upload
+        env:
+          BUCKET: ${{ vars.BACKUP_BUCKET }}
+        run: |
+          test -n "$BUCKET" || { echo "::error::Set the BACKUP_BUCKET repository variable."; exit 1; }
+          ts=$(date -u +%Y%m%dT%H%M%SZ)
+          prefix="s3://$BUCKET/$TARGET/$ts"
+          # The forced command ignores everything but the word db/minio.
+          ssh target db > db.dump
+          ssh target minio > minio.tgz
+          test -s db.dump && test -s minio.tgz || { echo "::error::A backup stream came back empty."; exit 1; }
+          head -c 5 db.dump | grep -q PGDMP || { echo "::error::db.dump isn't a pg_dump custom-format file."; exit 1; }
+          aws s3 cp db.dump "$prefix/db.dump" --only-show-errors
+          aws s3 cp minio.tgz "$prefix/minio.tgz" --only-show-errors
+          {
+            echo "### Backup of $TARGET"
+            echo "- Prefix: \`$TARGET/$ts\` (pass this to **Restore**)"
+            echo "- db.dump: $(du -h db.dump | cut -f1)"
+            echo "- minio.tgz: $(du -h minio.tgz | cut -f1)"
+          } >> "$GITHUB_STEP_SUMMARY"
+          rm -f db.dump minio.tgz

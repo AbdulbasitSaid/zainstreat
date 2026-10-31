@@ -1,0 +1,37 @@
+name: SSH target
+description: >
+  Write an SSH key and a `target` host alias for the deploy user, so later
+  steps can run `ssh target ...` / `scp ... target:...`. Waits for port 22.
+inputs:
+  host:
+    required: true
+  key:
+    description: Private key (DEPLOY_SSH_KEY or BACKUP_SSH_KEY)
+    required: true
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        HOST: ${{ inputs.host }}
+        KEY: ${{ inputs.key }}
+      run: |
+        test -n "$HOST" || { echo "::error::No host given."; exit 1; }
+        test -n "$KEY" || { echo "::error::No SSH key given (is the secret set on this Environment?)."; exit 1; }
+        install -d -m 700 ~/.ssh
+        printf '%s\n' "$KEY" > ~/.ssh/id_target
+        chmod 600 ~/.ssh/id_target
+        cat > ~/.ssh/config <<CFG
+        Host target
+          HostName $HOST
+          User deploy
+          IdentityFile ~/.ssh/id_target
+          IdentitiesOnly yes
+          BatchMode yes
+          ConnectTimeout 10
+        CFG
+        for i in $(seq 1 30); do
+          ssh-keyscan -T 5 "$HOST" >> ~/.ssh/known_hosts 2>/dev/null && break
+          sleep 10
+        done
+        test -s ~/.ssh/known_hosts || { echo "::error::$HOST never answered on port 22."; exit 1; }

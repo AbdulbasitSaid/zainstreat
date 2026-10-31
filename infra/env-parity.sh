@@ -20,9 +20,18 @@ fi
 
 # python3 ships with Amazon Linux 2023 (dnf depends on it); jq doesn't.
 hashes() {
-  # The live .env predates API_IMAGE/WEB_IMAGE (required by
-  # docker-compose.prod.yml); shell env wins over --env-file, so pin both.
-  API_IMAGE=parity WEB_IMAGE=parity docker compose --env-file "$1" -f docker-compose.yml -f docker-compose.prod.yml config --format json \
+  # The live .env may predate keys docker-compose.prod.yml now requires.
+  # Shell env wins over --env-file, so pin the image refs (they change on
+  # every deploy anyway) and give a missing ACME_EMAIL a placeholder, which
+  # then shows up as a changed key.
+  local acme=()
+  grep -q '^ACME_EMAIL=' "$1" || acme=(ACME_EMAIL=missing)
+  # env -i: a variable exported in the calling shell would otherwise beat
+  # --env-file on *both* sides and hide a real difference.
+  # ${acme[@]+...}: an empty array trips `set -u` on older bash.
+  env -i PATH="$PATH" HOME="$HOME" ${DOCKER_HOST:+DOCKER_HOST="$DOCKER_HOST"} \
+    ${acme[@]+"${acme[@]}"} API_IMAGE=parity WEB_IMAGE=parity \
+    docker compose --env-file "$1" -f docker-compose.yml -f docker-compose.prod.yml config --format json \
     | python3 -c '
 import hashlib, json, sys
 for name, svc in json.load(sys.stdin)["services"].items():
@@ -32,8 +41,15 @@ for name, svc in json.load(sys.stdin)["services"].items():
 ' | sort
 }
 
+# Hash into files rather than <(...) so a compose/parse failure on either
+# side aborts the deploy instead of looking like "every key changed".
+OLD=$(mktemp); NEW=$(mktemp)
+trap 'rm -f "$OLD" "$NEW"' EXIT
+hashes .env > "$OLD" || { echo "::error::Could not resolve the live .env through compose." >&2; exit 1; }
+hashes .env.next > "$NEW" || { echo "::error::Could not resolve .env.next through compose." >&2; exit 1; }
+
 # Image refs change on every deploy by design.
-CHANGED=$(diff <(hashes .env) <(hashes .env.next) \
+CHANGED=$(diff "$OLD" "$NEW" \
   | awk '/^[<>]/ {print $2}' | sort -u \
   | grep -vE '\.(API_IMAGE|WEB_IMAGE)$' || true)
 
