@@ -43,7 +43,12 @@ export default async function AdminOrderDetailPage({
         <AdminStatusBadge status={order.status} />
       </div>
 
-      <AdminOrderActions orderId={order.id} status={order.status} next={order.next_statuses} />
+      <AdminOrderActions
+        orderId={order.id}
+        status={order.status}
+        next={order.next_statuses}
+        completedByCustomer={order.completed_by === "customer"}
+      />
 
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         <Field label="Payment reference" value={order.payment_reference} />
@@ -59,6 +64,19 @@ export default async function AdminOrderDetailPage({
         {order.payment_confirmed_at && (
           <Field label="Payment confirmed" value={formatDateTime(order.payment_confirmed_at)} />
         )}
+        {order.ready_at && (
+          <Field
+            label={order.delivery_type === "pickup" ? "Ready for collection" : "Out for delivery"}
+            value={formatDateTime(order.ready_at)}
+          />
+        )}
+        {order.completed_at && (
+          <Field
+            label={order.completed_by === "customer" ? "Completed by customer" : "Completed by admin"}
+            value={formatDateTime(order.completed_at)}
+          />
+        )}
+        {order.cancelled_at && <Field label="Cancelled" value={formatDateTime(order.cancelled_at)} />}
         <Field label="Last updated" value={formatDateTime(order.updated_at)} />
       </div>
 

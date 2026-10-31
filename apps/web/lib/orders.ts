@@ -39,6 +39,8 @@ export interface CreateOrderRequest {
   delivery_address: string | null;
   notes: string | null;
   items: OrderItemRequest[];
+  // The site language, for the customer's emails (Phase 22 Decision 5).
+  locale: string;
 }
 
 export interface OrderItemResponse {
@@ -76,6 +78,13 @@ export interface OrderResponse {
   payment_reference: string;
   // null when the business hasn't configured bank details (Phase 20 Decision 5).
   payment: PaymentInstructions | null;
+  // When each tracking step was reached; null until then (Phase 22 Decision 4).
+  payment_claimed_at: string | null;
+  payment_confirmed_at: string | null;
+  ready_at: string | null;
+  completed_at: string | null;
+  cancelled_at: string | null;
+  completed_by: "customer" | "admin" | null;
 }
 
 export interface UnavailableOrderItem {

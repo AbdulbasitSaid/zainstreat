@@ -48,6 +48,11 @@ export interface AdminOrder {
   payment_reference: string;
   payment_claimed_at: string | null;
   payment_confirmed_at: string | null;
+  ready_at: string | null;
+  completed_at: string | null;
+  cancelled_at: string | null;
+  // Who completed it; a customer-completed order can be reopened (Phase 22 Decision 8).
+  completed_by: "customer" | "admin" | null;
   // admin_next() in apps/api/src/order_status.rs, computed by the API so
   // there's no TypeScript copy of the transition rules (Phase 20 open risk 4).
   next_statuses: OrderStatus[];
@@ -67,4 +72,6 @@ export interface AdminOrdersSummary {
   counts: Record<OrderStatus, number>;
   today: number;
   recent: OrderSummary[];
+  // Orders in payment_claimed, for the auto-refresh badge (Phase 22 Decision 9).
+  claimed_ids: number[];
 }
