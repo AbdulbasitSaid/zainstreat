@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getAdminOrder } from "@/lib/admin-orders-api";
 import { AdminStatusBadge } from "@/components/admin-status-badge";
-import { AdminOrderStatusSelect } from "@/components/admin-order-status-select";
+import { AdminOrderActions } from "@/components/admin-order-actions";
 import { formatDateTime, formatPrice } from "@/lib/format";
 
 export const metadata: Metadata = {
@@ -43,15 +43,22 @@ export default async function AdminOrderDetailPage({
         <AdminStatusBadge status={order.status} />
       </div>
 
-      <AdminOrderStatusSelect orderId={order.id} status={order.status} />
+      <AdminOrderActions orderId={order.id} status={order.status} next={order.next_statuses} />
 
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <Field label="Payment reference" value={order.payment_reference} />
         <Field label="Customer" value={order.customer_name} />
         <Field label="Email" value={order.customer_email} />
         <Field label="Phone" value={order.customer_phone} />
         <Field label="Type" value={order.delivery_type} />
         <Field label="Address" value={order.delivery_address ?? "—"} />
         <Field label="Placed" value={formatDateTime(order.created_at)} />
+        {order.payment_claimed_at && (
+          <Field label="Customer says paid" value={formatDateTime(order.payment_claimed_at)} />
+        )}
+        {order.payment_confirmed_at && (
+          <Field label="Payment confirmed" value={formatDateTime(order.payment_confirmed_at)} />
+        )}
         <Field label="Last updated" value={formatDateTime(order.updated_at)} />
       </div>
 

@@ -1,5 +1,7 @@
 pub mod email;
 pub mod error;
+pub mod order_status;
+pub mod payment;
 pub mod rate_limit;
 pub mod routes;
 pub mod validation;
@@ -32,6 +34,7 @@ pub struct AppState {
     pub pool: PgPool,
     pub media: MediaConfig,
     pub email: email::EmailConfig,
+    pub payment: payment::PaymentConfig,
 }
 
 impl FromRef<AppState> for PgPool {
@@ -49,6 +52,12 @@ impl FromRef<AppState> for MediaConfig {
 impl FromRef<AppState> for email::EmailConfig {
     fn from_ref(state: &AppState) -> email::EmailConfig {
         state.email.clone()
+    }
+}
+
+impl FromRef<AppState> for payment::PaymentConfig {
+    fn from_ref(state: &AppState) -> payment::PaymentConfig {
+        state.payment.clone()
     }
 }
 
@@ -86,6 +95,7 @@ pub async fn build_app(
     cookie_secure: bool,
     media: MediaConfig,
     email: email::EmailConfig,
+    payment: payment::PaymentConfig,
 ) -> Result<Router, sqlx::Error> {
     let session_store = PostgresStore::new(pool.clone());
     session_store.migrate().await?;
@@ -113,5 +123,5 @@ pub async fn build_app(
                 )
                 .layer(PropagateRequestIdLayer::x_request_id()),
         )
-        .with_state(AppState { pool, media, email }))
+        .with_state(AppState { pool, media, email, payment }))
 }

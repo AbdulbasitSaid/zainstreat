@@ -1,0 +1,25 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO orders\n            (customer_name, customer_email, customer_phone, delivery_type,\n             notes, subtotal, total, status)\n        VALUES ($1, 'c@example.com', '+31612345678', $4, 'no onions', $2, $2, $3)\n        RETURNING id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Numeric",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "9d7d9333945e28ba30243764142522de8ed4dd89d9b31dff3ce6daafb3dca6fa"
+}

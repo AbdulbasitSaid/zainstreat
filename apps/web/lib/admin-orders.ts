@@ -1,22 +1,22 @@
-export const ORDER_STATUSES = [
-  "new",
-  "confirmed",
-  "preparing",
-  "ready",
-  "completed",
-  "cancelled",
-] as const;
+import type { OrderStatus } from "@/lib/orders";
 
-export type OrderStatus = (typeof ORDER_STATUSES)[number];
+export { ORDER_STATUSES, isOrderStatus, type OrderStatus } from "@/lib/orders";
 
-export function isOrderStatus(value: string): value is OrderStatus {
-  return (ORDER_STATUSES as readonly string[]).includes(value);
-}
+export const STATUS_LABELS: Record<OrderStatus, string> = {
+  awaiting_payment: "Awaiting payment",
+  payment_claimed: "Payment claimed",
+  processing: "Processing",
+  ready_for_collection: "Ready for collection",
+  out_for_delivery: "On the way",
+  completed: "Completed",
+  cancelled: "Cancelled",
+};
 
 export const ORDERS_PAGE_SIZE = 25;
 
 export interface OrderSummary {
   id: number;
+  payment_reference: string;
   customer_name: string;
   delivery_type: "pickup" | "delivery";
   total: string;
@@ -45,6 +45,12 @@ export interface AdminOrder {
   delivery_fee: string;
   total: string;
   status: OrderStatus;
+  payment_reference: string;
+  payment_claimed_at: string | null;
+  payment_confirmed_at: string | null;
+  // admin_next() in apps/api/src/order_status.rs, computed by the API so
+  // there's no TypeScript copy of the transition rules (Phase 20 open risk 4).
+  next_statuses: OrderStatus[];
   created_at: string;
   updated_at: string;
   items: AdminOrderItem[];

@@ -6,7 +6,10 @@ use std::sync::Arc;
 #[derive(Clone)]
 pub struct EmailConfig {
     settings: Option<Arc<SesSettings>>,
+    site_url: Arc<str>,
 }
+
+const DEFAULT_SITE_URL: &str = "http://localhost:3000";
 
 struct SesSettings {
     smtp_host: String,
@@ -30,12 +33,18 @@ impl EmailConfig {
         let smtp_password = non_blank("SES_SMTP_PASSWORD");
         let from_address = non_blank("EMAIL_FROM_ADDRESS");
         let business_notify_address = non_blank("EMAIL_BUSINESS_NOTIFY_ADDRESS");
+        // Optional, for links in emails — a missing value never turns email
+        // off (Phase 20 Decision 10).
+        let site_url: Arc<str> = non_blank("PUBLIC_SITE_URL")
+            .map(|url| url.trim_end_matches('/').to_string())
+            .unwrap_or_else(|| DEFAULT_SITE_URL.to_string())
+            .into();
 
         let (Some(smtp_host), Some(smtp_username), Some(smtp_password), Some(from_address), Some(business_notify_address)) =
             (smtp_host, smtp_username, smtp_password, from_address, business_notify_address)
         else {
             tracing::warn!("email sending disabled: SES env vars not fully set");
-            return Self { settings: None };
+            return Self { settings: None, site_url };
         };
 
         Self {
@@ -46,7 +55,13 @@ impl EmailConfig {
                 from_address,
                 business_notify_address,
             })),
+            site_url,
         }
+    }
+
+    /// The public site's base URL, no trailing slash.
+    pub fn site_url(&self) -> &str {
+        &self.site_url
     }
 
     pub fn business_notify_address(&self) -> Option<String> {

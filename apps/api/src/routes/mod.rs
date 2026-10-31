@@ -18,6 +18,11 @@ pub fn api_router() -> Router<AppState> {
         .route("/categories", get(categories::list_categories))
         .route("/menu-items", get(menu_items::list_menu_items))
         .route("/orders", post(orders::create_order))
+        .route("/orders/by-token/{token}", get(orders::get_order_by_token))
+        .route(
+            "/orders/by-token/{token}/payment-claim",
+            post(orders::claim_payment).route_layer(crate::rate_limit::enquiry_rate_limiter()),
+        )
         .route(
             "/catering-enquiries",
             post(catering_enquiries::create_catering_enquiry)

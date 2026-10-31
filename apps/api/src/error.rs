@@ -37,6 +37,7 @@ pub enum AppError {
     CategoryHasActiveItems(Vec<BlockingMenuItem>),
     CategoryArchived,
     Conflict(serde_json::Value),
+    InvalidStatusTransition,
     Internal,
 }
 
@@ -149,6 +150,14 @@ impl IntoResponse for AppError {
                 Json(json!({ "error": "conflict", "current": current })),
             )
                 .into_response(),
+            AppError::InvalidStatusTransition => {
+                tracing::warn!("order status transition rejected");
+                (
+                    StatusCode::CONFLICT,
+                    Json(json!({ "error": "invalid_status_transition" })),
+                )
+                    .into_response()
+            }
             AppError::Internal => {
                 tracing::error!("internal server error");
                 (

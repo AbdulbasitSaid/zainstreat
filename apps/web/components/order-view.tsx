@@ -10,7 +10,9 @@ import { OrderSuccess } from "@/components/order-success";
 import { useCart } from "@/lib/cart-context";
 import { submitOrder, type OrderResponse, type UnavailableOrderItem } from "@/lib/orders";
 
-const LAST_ORDER_KEY = "zainstreat:last-order:v1";
+// v2 (Phase 20): orders now carry public_token/payment, so a stored v1 order
+// is never shown.
+const LAST_ORDER_KEY = "zainstreat:last-order:v2";
 
 type Step = "details" | "review";
 

@@ -6,6 +6,31 @@ export interface OrderItemRequest {
 
 export type DeliveryType = "pickup" | "delivery";
 
+// Mirrors ORDER_STATUSES in apps/api/src/order_status.rs and the CHECK on
+// orders.status (Phase 20 Decision 1).
+export const ORDER_STATUSES = [
+  "awaiting_payment",
+  "payment_claimed",
+  "processing",
+  "ready_for_collection",
+  "out_for_delivery",
+  "completed",
+  "cancelled",
+] as const;
+
+export type OrderStatus = (typeof ORDER_STATUSES)[number];
+
+export function isOrderStatus(value: string): value is OrderStatus {
+  return (ORDER_STATUSES as readonly string[]).includes(value);
+}
+
+// Order tokens are UUIDs (orders.public_token); anything else can't match.
+const ORDER_TOKEN_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function isOrderToken(value: string): boolean {
+  return ORDER_TOKEN_PATTERN.test(value);
+}
+
 export interface CreateOrderRequest {
   customer_name: string;
   customer_email: string;
@@ -24,6 +49,15 @@ export interface OrderItemResponse {
   subtotal: string;
 }
 
+export interface PaymentInstructions {
+  account_name: string;
+  iban: string;
+  bic: string | null;
+  // Chamber of Commerce number, only when BUSINESS_KVK is set (Phase 20 open risk 2).
+  kvk: string | null;
+  reference: string;
+}
+
 export interface OrderResponse {
   id: number;
   customer_name: string;
@@ -35,9 +69,13 @@ export interface OrderResponse {
   subtotal: string;
   delivery_fee: string;
   total: string;
-  status: string;
+  status: OrderStatus;
   created_at: string;
   items: OrderItemResponse[];
+  public_token: string;
+  payment_reference: string;
+  // null when the business hasn't configured bank details (Phase 20 Decision 5).
+  payment: PaymentInstructions | null;
 }
 
 export interface UnavailableOrderItem {

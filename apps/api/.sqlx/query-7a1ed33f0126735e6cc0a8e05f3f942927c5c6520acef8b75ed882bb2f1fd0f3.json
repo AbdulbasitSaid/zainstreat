@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT pg_get_constraintdef(oid) as \"definition!\"\n        FROM pg_constraint\n        WHERE conname = 'orders_status_check'\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "definition!",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "7a1ed33f0126735e6cc0a8e05f3f942927c5c6520acef8b75ed882bb2f1fd0f3"
+}

@@ -1,10 +1,16 @@
 use crate::email::EmailConfig;
 use crate::error::{AppError, FieldError, UnavailableItem};
+use crate::payment::{payment_reference, PaymentConfig, PaymentInstructions};
 use crate::validation::{is_valid_email, is_valid_phone};
-use axum::{extract::State, http::StatusCode, Json};
+use axum::{
+    extract::{Path, State},
+    http::StatusCode,
+    Json,
+};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
+use uuid::Uuid;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -60,6 +66,11 @@ pub struct OrderResponse {
     pub status: String,
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub items: Vec<OrderItemResponse>,
+    /// The unguessable key for `/order/{token}` (Phase 20 Decision 4).
+    pub public_token: Uuid,
+    pub payment_reference: String,
+    /// `None` when no bank details are configured (Decision 5).
+    pub payment: Option<PaymentInstructions>,
 }
 
 const NAME_MIN_LENGTH: usize = 2;
@@ -142,6 +153,7 @@ struct PricedLine {
 pub async fn create_order(
     State(pool): State<PgPool>,
     State(email): State<EmailConfig>,
+    State(payment): State<PaymentConfig>,
     Json(payload): Json<CreateOrderRequest>,
 ) -> Result<(StatusCode, Json<OrderResponse>), AppError> {
     let field_errors = validate(&payload);
@@ -254,7 +266,9 @@ pub async fn create_order(
             (customer_name, customer_email, customer_phone, delivery_type,
              delivery_address, notes, subtotal, delivery_fee, total)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-        RETURNING id, status, created_at as "created_at: chrono::DateTime<chrono::Utc>"
+        RETURNING id, status, public_token,
+                  created_at as "created_at: chrono::DateTime<chrono::Utc>",
+                  to_char(created_at AT TIME ZONE 'Europe/Amsterdam', 'DD-MM-YYYY HH24:MI') as "placed_at!"
         "#,
         payload.customer_name,
         payload.customer_email,
@@ -302,31 +316,229 @@ pub async fn create_order(
 
     tx.commit().await?;
 
+    let response = OrderResponse {
+        id: order.id,
+        customer_name: payload.customer_name,
+        customer_email: payload.customer_email,
+        customer_phone: payload.customer_phone,
+        delivery_type: delivery_type_str.to_string(),
+        delivery_address: payload.delivery_address,
+        notes: payload.notes,
+        subtotal,
+        delivery_fee,
+        total,
+        status: order.status,
+        created_at: order.created_at,
+        items: item_responses,
+        public_token: order.public_token,
+        payment_reference: payment_reference(order.id),
+        payment: payment.instructions(order.id),
+    };
+
     email.spawn_send(
-        payload.customer_email.clone(),
-        "Your order confirmation — Zain's Treat n More".to_string(),
-        format!(
-            "Hi {},\n\nThanks for your order! We've received order #{} and will be in touch shortly.\n\nTotal: €{}\n\n— Zain's Treat n More",
-            payload.customer_name, order.id, total,
-        ),
+        response.customer_email.clone(),
+        format!("Your invoice for order {} — Zain's Treat n More", response.payment_reference),
+        invoice_email_body(&response, &order.placed_at, email.site_url()),
     );
 
-    Ok((
-        StatusCode::CREATED,
-        Json(OrderResponse {
-            id: order.id,
-            customer_name: payload.customer_name,
-            customer_email: payload.customer_email,
-            customer_phone: payload.customer_phone,
-            delivery_type: delivery_type_str.to_string(),
-            delivery_address: payload.delivery_address,
-            notes: payload.notes,
-            subtotal,
-            delivery_fee,
-            total,
-            status: order.status,
-            created_at: order.created_at,
-            items: item_responses,
-        }),
-    ))
+    if let Some(business_address) = email.business_notify_address() {
+        email.spawn_send(
+            business_address,
+            format!("New order {} — €{}", response.payment_reference, response.total),
+            new_order_owner_email_body(&response, email.site_url()),
+        );
+    }
+
+    Ok((StatusCode::CREATED, Json(response)))
+}
+
+fn delivery_line(order: &OrderResponse) -> String {
+    match order.delivery_address.as_deref() {
+        Some(address) if order.delivery_type == "delivery" => format!("Delivery to: {address}"),
+        _ => "Pickup".to_string(),
+    }
+}
+
+/// The customer's invoice email (Phase 20 Decision 8). Plain text and
+/// English only, like every other email (Phase 17); no VAT line (KOR).
+fn invoice_email_body(order: &OrderResponse, placed_at: &str, site_url: &str) -> String {
+    let mut body = format!(
+        "Hi {},\n\nThanks for your order! Here is your invoice.\n\nOrder: {}\nDate: {}\n{}\n\n",
+        order.customer_name,
+        order.payment_reference,
+        placed_at,
+        delivery_line(order),
+    );
+
+    for item in &order.items {
+        let name = match &item.option_label {
+            Some(label) => format!("{} ({label})", item.item_name),
+            None => item.item_name.clone(),
+        };
+        body.push_str(&format!("{} x {name} — €{}\n", item.quantity, item.subtotal));
+    }
+    body.push_str(&format!("\nTotal: €{}\n\n", order.total));
+
+    match &order.payment {
+        Some(payment) => {
+            body.push_str(&format!(
+                "Please pay by bank transfer:\nAccount name: {}\nIBAN: {}\n",
+                payment.account_name, payment.iban,
+            ));
+            if let Some(bic) = &payment.bic {
+                body.push_str(&format!("BIC: {bic}\n"));
+            }
+            body.push_str(&format!(
+                "Reference: {}\n\nPlease use this exact reference so we can match your payment.\n\n",
+                payment.reference,
+            ));
+            if let Some(kvk) = &payment.kvk {
+                body.push_str(&format!("KvK: {kvk}\n\n"));
+            }
+        }
+        None => body.push_str(
+            "Please contact us on WhatsApp for our bank details.\n\n",
+        ),
+    }
+
+    body.push_str(&format!(
+        "We only start preparing your order once your payment has been verified.\n\n\
+         After paying, let us know on your order page:\n{site_url}/order/{}\n\n\
+         — Zain's Treat n More",
+        order.public_token,
+    ));
+    body
+}
+
+fn new_order_owner_email_body(order: &OrderResponse, site_url: &str) -> String {
+    format!(
+        "New order {} from {} ({}).\n{}\nTotal: €{}\n\nIt is awaiting payment. Check the bank for a transfer with reference {}.\n\n{site_url}/admin/orders/{}",
+        order.payment_reference,
+        order.customer_name,
+        order.customer_phone,
+        delivery_line(order),
+        order.total,
+        order.payment_reference,
+        order.id,
+    )
+}
+
+/// Malformed and unknown tokens both come back as 404, so the two can't be
+/// told apart (Phase 20 Decision 7).
+fn parse_token(token: &str) -> Result<Uuid, AppError> {
+    Uuid::parse_str(token).map_err(|_| AppError::NotFound)
+}
+
+async fn load_order_by_token(
+    pool: &PgPool,
+    payment: &PaymentConfig,
+    token: Uuid,
+) -> Result<OrderResponse, AppError> {
+    let order = sqlx::query!(
+        r#"
+        SELECT id, customer_name, customer_email, customer_phone, delivery_type,
+               delivery_address, notes, subtotal, delivery_fee, total, status, public_token,
+               created_at as "created_at: chrono::DateTime<chrono::Utc>"
+        FROM orders
+        WHERE public_token = $1
+        "#,
+        token
+    )
+    .fetch_optional(pool)
+    .await?
+    .ok_or(AppError::NotFound)?;
+
+    let items = sqlx::query_as!(
+        OrderItemResponse,
+        r#"
+        SELECT item_name, option_label, unit_price, quantity, subtotal
+        FROM order_items
+        WHERE order_id = $1
+        ORDER BY id
+        "#,
+        order.id
+    )
+    .fetch_all(pool)
+    .await?;
+
+    Ok(OrderResponse {
+        id: order.id,
+        customer_name: order.customer_name,
+        customer_email: order.customer_email,
+        customer_phone: order.customer_phone,
+        delivery_type: order.delivery_type,
+        delivery_address: order.delivery_address,
+        notes: order.notes,
+        subtotal: order.subtotal,
+        delivery_fee: order.delivery_fee,
+        total: order.total,
+        status: order.status,
+        created_at: order.created_at,
+        items,
+        public_token: order.public_token,
+        payment_reference: payment_reference(order.id),
+        payment: payment.instructions(order.id),
+    })
+}
+
+pub async fn get_order_by_token(
+    State(pool): State<PgPool>,
+    State(payment): State<PaymentConfig>,
+    Path(token): Path<String>,
+) -> Result<Json<OrderResponse>, AppError> {
+    let token = parse_token(&token)?;
+    Ok(Json(load_order_by_token(&pool, &payment, token).await?))
+}
+
+/// The customer's "I've paid" (Phase 20 Decision 7). Idempotent: only the
+/// request that actually moves the order out of `awaiting_payment` emails
+/// the owner, so a double click or two racing requests send one email.
+pub async fn claim_payment(
+    State(pool): State<PgPool>,
+    State(email): State<EmailConfig>,
+    State(payment): State<PaymentConfig>,
+    Path(token): Path<String>,
+) -> Result<Json<OrderResponse>, AppError> {
+    let token = parse_token(&token)?;
+
+    let claimed = sqlx::query_scalar!(
+        r#"
+        UPDATE orders
+        SET status = 'payment_claimed', payment_claimed_at = now(), updated_at = now()
+        WHERE public_token = $1 AND status = 'awaiting_payment'
+        RETURNING id
+        "#,
+        token
+    )
+    .fetch_optional(&pool)
+    .await?;
+
+    let order = load_order_by_token(&pool, &payment, token).await?;
+
+    let Some(order_id) = claimed else {
+        if order.status == "cancelled" {
+            return Err(AppError::InvalidStatusTransition);
+        }
+        return Ok(Json(order));
+    };
+
+    tracing::info!(order_id, "customer claimed payment");
+
+    if let Some(business_address) = email.business_notify_address() {
+        email.spawn_send(
+            business_address,
+            format!("Payment claimed for order {} — €{}", order.payment_reference, order.total),
+            format!(
+                "{} says they've paid order {} (€{}).\n\nCheck the bank for a transfer with reference {}, then confirm the payment in admin:\n{}/admin/orders/{}",
+                order.customer_name,
+                order.payment_reference,
+                order.total,
+                order.payment_reference,
+                email.site_url(),
+                order_id,
+            ),
+        );
+    }
+
+    Ok(Json(order))
 }

@@ -1,4 +1,6 @@
 use crate::error::{AppError, FieldError};
+use crate::order_status::{admin_next, is_valid_status, ORDER_STATUSES};
+use crate::payment::payment_reference;
 use axum::{
     extract::{Path, Query, State},
     Json,
@@ -9,35 +11,43 @@ use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use std::collections::HashMap;
 
-/// Mirrors the CHECK constraint on `orders.status` in
-/// `migrations/20261002162443_initial_schema.up.sql`. Adding a status means
-/// editing both — see requirement.md open risk 7.
-pub const ORDER_STATUSES: [&str; 6] = [
-    "new",
-    "confirmed",
-    "preparing",
-    "ready",
-    "completed",
-    "cancelled",
-];
-
 const DEFAULT_LIMIT: i64 = 25;
 const MAX_LIMIT: i64 = 100;
 const RECENT_ORDER_COUNT: i64 = 5;
 
-fn is_valid_status(value: &str) -> bool {
-    ORDER_STATUSES.contains(&value)
+struct OrderSummaryRow {
+    id: i64,
+    customer_name: String,
+    delivery_type: String,
+    total: Decimal,
+    status: String,
+    created_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Serialize)]
 pub struct OrderSummaryResponse {
     pub id: i64,
+    pub payment_reference: String,
     pub customer_name: String,
     pub delivery_type: String,
     #[serde(with = "rust_decimal::serde::str")]
     pub total: Decimal,
     pub status: String,
     pub created_at: DateTime<Utc>,
+}
+
+impl From<OrderSummaryRow> for OrderSummaryResponse {
+    fn from(row: OrderSummaryRow) -> Self {
+        Self {
+            id: row.id,
+            payment_reference: payment_reference(row.id),
+            customer_name: row.customer_name,
+            delivery_type: row.delivery_type,
+            total: row.total,
+            status: row.status,
+            created_at: row.created_at,
+        }
+    }
 }
 
 #[derive(Debug, Serialize)]
@@ -90,7 +100,7 @@ pub async fn list_orders(
     .unwrap_or(0);
 
     let orders = sqlx::query_as!(
-        OrderSummaryResponse,
+        OrderSummaryRow,
         r#"
         SELECT id, customer_name, delivery_type, total, status,
                created_at as "created_at: DateTime<Utc>"
@@ -104,7 +114,10 @@ pub async fn list_orders(
         offset
     )
     .fetch_all(&pool)
-    .await?;
+    .await?
+    .into_iter()
+    .map(OrderSummaryResponse::from)
+    .collect();
 
     Ok(Json(OrderListResponse { orders, total, limit, offset }))
 }
@@ -137,6 +150,12 @@ pub struct AdminOrderResponse {
     #[serde(with = "rust_decimal::serde::str")]
     pub total: Decimal,
     pub status: String,
+    pub payment_reference: String,
+    pub payment_claimed_at: Option<DateTime<Utc>>,
+    pub payment_confirmed_at: Option<DateTime<Utc>>,
+    /// The admin UI renders these as buttons, so `admin_next` has no
+    /// TypeScript mirror to drift from (Phase 20 open risk 4).
+    pub next_statuses: &'static [&'static str],
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub items: Vec<AdminOrderItemResponse>,
@@ -152,6 +171,8 @@ pub async fn get_order(
         r#"
         SELECT id, customer_name, customer_email, customer_phone, delivery_type,
                delivery_address, notes, subtotal, delivery_fee, total, status,
+               payment_claimed_at as "payment_claimed_at: DateTime<Utc>",
+               payment_confirmed_at as "payment_confirmed_at: DateTime<Utc>",
                created_at as "created_at: DateTime<Utc>",
                updated_at as "updated_at: DateTime<Utc>"
         FROM orders
@@ -175,6 +196,8 @@ pub async fn get_order(
     .fetch_all(&pool)
     .await?;
 
+    let next_statuses = admin_next(&order.status, &order.delivery_type);
+
     Ok(Json(AdminOrderResponse {
         id: order.id,
         customer_name: order.customer_name,
@@ -187,6 +210,10 @@ pub async fn get_order(
         delivery_fee: order.delivery_fee,
         total: order.total,
         status: order.status,
+        payment_reference: payment_reference(order.id),
+        payment_claimed_at: order.payment_claimed_at,
+        payment_confirmed_at: order.payment_confirmed_at,
+        next_statuses,
         created_at: order.created_at,
         updated_at: order.updated_at,
         items,
@@ -210,14 +237,35 @@ pub async fn update_order_status(
         }]));
     }
 
+    let mut tx = pool.begin().await?;
+
+    // Locked so a concurrent customer claim or second admin tab can't slip
+    // a status change in between the check and the update.
+    let current = sqlx::query!(
+        "SELECT status, delivery_type FROM orders WHERE id = $1 FOR UPDATE",
+        id
+    )
+    .fetch_optional(&mut *tx)
+    .await?
+    .ok_or(AppError::NotFound)?;
+
+    // Phase 20 Decision 3: only the next step(s) for this order's
+    // pickup/delivery branch are accepted.
+    if !admin_next(&current.status, &current.delivery_type).contains(&payload.status.as_str()) {
+        return Err(AppError::InvalidStatusTransition);
+    }
+
     // `updated_at = now()` is explicit on purpose: the column's DEFAULT only
     // fires on INSERT and there is no BEFORE UPDATE trigger anywhere in
-    // migrations/ (requirement.md Decision 9).
+    // migrations/ (Phase 13 requirement.md Decision 9). Moving to
+    // `processing` is "Confirm payment", so it's stamped too.
     let order = sqlx::query_as!(
-        OrderSummaryResponse,
+        OrderSummaryRow,
         r#"
         UPDATE orders
-        SET status = $2, updated_at = now()
+        SET status = $2,
+            updated_at = now(),
+            payment_confirmed_at = CASE WHEN $2 = 'processing' THEN now() ELSE payment_confirmed_at END
         WHERE id = $1
         RETURNING id, customer_name, delivery_type, total, status,
                   created_at as "created_at: DateTime<Utc>"
@@ -225,8 +273,12 @@ pub async fn update_order_status(
         id,
         payload.status
     )
-    .fetch_one(&pool)
+    .fetch_one(&mut *tx)
     .await?;
+
+    tx.commit().await?;
+
+    let order = OrderSummaryResponse::from(order);
 
     tracing::info!(order_id = id, status = %order.status, "admin updated order status");
 
@@ -249,7 +301,7 @@ pub async fn orders_summary(
     .fetch_all(&pool)
     .await?;
 
-    // Seed all six at zero so the dashboard renders every tile even before a
+    // Seed all seven at zero so the dashboard renders every tile even before a
     // single order of that status exists.
     let mut counts: HashMap<String, i64> =
         ORDER_STATUSES.iter().map(|s| ((*s).to_string(), 0)).collect();
@@ -271,7 +323,7 @@ pub async fn orders_summary(
     .unwrap_or(0);
 
     let recent = sqlx::query_as!(
-        OrderSummaryResponse,
+        OrderSummaryRow,
         r#"
         SELECT id, customer_name, delivery_type, total, status,
                created_at as "created_at: DateTime<Utc>"
@@ -282,7 +334,10 @@ pub async fn orders_summary(
         RECENT_ORDER_COUNT
     )
     .fetch_all(&pool)
-    .await?;
+    .await?
+    .into_iter()
+    .map(OrderSummaryResponse::from)
+    .collect();
 
     Ok(Json(OrdersSummaryResponse { counts, today, recent }))
 }
