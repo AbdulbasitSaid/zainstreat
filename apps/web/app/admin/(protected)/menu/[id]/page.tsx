@@ -30,7 +30,7 @@ export default async function EditAdminMenuItemPage({
 
   return (
     <div className="flex flex-col gap-8">
-      <Link href="/admin/menu" className="text-sm font-semibold text-primary underline">
+      <Link href="/menu" className="text-sm font-semibold text-primary underline">
         ‹ Back to menu
       </Link>
       <h1 className="m-0">Edit {item.name}</h1>

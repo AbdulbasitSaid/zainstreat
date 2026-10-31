@@ -6,6 +6,9 @@ const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 const nextConfig: NextConfig = {
   output: "standalone",
   agentRules: false,
+  // The admin runs on cms.localhost:3000 in dev (proxy.ts, Phase 21); let
+  // it load dev-only assets (HMR) like the main localhost origin does.
+  allowedDevOrigins: ["cms.localhost"],
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "placehold.co" },

@@ -94,7 +94,7 @@ export function AdminMenuItemForm({
     setSubmitting(false);
 
     if (response.ok) {
-      router.push("/admin/menu");
+      router.push("/menu");
       router.refresh();
       return;
     }

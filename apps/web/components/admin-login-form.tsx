@@ -30,7 +30,7 @@ export function AdminLoginForm() {
     setSubmitting(false);
 
     if (response.ok) {
-      router.push("/admin");
+      router.push("/");
       router.refresh();
       return;
     }

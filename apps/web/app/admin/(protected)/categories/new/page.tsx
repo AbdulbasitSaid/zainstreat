@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 export default function NewAdminCategoryPage() {
   return (
     <div className="flex flex-col gap-8">
-      <Link href="/admin/categories" className="text-sm font-semibold text-primary underline">
+      <Link href="/categories" className="text-sm font-semibold text-primary underline">
         ‹ Back to categories
       </Link>
       <h1 className="m-0">New Category</h1>
