@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT status, delivery_type FROM orders WHERE id = $1 FOR UPDATE",
+  "query": "SELECT status, delivery_type, completed_by FROM orders WHERE id = $1 FOR UPDATE",
   "describe": {
     "columns": [
       {
@@ -12,6 +12,11 @@
         "ordinal": 1,
         "name": "delivery_type",
         "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "completed_by",
+        "type_info": "Text"
       }
     ],
     "parameters": {
@@ -21,8 +26,9 @@
     },
     "nullable": [
       false,
-      false
+      false,
+      true
     ]
   },
-  "hash": "5f44eeb5e45b4b0e9cf2e455a55eb99589bb9b6eacaf9bb3327c596c208068d4"
+  "hash": "efb44af8936284e02a09ab9ae5c21cbcfe5023f3034e924bf725e1a68ce9fb76"
 }

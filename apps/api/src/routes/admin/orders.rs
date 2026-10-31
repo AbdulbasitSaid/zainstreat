@@ -1,5 +1,7 @@
+use crate::email::EmailConfig;
 use crate::error::{AppError, FieldError};
-use crate::order_status::{admin_next, is_valid_status, ORDER_STATUSES};
+use crate::order_emails::{contact_url, status_email, tracking_url, Locale};
+use crate::order_status::{admin_next, is_reopen, is_valid_status, ORDER_STATUSES};
 use crate::payment::payment_reference;
 use axum::{
     extract::{Path, Query, State},
@@ -153,6 +155,11 @@ pub struct AdminOrderResponse {
     pub payment_reference: String,
     pub payment_claimed_at: Option<DateTime<Utc>>,
     pub payment_confirmed_at: Option<DateTime<Utc>>,
+    pub ready_at: Option<DateTime<Utc>>,
+    pub completed_at: Option<DateTime<Utc>>,
+    pub cancelled_at: Option<DateTime<Utc>>,
+    /// `customer` or `admin`, once completed (Phase 22 Decision 8).
+    pub completed_by: Option<String>,
     /// The admin UI renders these as buttons, so `admin_next` has no
     /// TypeScript mirror to drift from (Phase 20 open risk 4).
     pub next_statuses: &'static [&'static str],
@@ -173,6 +180,10 @@ pub async fn get_order(
                delivery_address, notes, subtotal, delivery_fee, total, status,
                payment_claimed_at as "payment_claimed_at: DateTime<Utc>",
                payment_confirmed_at as "payment_confirmed_at: DateTime<Utc>",
+               ready_at as "ready_at: DateTime<Utc>",
+               completed_at as "completed_at: DateTime<Utc>",
+               cancelled_at as "cancelled_at: DateTime<Utc>",
+               completed_by,
                created_at as "created_at: DateTime<Utc>",
                updated_at as "updated_at: DateTime<Utc>"
         FROM orders
@@ -196,7 +207,7 @@ pub async fn get_order(
     .fetch_all(&pool)
     .await?;
 
-    let next_statuses = admin_next(&order.status, &order.delivery_type);
+    let next_statuses = admin_next(&order.status, &order.delivery_type, order.completed_by.as_deref());
 
     Ok(Json(AdminOrderResponse {
         id: order.id,
@@ -213,6 +224,10 @@ pub async fn get_order(
         payment_reference: payment_reference(order.id),
         payment_claimed_at: order.payment_claimed_at,
         payment_confirmed_at: order.payment_confirmed_at,
+        ready_at: order.ready_at,
+        completed_at: order.completed_at,
+        cancelled_at: order.cancelled_at,
+        completed_by: order.completed_by,
         next_statuses,
         created_at: order.created_at,
         updated_at: order.updated_at,
@@ -227,6 +242,7 @@ pub struct UpdateOrderStatusRequest {
 
 pub async fn update_order_status(
     State(pool): State<PgPool>,
+    State(email): State<EmailConfig>,
     Path(id): Path<i64>,
     Json(payload): Json<UpdateOrderStatusRequest>,
 ) -> Result<Json<OrderSummaryResponse>, AppError> {
@@ -242,7 +258,7 @@ pub async fn update_order_status(
     // Locked so a concurrent customer claim or second admin tab can't slip
     // a status change in between the check and the update.
     let current = sqlx::query!(
-        "SELECT status, delivery_type FROM orders WHERE id = $1 FOR UPDATE",
+        "SELECT status, delivery_type, completed_by FROM orders WHERE id = $1 FOR UPDATE",
         id
     )
     .fetch_optional(&mut *tx)
@@ -251,38 +267,75 @@ pub async fn update_order_status(
 
     // Phase 20 Decision 3: only the next step(s) for this order's
     // pickup/delivery branch are accepted.
-    if !admin_next(&current.status, &current.delivery_type).contains(&payload.status.as_str()) {
+    // Phase 22 Decision 8: a customer-completed order may also go back to
+    // its ready status.
+    if !admin_next(&current.status, &current.delivery_type, current.completed_by.as_deref())
+        .contains(&payload.status.as_str())
+    {
         return Err(AppError::InvalidStatusTransition);
     }
+    let reopened = is_reopen(&current.status, &payload.status);
 
     // `updated_at = now()` is explicit on purpose: the column's DEFAULT only
     // fires on INSERT and there is no BEFORE UPDATE trigger anywhere in
-    // migrations/ (Phase 13 requirement.md Decision 9). Moving to
-    // `processing` is "Confirm payment", so it's stamped too.
-    let order = sqlx::query_as!(
-        OrderSummaryRow,
+    // migrations/ (Phase 13 requirement.md Decision 9). Each step stamps
+    // its time for the tracking page (Phase 22 Decision 4); moving to
+    // `processing` is "Confirm payment". A reopen ($3) clears the
+    // completion and keeps `ready_at`.
+    let order = sqlx::query!(
         r#"
         UPDATE orders
         SET status = $2,
             updated_at = now(),
-            payment_confirmed_at = CASE WHEN $2 = 'processing' THEN now() ELSE payment_confirmed_at END
+            payment_confirmed_at = CASE WHEN $2 = 'processing' THEN now() ELSE payment_confirmed_at END,
+            ready_at = CASE
+                WHEN $2 IN ('ready_for_collection', 'out_for_delivery') AND NOT $3 THEN now()
+                ELSE ready_at END,
+            completed_at = CASE WHEN $2 = 'completed' THEN now() WHEN $3 THEN NULL ELSE completed_at END,
+            completed_by = CASE WHEN $2 = 'completed' THEN 'admin' WHEN $3 THEN NULL ELSE completed_by END,
+            cancelled_at = CASE WHEN $2 = 'cancelled' THEN now() ELSE cancelled_at END
         WHERE id = $1
-        RETURNING id, customer_name, delivery_type, total, status,
+        RETURNING id, customer_name, customer_email, delivery_type, total, status,
+                  public_token, locale,
                   created_at as "created_at: DateTime<Utc>"
         "#,
         id,
-        payload.status
+        payload.status,
+        reopened,
     )
     .fetch_one(&mut *tx)
     .await?;
 
     tx.commit().await?;
 
-    let order = OrderSummaryResponse::from(order);
+    tracing::info!(order_id = id, status = %order.status, reopened, "admin updated order status");
 
-    tracing::info!(order_id = id, status = %order.status, "admin updated order status");
+    // After the commit, like `create_order`: a failed send never undoes the
+    // status change. A reopen is silent (Phase 22 Decisions 6, 8).
+    if !reopened {
+        let locale = Locale::parse(&order.locale).unwrap_or(Locale::En);
+        let reference = payment_reference(order.id);
+        if let Some((subject, body)) = status_email(
+            locale,
+            &order.customer_name,
+            &reference,
+            &order.status,
+            &tracking_url(email.site_url(), locale, order.public_token),
+            &contact_url(email.site_url(), locale),
+        ) {
+            email.spawn_send(order.customer_email, subject, body);
+        }
+    }
 
-    Ok(Json(order))
+    Ok(Json(OrderSummaryResponse {
+        id: order.id,
+        payment_reference: payment_reference(order.id),
+        customer_name: order.customer_name,
+        delivery_type: order.delivery_type,
+        total: order.total,
+        status: order.status,
+        created_at: order.created_at,
+    }))
 }
 
 #[derive(Debug, Serialize)]
@@ -290,6 +343,9 @@ pub struct OrdersSummaryResponse {
     pub counts: HashMap<String, i64>,
     pub today: i64,
     pub recent: Vec<OrderSummaryResponse>,
+    /// Orders waiting on the owner to confirm payment, for the admin's
+    /// "new since you last looked" badge (Phase 22 Decision 9).
+    pub claimed_ids: Vec<i64>,
 }
 
 pub async fn orders_summary(
@@ -339,5 +395,9 @@ pub async fn orders_summary(
     .map(OrderSummaryResponse::from)
     .collect();
 
-    Ok(Json(OrdersSummaryResponse { counts, today, recent }))
+    let claimed_ids = sqlx::query_scalar!("SELECT id FROM orders WHERE status = 'payment_claimed' ORDER BY id")
+        .fetch_all(&pool)
+        .await?;
+
+    Ok(Json(OrdersSummaryResponse { counts, today, recent, claimed_ids }))
 }

@@ -191,19 +191,26 @@ from `plan.md`, see its "Implementation notes" section.
 
 ### Phase 20 reconciliation (Group 13)
 
-Not started. Phase 21 merged to `master` **before** Phase 20, the
-reverse of Decision 19, so this group now runs on the Phase 20 branch
-when it's rebased. See `plan.md`'s implementation notes.
+Phase 20 was merged into `master` 2026-10-31 (PR #35, a merge rather
+than a rebase, since Phase 21 had already landed). The rest of this
+group is on branch `2026-10-31-phase-21-group-13`:
+- `PUBLIC_ADMIN_URL` and the owner-email links
+- `BANK_*` in `_deploy.yml`
+- the phase renumbering
+- restoring Phase 20's "needs action" dashboard tile, which the merge's
+  conflict resolution had dropped
 
-- [ ] Phase 20 rebased onto `master`; `specs/roadmap.md` shows Phase 20's
+- [x] Phase 20 merged into `master`; `specs/roadmap.md` shows Phase 20's
       paragraph and Phases 21–29 in order.
-- [ ] Phase 20's `requirement.md` uses the new phase numbers.
-- [ ] `grep -rn '/admin/' apps/api/src | grep -v '/api/admin'` gives 0
+- [x] Phase 20's `requirement.md` uses the new phase numbers.
+- [x] `grep -rn '/admin/' apps/api/src | grep -v '/api/admin'` gives 0
       hits (owner-email links use `PUBLIC_ADMIN_URL`).
 - [ ] A local test order and an "I've paid" claim email the owner a
       `cms.` link.
 - [ ] `BANK_*`/`BUSINESS_KVK` are rendered by `_deploy.yml` and set on
       both Environments; staging's invoice reads "STAGING – do not pay".
+      *(Renderer done; staging's variables set 2026-10-31; production's
+      are waiting on the client.)*
 
 ### Production cutover (Groups 11–12)
 

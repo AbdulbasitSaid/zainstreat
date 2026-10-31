@@ -100,6 +100,10 @@ jobs:
           V_SES_SMTP_PASSWORD: ${{ secrets.SES_SMTP_PASSWORD }}
           V_EMAIL_FROM_ADDRESS: ${{ vars.EMAIL_FROM_ADDRESS }}
           V_EMAIL_BUSINESS_NOTIFY_ADDRESS: ${{ vars.EMAIL_BUSINESS_NOTIFY_ADDRESS }}
+          V_BANK_ACCOUNT_NAME: ${{ vars.BANK_ACCOUNT_NAME }}
+          V_BANK_IBAN: ${{ vars.BANK_IBAN }}
+          V_BANK_BIC: ${{ vars.BANK_BIC }}
+          V_BUSINESS_KVK: ${{ vars.BUSINESS_KVK }}
           V_DOZZLE_BASIC_AUTH_USER: ${{ vars.DOZZLE_BASIC_AUTH_USER }}
           V_DOZZLE_BASIC_AUTH_HASH: ${{ secrets.DOZZLE_BASIC_AUTH_HASH }}
           V_ACME_EMAIL: ${{ vars.ACME_EMAIL }}

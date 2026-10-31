@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useSyncExternalStore } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { ButtonLink } from "@/components/button";
 import { Notice } from "@/components/notice";
 import { OrderDetailsForm, type OrderDetailsValues } from "@/components/order-details-form";
@@ -34,6 +34,7 @@ function getServerOrderSnapshot(): string | null {
 
 export function OrderView() {
   const t = useTranslations("Order");
+  const locale = useLocale();
   const { lines, subtotal, clearCart } = useCart();
   const [step, setStep] = useState<Step>("details");
   const [details, setDetails] = useState<OrderDetailsValues | null>(null);
@@ -77,6 +78,7 @@ export function OrderView() {
         price_option_id: line.priceOptionId,
         quantity: line.quantity,
       })),
+      locale,
     });
 
     setSubmitting(false);

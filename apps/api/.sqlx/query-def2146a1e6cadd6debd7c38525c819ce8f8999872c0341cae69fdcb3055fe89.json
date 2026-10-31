@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT id, customer_name, customer_email, customer_phone, delivery_type,\n               delivery_address, notes, subtotal, delivery_fee, total, status,\n               payment_claimed_at as \"payment_claimed_at: DateTime<Utc>\",\n               payment_confirmed_at as \"payment_confirmed_at: DateTime<Utc>\",\n               created_at as \"created_at: DateTime<Utc>\",\n               updated_at as \"updated_at: DateTime<Utc>\"\n        FROM orders\n        WHERE id = $1\n        ",
+  "query": "\n        SELECT id, customer_name, customer_email, customer_phone, delivery_type,\n               delivery_address, notes, subtotal, delivery_fee, total, status,\n               payment_claimed_at as \"payment_claimed_at: DateTime<Utc>\",\n               payment_confirmed_at as \"payment_confirmed_at: DateTime<Utc>\",\n               ready_at as \"ready_at: DateTime<Utc>\",\n               completed_at as \"completed_at: DateTime<Utc>\",\n               cancelled_at as \"cancelled_at: DateTime<Utc>\",\n               completed_by,\n               created_at as \"created_at: DateTime<Utc>\",\n               updated_at as \"updated_at: DateTime<Utc>\"\n        FROM orders\n        WHERE id = $1\n        ",
   "describe": {
     "columns": [
       {
@@ -70,11 +70,31 @@
       },
       {
         "ordinal": 13,
-        "name": "created_at: DateTime<Utc>",
+        "name": "ready_at: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
         "ordinal": 14,
+        "name": "completed_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 15,
+        "name": "cancelled_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 16,
+        "name": "completed_by",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 17,
+        "name": "created_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 18,
         "name": "updated_at: DateTime<Utc>",
         "type_info": "Timestamptz"
       }
@@ -98,9 +118,13 @@
       false,
       true,
       true,
+      true,
+      true,
+      true,
+      true,
       false,
       false
     ]
   },
-  "hash": "abafe50b9ebb0f714456058fb0797f9dbb3929e4934f21480a47fa2ef331c942"
+  "hash": "def2146a1e6cadd6debd7c38525c819ce8f8999872c0341cae69fdcb3055fe89"
 }

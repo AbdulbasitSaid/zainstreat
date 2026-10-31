@@ -20,14 +20,17 @@ export function AdminOrderActions({
   orderId,
   status,
   next,
+  completedByCustomer = false,
 }: {
   orderId: number;
   status: OrderStatus;
   next: OrderStatus[];
+  completedByCustomer?: boolean;
 }) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
+  const [confirmingReopen, setConfirmingReopen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   if (next.length === 0) {
@@ -46,6 +49,7 @@ export function AdminOrderActions({
 
     setSaving(false);
     setConfirmingCancel(false);
+    setConfirmingReopen(false);
 
     if (response.status === 409) {
       setError("This order has moved on since the page loaded. Refresh to see its current status.");
@@ -57,6 +61,39 @@ export function AdminOrderActions({
     }
 
     router.refresh();
+  }
+
+  // A customer-completed order's only next step is going back to its ready
+  // status, in case they confirmed too early (Phase 22 Decision 8). Secondary
+  // and two clicks, like cancel, and the customer isn't emailed.
+  if (status === "completed" && completedByCustomer) {
+    const [reopenTo] = next;
+    return (
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          {confirmingReopen ? (
+            <>
+              <Button type="button" variant="secondary" disabled={saving} onClick={() => moveTo(reopenTo)}>
+                Confirm reopen?
+              </Button>
+              <button
+                type="button"
+                className="text-sm font-semibold text-text-muted underline"
+                disabled={saving}
+                onClick={() => setConfirmingReopen(false)}
+              >
+                Keep completed
+              </button>
+            </>
+          ) : (
+            <Button type="button" variant="secondary" disabled={saving} onClick={() => setConfirmingReopen(true)}>
+              Reopen (customer marked it received)
+            </Button>
+          )}
+        </div>
+        {error && <Notice>{error}</Notice>}
+      </div>
+    );
   }
 
   return (

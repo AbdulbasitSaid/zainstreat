@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE orders SET completed_by = 'customer', completed_at = now(), ready_at = now() WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a7f38832b8851727c3569a939f534c5c69f0aba88b984c5e550f7a8efc40fb04"
+}

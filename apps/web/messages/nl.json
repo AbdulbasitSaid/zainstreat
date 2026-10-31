@@ -152,6 +152,24 @@
       "invalid": "Voer een geldige {field} in.",
       "tooShort": "{field} is te kort.",
       "tooLong": "{field} is te lang."
+    },
+    "tracking": {
+      "progressLabel": "Voortgang van je bestelling",
+      "placed": "Bestelling geplaatst",
+      "paymentSent": "Betaling verstuurd",
+      "paymentConfirmed": "Betaling bevestigd",
+      "readyForCollection": "Klaar om op te halen",
+      "onTheWay": "Onderweg",
+      "completed": "Afgerond",
+      "cancelled": "Deze bestelling is geannuleerd",
+      "cancelledAt": "Geannuleerd op {date}",
+      "receivedPickup": "Ik heb mijn bestelling opgehaald",
+      "receivedDelivery": "Ik heb mijn bestelling ontvangen",
+      "receivedConfirm": "Ja, ik heb hem",
+      "receivedKeep": "Nog niet",
+      "receiving": "Bezig met versturen…",
+      "receivedError": "Er ging iets mis. Probeer het opnieuw.",
+      "movedOn": "Deze bestelling is gewijzigd sinds de pagina is geladen. Vernieuw de pagina om de actuele status te zien."
     }
   },
   "AboutPage": {

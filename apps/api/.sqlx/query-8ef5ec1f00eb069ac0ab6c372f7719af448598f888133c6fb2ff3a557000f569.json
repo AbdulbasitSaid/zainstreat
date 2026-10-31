@@ -1,0 +1,72 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE orders\n        SET status = $2,\n            updated_at = now(),\n            payment_confirmed_at = CASE WHEN $2 = 'processing' THEN now() ELSE payment_confirmed_at END,\n            ready_at = CASE\n                WHEN $2 IN ('ready_for_collection', 'out_for_delivery') AND NOT $3 THEN now()\n                ELSE ready_at END,\n            completed_at = CASE WHEN $2 = 'completed' THEN now() WHEN $3 THEN NULL ELSE completed_at END,\n            completed_by = CASE WHEN $2 = 'completed' THEN 'admin' WHEN $3 THEN NULL ELSE completed_by END,\n            cancelled_at = CASE WHEN $2 = 'cancelled' THEN now() ELSE cancelled_at END\n        WHERE id = $1\n        RETURNING id, customer_name, customer_email, delivery_type, total, status,\n                  public_token, locale,\n                  created_at as \"created_at: DateTime<Utc>\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "customer_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "customer_email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "delivery_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "total",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 5,
+        "name": "status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "public_token",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 7,
+        "name": "locale",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "created_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text",
+        "Bool"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "8ef5ec1f00eb069ac0ab6c372f7719af448598f888133c6fb2ff3a557000f569"
+}

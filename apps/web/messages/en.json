@@ -152,6 +152,24 @@
       "invalid": "Please enter a valid {field}.",
       "tooShort": "{field} is too short.",
       "tooLong": "{field} is too long."
+    },
+    "tracking": {
+      "progressLabel": "Order progress",
+      "placed": "Order placed",
+      "paymentSent": "Payment sent",
+      "paymentConfirmed": "Payment confirmed",
+      "readyForCollection": "Ready for collection",
+      "onTheWay": "On the way",
+      "completed": "Completed",
+      "cancelled": "This order has been cancelled",
+      "cancelledAt": "Cancelled on {date}",
+      "receivedPickup": "I've collected my order",
+      "receivedDelivery": "I've received my order",
+      "receivedConfirm": "Yes, I've got it",
+      "receivedKeep": "Not yet",
+      "receiving": "Sending…",
+      "receivedError": "Something went wrong. Please try again.",
+      "movedOn": "This order has changed since the page loaded. Refresh to see its current status."
     }
   },
   "AboutPage": {

@@ -24,6 +24,10 @@ pub fn api_router() -> Router<AppState> {
             post(orders::claim_payment).route_layer(crate::rate_limit::enquiry_rate_limiter()),
         )
         .route(
+            "/orders/by-token/{token}/received",
+            post(orders::confirm_received).route_layer(crate::rate_limit::enquiry_rate_limiter()),
+        )
+        .route(
             "/catering-enquiries",
             post(catering_enquiries::create_catering_enquiry)
                 .route_layer(crate::rate_limit::enquiry_rate_limiter()),

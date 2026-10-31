@@ -487,3 +487,52 @@ async fn response_reflects_current_db_price_not_client_supplied_data(pool: PgPoo
     assert_eq!(body["items"][0]["unit_price"], "13.00");
     assert_eq!(body["total"], "39.00");
 }
+
+async fn seed_flat_item(pool: &PgPool) {
+    sqlx::query!("INSERT INTO categories (id, name) VALUES (1, 'Rice Dishes')")
+        .execute(pool)
+        .await
+        .unwrap();
+    sqlx::query!("INSERT INTO menu_items (id, category_id, name, price) VALUES (1, 1, 'Jollof Rice', 13.00)")
+        .execute(pool)
+        .await
+        .unwrap();
+}
+
+async fn stored_locale(pool: &PgPool, id: &Value) -> String {
+    sqlx::query_scalar!("SELECT locale FROM orders WHERE id = $1", id.as_i64().unwrap())
+        .fetch_one(pool)
+        .await
+        .unwrap()
+}
+
+/// Phase 22 Decision 5: the order remembers the site language for emails.
+#[sqlx::test]
+async fn locale_is_stored_and_defaults_to_english(pool: PgPool) {
+    seed_flat_item(&pool).await;
+    let items = json!([{ "menu_item_id": 1, "price_option_id": null, "quantity": 1 }]);
+
+    let mut payload = valid_payload(items.clone());
+    payload["locale"] = json!("nl");
+    let (status, body) = post(pool.clone(), "/api/orders", payload).await;
+    assert_eq!(status, StatusCode::CREATED);
+    assert_eq!(stored_locale(&pool, &body["id"]).await, "nl");
+
+    let (status, body) = post(pool.clone(), "/api/orders", valid_payload(items)).await;
+    assert_eq!(status, StatusCode::CREATED);
+    assert_eq!(stored_locale(&pool, &body["id"]).await, "en");
+}
+
+#[sqlx::test]
+async fn unsupported_locale_is_rejected(pool: PgPool) {
+    seed_flat_item(&pool).await;
+    let mut payload = valid_payload(json!([{ "menu_item_id": 1, "price_option_id": null, "quantity": 1 }]));
+    payload["locale"] = json!("de");
+
+    let (status, body) = post(pool, "/api/orders", payload).await;
+
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(body["error"], "validation_error");
+    let fields = body["fields"].as_array().unwrap();
+    assert!(fields.iter().any(|f| f["field"] == "locale"));
+}
