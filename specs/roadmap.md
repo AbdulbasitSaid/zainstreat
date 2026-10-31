@@ -7,11 +7,12 @@ run and checked on its own before moving to the next. No calendar estimates
 built, per `mission.md` and `tech-stack.md`.
 
 Future work beyond the MVP (customer accounts, loyalty, inventory, etc.)
-is intentionally excluded — see "Beyond MVP" below. Phases 20–28 were
-added from the 2026-10-18 client call
+is intentionally excluded — see "Beyond MVP" below. Phases 20 and 22–29
+were added from the 2026-10-18 client call
 (`specs/client-notes/2026-10-18-client-call.md`), which pulled
 bank-transfer payments, order tracking, owner notifications and analytics
-forward from "Beyond MVP" ahead of the public launch.
+forward from "Beyond MVP" ahead of the public launch. Phase 21 (pipeline
+refactor) was inserted on 2026-10-31.
 
 ## Phase 1 — Scaffolding
 
@@ -368,13 +369,27 @@ hand. No VAT is added (the business is under the KOR scheme).
   pickup/delivery choice (Phase 10) drives the branch.
 - The owner is emailed on every new order and every "I've paid" claim.
 
-Planned in `specs/2026-10-25-phase-20-bank-transfer-payment/`: one
-`processing` status covers "confirmed / processing"; the "I've paid"
-action lives on an unguessable `/order/<token>` page that Phase 21
-extends into full tracking; bank details come from API env vars; the
-payment reference is `ZTM-<order id>`.
+## Phase 21 — Pipeline Refactor: Staging, No-SSH Ops, `cms.` Admin
 
-## Phase 21 — Customer Order Tracking & Status Emails
+Inserted 2026-10-31 (see
+`specs/2026-10-31-phase-21-pipeline-refactor/requirement.md`).
+
+- A **staging** environment on an ephemeral Lightsail instance: a
+  "staging up" workflow creates it from a launch script, deploys and
+  seeds it; "staging down" deletes it, so it costs nothing while unused.
+  No custom domain — it's served on `<ip>.sslip.io`.
+- Merging to `master` builds images tagged by commit SHA and deploys
+  staging (when it's up). Production deploys only through a manual,
+  approval-gated "promote" of an already-built SHA; rollback is a promote
+  of an older SHA.
+- Remove routine manual SSH: the server `.env` is rendered from GitHub
+  Environment secrets on every deploy; new instances are bootstrapped by
+  script; `create_admin`, backup (to S3) and restore become workflows.
+  AWS access from Actions uses OIDC, not stored keys.
+- Admin moves from `/admin` to **`cms.zainstreat.com`** (`cms.<ip>.sslip.io`
+  on staging); old `/admin` links redirect.
+
+## Phase 22 — Customer Order Tracking & Status Emails
 
 - A public order-status page reachable by an unguessable link (no
   customer accounts), showing the order's progress through the Phase 20
@@ -384,9 +399,9 @@ payment reference is `ZTM-<order id>`.
 - Completion: the customer can confirm they received or collected the
   order. The owner can also complete it from admin.
 - New orders appear in admin without a reload while it's open (polling
-  is enough; real push is Phase 26).
+  is enough; real push is Phase 27).
 
-## Phase 22 — Catering Quotations
+## Phase 23 — Catering Quotations
 
 Event orders stay out of the cart flow (`mission.md`). This phase builds
 on Phase 15's catering enquiry.
@@ -395,16 +410,16 @@ on Phase 15's catering enquiry.
   notes) and send it to the customer by email.
 - Customer accepts the quote via a link. From there it follows the same
   bank-transfer → owner confirms → processing → pickup/delivery →
-  completed lifecycle as Phase 20/21.
+  completed lifecycle as Phase 20/22.
 
-## Phase 23 — French Locale
+## Phase 24 — French Locale
 
 - Add `fr` as a third public locale alongside `en`/`nl` (`next-intl`
   routing, `messages/fr.json`, language toggle, sitemap,
   `Accept-Language` detection). Admin and the API stay English-only.
 - Translate the customer emails into French as well.
 
-## Phase 24 — Admin-Editable Site Content
+## Phase 25 — Admin-Editable Site Content
 
 - Admin can replace site imagery that is currently hardcoded: homepage
   images, the kitchen photo, the contact-page photo, and the **logo**,
@@ -414,9 +429,9 @@ on Phase 15's catering enquiry.
   real food photos (some supplied already; the client is sending the
   rest).
 
-## Phase 25 — Analytics & Search Presence
+## Phase 26 — Analytics & Search Presence
 
-- Google Analytics (GA4) on the public site only (never `/admin`), with a
+- Google Analytics (GA4) on the public site only (never the `cms.` admin), with a
   cookie-consent banner, which GDPR/Dutch rules require for analytics
   cookies.
 - Google Search Console: verify the domain and submit the sitemap. The
@@ -425,7 +440,7 @@ on Phase 15's catering enquiry.
   Google Business Profile.
 - A follow-up SEO pass based on what Search Console and Analytics show.
 
-## Phase 26 — Installable Admin (PWA) & Push Notifications
+## Phase 27 — Installable Admin (PWA) & Push Notifications
 
 To be investigated first: the client uses an iPhone, and iOS only
 supports web push for home-screen-installed PWAs (iOS 16.4+).
@@ -435,7 +450,7 @@ supports web push for home-screen-installed PWAs (iOS 16.4+).
 - Web push to the owner for new orders and payment claims, even when the
   admin isn't open. Tapping a notification opens the order in admin.
 
-## Phase 27 — WhatsApp Owner Notifications
+## Phase 28 — WhatsApp Owner Notifications
 
 - WhatsApp Business (Cloud) API integration on the client's existing
   WhatsApp Business account: the owner gets a WhatsApp message for new
@@ -444,13 +459,15 @@ supports web push for home-screen-installed PWAs (iOS 16.4+).
 - Fire-and-forget like email (Phase 17): a failed send is logged and
   never blocks an order.
 
-## Phase 28 — Move to Client-Owned AWS Account
+## Phase 29 — Move to Client-Owned AWS Account
 
 Deadline-driven: the developer's AWS free trial expires a few weeks
-after 2026-10-18, so this phase may need to happen before Phases 26–27.
+after 2026-10-18, so this phase may need to happen before Phases 27–28.
 
 - Recreate the Lightsail instance, static IP, snapshots, alarms and SES
-  identity in the client's own AWS account. Migrate Postgres and MinIO
+  identity in the client's own AWS account. Phase 21's bootstrap script,
+  OIDC role and backup/restore workflows do most of this: provision,
+  restore the latest S3 backup, repoint DNS. Migrate Postgres and MinIO
   data, repoint DNS and the CI deploy secrets.
 - Update `docs/deployment.md`. Decommission the old instance only after
   the new one is verified live.

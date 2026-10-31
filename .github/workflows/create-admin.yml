@@ -1,0 +1,71 @@
+name: Create admin
+
+# Phase 21 Decision 10: create or reset an admin login without SSH. The
+# password comes from the Environment's ADMIN_PASSWORD secret — never a
+# workflow input, since inputs are visible on the run page. For
+# production: set the secret, run this, then delete the secret.
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Where to create the admin
+        type: choice
+        options: [staging, production]
+        required: true
+      email:
+        description: Admin email (an existing admin with this email gets a new password)
+        required: true
+      name:
+        description: Display name
+        required: false
+        default: Admin
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  create:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      C: docker compose -f docker-compose.yml -f docker-compose.prod.yml
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check the password secret
+        env:
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+        run: |
+          test -n "$ADMIN_PASSWORD" || { echo "::error::Set the ADMIN_PASSWORD secret on the ${{ inputs.environment }} Environment first."; exit 1; }
+
+      - name: Find staging
+        id: staging
+        if: inputs.environment == 'staging'
+        uses: ./.github/actions/staging-host
+        with:
+          role-arn: ${{ vars.AWS_ROLE_ARN }}
+          region: ${{ vars.AWS_REGION }}
+          dns-suffix: ${{ vars.STAGING_DNS_SUFFIX }}
+
+      - name: Set up SSH
+        uses: ./.github/actions/ssh-target
+        with:
+          host: ${{ inputs.environment == 'staging' && steps.staging.outputs.ip || vars.DEPLOY_HOST }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: Create admin
+        env:
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+          EMAIL: ${{ inputs.email }}
+          NAME: ${{ inputs.name }}
+        run: |
+          printf '%s\n' "$ADMIN_PASSWORD" \
+            | ssh target "cd /opt/zainstreat && $C exec -T api create_admin --email $(printf '%q' "$EMAIL") --name $(printf '%q' "$NAME") --password-stdin"
+
+      - name: Reminder
+        if: inputs.environment == 'production'
+        run: |
+          echo "### Admin created on production" >> "$GITHUB_STEP_SUMMARY"
+          echo "Now delete the **ADMIN_PASSWORD** secret from the production Environment." >> "$GITHUB_STEP_SUMMARY"

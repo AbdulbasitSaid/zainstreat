@@ -32,7 +32,7 @@ export default async function AdminEnquiriesPage({
         {(["catering", "contact"] as const).map((value) => (
           <Link
             key={value}
-            href={`/admin/enquiries?type=${value}`}
+            href={`/enquiries?type=${value}`}
             aria-current={type === value ? "page" : undefined}
             className={`rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-wider ${
               type === value ? "bg-primary text-white" : "bg-card text-text hover:bg-background-soft"
@@ -62,7 +62,7 @@ export default async function AdminEnquiriesPage({
                 {catering!.enquiries.map((e) => (
                   <tr key={e.id} className="border-b border-text/10 hover:bg-background-soft">
                     <td className="py-3 pr-4">
-                      <Link href={`/admin/enquiries/catering/${e.id}`} className="font-semibold text-primary underline">
+                      <Link href={`/enquiries/catering/${e.id}`} className="font-semibold text-primary underline">
                         {e.name}
                       </Link>
                     </td>
@@ -92,7 +92,7 @@ export default async function AdminEnquiriesPage({
               {contact!.messages.map((m) => (
                 <tr key={m.id} className="border-b border-text/10 hover:bg-background-soft">
                   <td className="py-3 pr-4">
-                    <Link href={`/admin/enquiries/contact/${m.id}`} className="font-semibold text-primary underline">
+                    <Link href={`/enquiries/contact/${m.id}`} className="font-semibold text-primary underline">
                       {m.name}
                     </Link>
                   </td>
@@ -108,7 +108,7 @@ export default async function AdminEnquiriesPage({
       {pageCount > 1 && (
         <nav aria-label="Pagination" className="flex items-center justify-center gap-6 text-sm">
           {page > 1 ? (
-            <Link href={`/admin/enquiries?type=${type}&page=${page - 1}`} className="font-semibold text-primary underline">
+            <Link href={`/enquiries?type=${type}&page=${page - 1}`} className="font-semibold text-primary underline">
               ‹ Previous
             </Link>
           ) : (
@@ -116,7 +116,7 @@ export default async function AdminEnquiriesPage({
           )}
           <span className="text-text-muted">Page {page} of {pageCount}</span>
           {page < pageCount ? (
-            <Link href={`/admin/enquiries?type=${type}&page=${page + 1}`} className="font-semibold text-primary underline">
+            <Link href={`/enquiries?type=${type}&page=${page + 1}`} className="font-semibold text-primary underline">
               Next ›
             </Link>
           ) : (

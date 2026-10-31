@@ -12,7 +12,7 @@ export default async function ProtectedAdminLayout({
 }) {
   const admin = await getCurrentAdmin();
   if (!admin) {
-    redirect("/admin/login");
+    redirect("/login");
   }
 
   return (

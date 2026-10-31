@@ -374,16 +374,39 @@ alongside, not a replacement for, the online ordering system.
   `web`, `api`, `postgres`, and `minio` are reachable solely over the
   internal Docker network. A `docker-compose.prod.yml` override expresses
   this (see `roadmap.md` Phase 2).
-- **CI/CD:** GitHub Actions builds the `web` and `api` Docker images on
-  every push to `master` and pushes them to a **private GHCR** registry,
-  then deploys over SSH as a dedicated, sudo-less `deploy` user (`docker`
-  group only — a separate key from the admin account used for manual
-  access). The Lightsail box never builds images itself; it only pulls
-  and runs them. True continuous deployment — no manual approval gate.
-- **Backups:** Lightsail's automatic daily instance snapshots (built-in
-  add-on) — no hand-rolled `pg_dump`/`mc mirror` scripts needed. This is
-  provisioned in `roadmap.md` Phase 2; restore is verified in Phase 18
-  once real data exists.
+- **CI/CD (Phase 21):** GitHub Actions builds the `api` image once and
+  the `web` image per environment (`DOMAIN` is baked in at build time —
+  Phase 19) on every push to `master`, tagged by commit SHA in a
+  **private GHCR** registry (no `:latest` deploys). Every deploy goes over
+  SSH as a dedicated, sudo-less `deploy` user (`docker` group only) through
+  one reusable workflow that also renders the server's `.env` from GitHub
+  Environment secrets and health-checks the result. The box never builds
+  images and its `.env` is never edited by hand.
+  - **Staging** is deployed automatically from `master` whenever it's up.
+  - **Production** deploys only through a manual **promote** of an
+    already-built SHA, gated by a required reviewer on the `production`
+    GitHub Environment. Rollback is a promote of an older SHA.
+- **Staging (Phase 21):** an **ephemeral** Lightsail instance (2 GB plan,
+  same blueprint, compose stack and Caddyfile as production) created by a
+  "staging up" workflow and deleted by "staging down". No custom domain:
+  it's served on `<ip-dashed>.sslip.io` (with `api.`/`cms.`/`logs.`
+  subdomains), which resolves to the instance IP so Caddy still gets real
+  Let's Encrypt certificates. Data is reseeded on every "up".
+- **Provisioning (Phase 21):** `infra/bootstrap.sh`, a Lightsail launch
+  script, does what the Phase 2/18 runbooks did by hand (Docker, swap,
+  persistent journal, `deploy` user, GHCR login). Workflows reach AWS via
+  **GitHub OIDC** and a least-privilege IAM role — no long-lived AWS keys
+  in GitHub.
+- **Admin host (Phase 21):** the admin is served from `cms.${DOMAIN}` by
+  the same Next.js app; `proxy.ts` rewrites by host, and `/admin` on the
+  public host redirects there.
+- **Backups:** Lightsail's automatic daily instance snapshots (Phase 2,
+  restore verified in Phase 18), **plus** (Phase 21) a nightly `backup`
+  workflow that streams a `pg_dump` and a MinIO archive off the box into
+  a private, lifecycle-expiring S3 bucket in `eu-central-1`, with a
+  matching `restore` workflow. The nightly job uses a dedicated SSH key
+  whose `authorized_keys` forced command can only stream a backup, so it
+  can't deploy or run anything else.
 
 _Why self-hosted over a managed PaaS (e.g. Vercel + managed Postgres):_
 decided explicitly — gives full control over the Rust API runtime and
@@ -431,6 +454,25 @@ and would periodically starve the running services. GitHub's hosted
 runners absorb that cost for free, and the box's job shrinks to just
 "pull and run."
 
+_Why ephemeral Lightsail for staging, not stop/start:_ decided in
+Phase 21. Lightsail bills a stopped instance at the full rate, so only
+deleting it saves money. Creating it from a launch script keeps staging
+on the same tooling as production (and Phase 29's account move), and
+costs only the hours it's up. EC2 stop/start (data survives, compute not
+billed) and a second compose project on the production box ($0, but
+competes for RAM after the 2026-10-11 OOM outage) were considered and
+rejected.
+
+_Why sslip.io for staging:_ no DNS records to create or clean up each
+time the instance (and its IP) changes, and real HTTPS without a custom
+domain.
+
+_Why OIDC for AWS access from Actions:_ short-lived credentials scoped to
+one role, so there are no AWS access keys stored in GitHub to rotate or
+leak. The role trusts GitHub's immutable subject for this repo
+(`repo:AbdulbasitSaid@16627656/zainstreat@1400619975:*`), which a renamed
+or recreated repo can't match.
+
 ## Summary Table
 
 | Concern | Choice |
@@ -449,6 +491,9 @@ runners absorb that cost for free, and the box's job shrinks to just
 | WhatsApp | `wa.me` deep links |
 | Hosting | AWS Lightsail VPS, 4 GB (`eu-central-1`, Frankfurt), Docker Compose with per-container memory/CPU limits |
 | Monitoring | Lightsail metric alarms + external HTTP uptime monitor + persistent systemd journal (Phase 18) |
-| CI/CD | GitHub Actions → private GHCR → SSH deploy (dedicated `deploy` user) |
-| Backups | Lightsail automatic daily snapshots |
+| CI/CD | GitHub Actions → private GHCR (SHA tags) → SSH deploy (dedicated `deploy` user); `master` → staging, approved promote → production (Phase 21) |
+| Staging | Ephemeral Lightsail instance on `<ip>.sslip.io`, created/deleted by workflow (Phase 21) |
+| Provisioning / AWS access | `infra/bootstrap.sh` Lightsail launch script; GitHub OIDC → IAM role (Phase 21) |
+| Admin host | `cms.${DOMAIN}`, same Next.js app, host-based rewrite in `proxy.ts` (Phase 21) |
+| Backups | Lightsail automatic daily snapshots + nightly `pg_dump`/MinIO archive to S3 (Phase 21) |
 | Reverse proxy / TLS | Caddy (automatic HTTPS) |

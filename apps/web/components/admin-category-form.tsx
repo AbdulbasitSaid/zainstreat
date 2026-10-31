@@ -48,7 +48,7 @@ export function AdminCategoryForm({ initialValue }: { initialValue?: AdminCatego
     setSubmitting(false);
 
     if (response.ok) {
-      router.push("/admin/categories");
+      router.push("/categories");
       router.refresh();
       return;
     }

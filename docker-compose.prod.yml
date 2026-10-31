@@ -28,7 +28,9 @@ services:
     <<: *default-logging
 
   api:
-    image: ghcr.io/abdulbasitsaid/zainstreat-api:latest
+    # Full image refs (ghcr.io/<owner>/zainstreat-api:<sha>) come from the
+    # .env that _deploy.yml renders — no :latest (Phase 21 Decision 4).
+    image: ${API_IMAGE:?API_IMAGE is required}
     build: !reset null
     working_dir: !reset null
     volumes: !reset []
@@ -47,7 +49,7 @@ services:
     <<: *default-logging
 
   web:
-    image: ghcr.io/abdulbasitsaid/zainstreat-web:latest
+    image: ${WEB_IMAGE:?WEB_IMAGE is required}
     working_dir: !reset null
     # Replaces the dev bind mounts with just the next/image optimizer cache,
     # so a deploy doesn't force every image to be re-encoded (Decision 6).
@@ -67,8 +69,14 @@ services:
 
   caddy:
     image: caddy:2-alpine
-    env_file:
-      - .env
+    # Only what the Caddyfile reads — not the whole .env, which would hand
+    # Caddy every database and SMTP secret too.
+    environment:
+      DOMAIN: ${DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL is required}
+      NOINDEX: ${NOINDEX:-false}
+      DOZZLE_BASIC_AUTH_USER: ${DOZZLE_BASIC_AUTH_USER}
+      DOZZLE_BASIC_AUTH_HASH: ${DOZZLE_BASIC_AUTH_HASH}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data

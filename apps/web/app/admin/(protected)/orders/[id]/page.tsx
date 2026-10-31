@@ -34,7 +34,7 @@ export default async function AdminOrderDetailPage({
 
   return (
     <div className="flex flex-col gap-8">
-      <Link href="/admin/orders" className="text-sm font-semibold text-primary underline">
+      <Link href="/orders" className="text-sm font-semibold text-primary underline">
         ‹ Back to orders
       </Link>
 
