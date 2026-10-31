@@ -14,7 +14,7 @@ function buildHref(status: string | undefined, page: number) {
   if (status) params.set("status", status);
   if (page > 1) params.set("page", String(page));
   const query = params.toString();
-  return query ? `/admin/orders?${query}` : "/admin/orders";
+  return query ? `/orders?${query}` : "/orders";
 }
 
 export default async function AdminOrdersPage({
@@ -74,7 +74,7 @@ export default async function AdminOrdersPage({
                 <tr key={order.id} className="border-b border-text/10 hover:bg-background-soft">
                   <td className="py-3 pr-4">
                     <Link
-                      href={`/admin/orders/${order.id}`}
+                      href={`/orders/${order.id}`}
                       className="font-semibold text-primary underline focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-accent focus-visible:outline-offset-2"
                     >
                       #{order.id}

@@ -6,19 +6,24 @@ import { usePathname } from "next/navigation";
 // `enabled: false` renders a muted, non-focusable span instead of a link —
 // requirement.md Decision 2.
 const NAV_ITEMS = [
-  { label: "Dashboard", href: "/admin", enabled: true },
-  { label: "Orders", href: "/admin/orders", enabled: true },
-  { label: "Menu", href: "/admin/menu", enabled: true },
-  { label: "Categories", href: "/admin/categories", enabled: true },
-  { label: "Enquiries", href: "/admin/enquiries", enabled: true },
-  { label: "Settings", href: "/admin/settings", enabled: false },
+  { label: "Dashboard", href: "/", enabled: true },
+  { label: "Orders", href: "/orders", enabled: true },
+  { label: "Menu", href: "/menu", enabled: true },
+  { label: "Categories", href: "/categories", enabled: true },
+  { label: "Enquiries", href: "/enquiries", enabled: true },
+  { label: "Settings", href: "/settings", enabled: false },
 ] as const;
 
 const ITEM_CLASSES =
   "flex items-center justify-between rounded-xl px-4 py-2.5 text-sm font-semibold";
 
+// The admin is served from cms.<host>, rewritten onto app/admin/** by
+// proxy.ts. Depending on render pass, usePathname() may report either the
+// browser path (/orders) or the rewritten one (/admin/orders), so strip
+// the prefix before comparing.
 function isActive(pathname: string, href: string) {
-  return href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
+  const path = pathname.replace(/^\/admin(?=\/|$)/, "") || "/";
+  return href === "/" ? path === "/" : path.startsWith(href);
 }
 
 export function AdminNav() {

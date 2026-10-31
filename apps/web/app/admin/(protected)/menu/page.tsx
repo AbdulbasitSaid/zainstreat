@@ -16,7 +16,7 @@ export default async function AdminMenuPage() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="m-0">Menu</h1>
         {/* Styled like Button but a plain next/link — admin is English-only (requirement.md Decision 15). */}
-        <Link href="/admin/menu/new" className={buttonClasses({})}>
+        <Link href="/menu/new" className={buttonClasses({})}>
           New item
         </Link>
       </div>

@@ -74,7 +74,7 @@ export function AdminCategoryList({ categories: initialCategories }: { categorie
                 <td className="py-3">
                   <div className="flex items-center gap-2">
                     <Link
-                      href={`/admin/categories/${category.id}`}
+                      href={`/categories/${category.id}`}
                       className="text-sm font-semibold text-primary underline focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-accent focus-visible:outline-offset-2"
                     >
                       Rename

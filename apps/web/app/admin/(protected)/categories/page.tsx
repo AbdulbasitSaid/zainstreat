@@ -16,7 +16,7 @@ export default async function AdminCategoriesPage() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="m-0">Categories</h1>
         {/* Styled like Button but a plain next/link — admin is English-only (requirement.md Decision 15). */}
-        <Link href="/admin/categories/new" className={buttonClasses({})}>
+        <Link href="/categories/new" className={buttonClasses({})}>
           New category
         </Link>
       </div>

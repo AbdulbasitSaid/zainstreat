@@ -26,7 +26,7 @@ export default async function AdminDashboardPage() {
         {ORDER_STATUSES.map((status) => (
           <Link
             key={status}
-            href={`/admin/orders?status=${status}`}
+            href={`/orders?status=${status}`}
             className="rounded-card bg-card p-5 transition-transform duration-150 ease-out-expo hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-accent focus-visible:outline-offset-2"
           >
             {/* `capitalize`, not `uppercase` — both set text-transform, so
@@ -42,7 +42,7 @@ export default async function AdminDashboardPage() {
       <div className="flex flex-col gap-4">
         <div className="flex items-baseline justify-between">
           <h2 className="m-0 text-xl font-semibold">Recent orders</h2>
-          <Link href="/admin/orders" className="text-sm font-semibold text-primary underline">
+          <Link href="/orders" className="text-sm font-semibold text-primary underline">
             View all
           </Link>
         </div>
@@ -54,7 +54,7 @@ export default async function AdminDashboardPage() {
             {summary.recent.map((order) => (
               <li key={order.id}>
                 <Link
-                  href={`/admin/orders/${order.id}`}
+                  href={`/orders/${order.id}`}
                   className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-text/10 px-5 py-4 hover:bg-background-soft focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-accent focus-visible:outline-offset-2"
                 >
                   <span className="font-semibold">#{order.id}</span>

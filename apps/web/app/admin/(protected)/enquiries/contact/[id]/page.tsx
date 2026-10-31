@@ -32,7 +32,7 @@ export default async function AdminContactMessageDetailPage({
 
   return (
     <div className="flex flex-col gap-8">
-      <Link href="/admin/enquiries?type=contact" className="text-sm font-semibold text-primary underline">
+      <Link href="/enquiries?type=contact" className="text-sm font-semibold text-primary underline">
         ‹ Back to enquiries
       </Link>
 
