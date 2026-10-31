@@ -2,8 +2,9 @@
 
 Two environments, one set of machinery (Phase 21):
 
-- **Production**: a long-lived AWS Lightsail instance (Amazon Linux 2023,
-  4 GB RAM, `eu-central-1`, static IP `63.185.172.26`) serving
+- **Production**: a long-lived AWS Lightsail instance,
+  `zainstreat-production` (Amazon Linux 2023, 4 GB RAM, `eu-central-1`,
+  static IP `63.185.172.26`), serving
   `zainstreat.com`, `cms.zainstreat.com` (admin), `api.zainstreat.com` and
   `logs.zainstreat.com`.
 - **Staging**: an *ephemeral* Lightsail instance (2 GB) created and deleted
@@ -136,7 +137,8 @@ What has to exist before the workflows work. Full detail is in
 `specs/2026-10-31-phase-21-pipeline-refactor/plan.md` Groups 1–2.
 
 - **AWS (once per account):** the GitHub OIDC identity provider; IAM role
-  `zainstreat-github-actions` (trusts only this repo; Lightsail
+  `zainstreat-github-actions` (trusts only this repo, by GitHub's
+  immutable `repo:<owner>@<id>/<repo>@<id>` subject; Lightsail
   read/create plus delete/firewall changes limited to `env=staging`; S3
   on the backup bucket only); the private backup bucket with a 30-day
   expiry rule.

@@ -39,7 +39,7 @@ Depends on: nothing.
   "Action": "sts:AssumeRoleWithWebIdentity",
   "Condition": {
     "StringEquals": { "token.actions.githubusercontent.com:aud": "sts.amazonaws.com" },
-    "StringLike":   { "token.actions.githubusercontent.com:sub": "repo:AbdulbasitSaid/zainstreat:*" }
+    "StringLike":   { "token.actions.githubusercontent.com:sub": "repo:AbdulbasitSaid@16627656/zainstreat@1400619975:*" }
   }
 }
 ```
@@ -718,3 +718,71 @@ it (Decision 19). Do this before any other repo group.
       and added `components/admin-order-actions.tsx`. Expect only
       `robots.ts`, which Phase 20 extended with `"/*/order/"`; keep that
       entry.
+
+## Implementation notes (2026-10-31)
+
+How the build-out differed from the groups above, and why.
+
+- **Merge order reversed.** Phase 21 reached `master` before Phase 20,
+  in PRs #30–#32. Group 13 therefore runs on the Phase 20 branch when it
+  rebases onto `master`, not here. It needs four things:
+  - renumber its phase references
+  - strip `/admin` from the admin pages it touched
+  - add `BANK_*`/`BUSINESS_KVK` to `_deploy.yml`'s renderer and to both
+    Environments
+  - send owner-email links through a new `PUBLIC_ADMIN_URL`
+- **Interim outage.** The first partial merge (#30) shipped the `cms.`
+  redirect before Caddy had a `cms.` block or DNS had a record. The
+  admin was unreachable until #31 added the block, after the A record
+  was created. The `promote` DNS gate (Decision 22) prevents this from
+  then on.
+- **OIDC trust (1.2).** This repo has `use_immutable_subject: true`, so
+  GitHub sends `repo:AbdulbasitSaid@16627656/zainstreat@1400619975:…`
+  as the subject. The role trusts only that form. It's also the safer
+  one, because a renamed or recreated repo can't match it.
+- **Shared composite actions.** `.github/actions/staging-host` (OIDC,
+  then look up staging's IP and domain) and `.github/actions/ssh-target`
+  (key, `target` host alias, `BatchMode`) are used by every workflow
+  instead of repeating the steps.
+- **`infra/env-parity.sh`:**
+  - hashes values with `python3` rather than `jq` (Amazon Linux 2023
+    ships python3, not jq)
+  - runs compose under `env -i`, so exported shell variables can't mask
+    a difference
+  - hashes each side to a file, so a parse failure aborts instead of
+    reporting every key as changed
+  - treats a missing `ACME_EMAIL` in an old `.env` as a changed key
+- **Caddy no longer gets the whole `.env`.** `docker-compose.prod.yml`
+  passes only the five variables the `Caddyfile` reads, instead of
+  `env_file: .env`, so Caddy no longer holds database or SMTP secrets.
+- **`infra/bootstrap.sh`** installs Amazon Linux 2023's own `docker`
+  package plus the Compose v2.40.0 plugin binary, because Docker doesn't
+  publish packages for AL2023. Production's "is it ready?" check also
+  accepts an existing `docker-compose.yml`, because that box predates
+  the bootstrap script.
+- **2.1 and 12.3 (pre-installed backup path) were replaced:**
+  - Lightsail snapshots served as the pre-cutover safety net.
+  - The one remaining SSH step became `prod-cutover-prep.sh`, run by the
+    user. It used short-lived Lightsail access
+    (`get-instance-access-details`) rather than a stored admin key, to:
+    - import the server `.env` into the `production` Environment
+    - generate a **new** production deploy key, so the old one can be
+      retired
+  - The first backup ran right after cutover.
+- **Production server resized to 4 GB alongside the cutover.**
+  - Phase 18's upgrade had never happened: the box was still the 2 GB
+    `small_3_0`, with container limits totalling about 2.8 GB.
+  - It is now `zainstreat-production` (`medium_3_0`), built from a
+    stopped-instance snapshot, with the same static IP and host key.
+  - Firewall: 22/80/443 on IPv4 and IPv6; 443 had been closed on IPv6.
+  - Automatic snapshots are on, at 02:00 UTC.
+  - Phase 18's Lightsail alarms were created; none had existed.
+  - The unattached old static IP `18.192.249.64` was released.
+- **Staging credentials.** The staging admin and Dozzle passwords are
+  generated and kept in `~/zainstreat-staging-credentials.txt` on the
+  developer's machine (mode 600). Staging has no SES credentials, so it
+  can't send email.
+- **Staging domain.** Kept as `<ip>.sslip.io` (Decision 3). A fixed
+  `staging.zainstreat.com` via a reserved static IP (about $3.60/month
+  while staging is down) was offered and declined on cost.
+
