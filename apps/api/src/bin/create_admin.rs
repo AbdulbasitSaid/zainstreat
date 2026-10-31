@@ -12,20 +12,34 @@ fn arg_value(flag: &str) -> Option<String> {
     None
 }
 
+fn has_flag(flag: &str) -> bool {
+    std::env::args().skip(1).any(|arg| arg == flag)
+}
+
 #[tokio::main]
 async fn main() {
     let Some(email) = arg_value("--email") else {
-        eprintln!("usage: create_admin --email <email> [--name <name>]");
+        eprintln!("usage: create_admin --email <email> [--name <name>] [--password-stdin]");
         std::process::exit(1);
     };
     let name = arg_value("--name").unwrap_or_else(|| "Admin".to_string());
 
-    let password = rpassword::prompt_password("Password: ").expect("failed to read password");
-    let confirm = rpassword::prompt_password("Confirm password: ").expect("failed to read password");
-    if password != confirm {
-        eprintln!("passwords did not match");
-        std::process::exit(1);
-    }
+    // --password-stdin reads one line from stdin with no confirm prompt, so
+    // the create-admin workflow can pipe in a masked secret (Phase 21
+    // Decision 10). Without it, prompt interactively as before.
+    let password = if has_flag("--password-stdin") {
+        let mut line = String::new();
+        std::io::stdin().read_line(&mut line).expect("failed to read password from stdin");
+        line.trim_end_matches(['\r', '\n']).to_string()
+    } else {
+        let password = rpassword::prompt_password("Password: ").expect("failed to read password");
+        let confirm = rpassword::prompt_password("Confirm password: ").expect("failed to read password");
+        if password != confirm {
+            eprintln!("passwords did not match");
+            std::process::exit(1);
+        }
+        password
+    };
     if password.is_empty() {
         eprintln!("password must not be empty");
         std::process::exit(1);
