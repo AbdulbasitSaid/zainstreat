@@ -36,19 +36,24 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Resolve SHA and check the api image exists
+      - name: Resolve SHA
         id: sha
         env:
           OWNER: ${{ github.repository_owner }}
           SHA: ${{ inputs.sha || github.sha }}
-          GH_TOKEN: ${{ github.token }}
         run: |
-          repo="ghcr.io/${OWNER,,}"
-          printf '%s\n' "$GH_TOKEN" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
-          docker manifest inspect "$repo/zainstreat-api:$SHA" > /dev/null \
-            || { echo "::error::$repo/zainstreat-api:$SHA doesn't exist yet. Wait for the Build workflow, or pass a built SHA."; exit 1; }
-          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
-          echo "repo=$repo" >> "$GITHUB_OUTPUT"
+          {
+            echo "sha=$SHA"
+            echo "owner=${OWNER,,}"
+            echo "repo=ghcr.io/${OWNER,,}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Check the api image exists
+        uses: ./.github/actions/ghcr-image-exists
+        with:
+          images: ${{ steps.sha.outputs.owner }}/zainstreat-api
+          tag: ${{ steps.sha.outputs.sha }}
+          token: ${{ github.token }}
 
       - uses: aws-actions/configure-aws-credentials@v4
         with:
