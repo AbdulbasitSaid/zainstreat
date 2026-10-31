@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE orders SET completed_by = 'admin' WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "cc4a17930411abc6a78e5fccb1c8e557bf2db55d1877d99dffb5a3dc1710659d"
+}

@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE orders\n        SET status = 'completed', completed_at = now(), completed_by = 'customer', updated_at = now()\n        WHERE public_token = $1 AND status = ANY($2)\n        RETURNING id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "TextArray"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "e7d86203a55c8d38059644cabe89b0ef93dd82e11c70e61595dc89c12b958918"
+}
