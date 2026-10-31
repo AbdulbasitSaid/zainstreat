@@ -1,0 +1,61 @@
+name: Promote
+
+# Phase 21: the only way production changes. Deploys images build.yml
+# already built for a commit — never rebuilds. Rollback is this workflow
+# with an earlier SHA (see the Deployments page for what ran when).
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: Full commit SHA to deploy (for rollback, an earlier one from the Deployments page)
+        required: true
+      allow_env_changes:
+        description: Comma-separated .env keys allowed to change value (leave empty unless a secret was deliberately changed)
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  # No `environment:` here, so these checks run before anyone is asked to
+  # approve.
+  verify:
+    runs-on: ubuntu-latest
+    outputs:
+      repo: ${{ steps.check.outputs.repo }}
+    steps:
+      - name: Check images and DNS
+        id: check
+        env:
+          OWNER: ${{ github.repository_owner }}
+          SHA: ${{ inputs.sha }}
+          DOMAIN: ${{ vars.DOMAIN }}
+          PROD_HOST: ${{ vars.PROD_DEPLOY_HOST }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::sha must be a full 40-character commit SHA."; exit 1; }
+          repo="ghcr.io/${OWNER,,}"
+          echo "repo=$repo" >> "$GITHUB_OUTPUT"
+          printf '%s\n' "$GH_TOKEN" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          for img in zainstreat-api zainstreat-web; do
+            docker manifest inspect "$repo/$img:$SHA" > /dev/null \
+              || { echo "::error::$repo/$img:$SHA doesn't exist. Was it built by the Build workflow?"; exit 1; }
+          done
+          # Decision 22: without the cms record, Caddy's ACME attempts fail
+          # and burn rate limit, and the health check can never pass.
+          test -n "$PROD_HOST" || { echo "::error::Set the PROD_DEPLOY_HOST repository variable."; exit 1; }
+          got=$(dig +short "cms.$DOMAIN" @1.1.1.1 | tail -n1)
+          [ "$got" = "$PROD_HOST" ] || { echo "::error::cms.$DOMAIN resolves to '${got:-nothing}', expected $PROD_HOST."; exit 1; }
+          echo "Images exist and cms.$DOMAIN resolves to $PROD_HOST."
+
+  deploy:
+    needs: verify
+    uses: ./.github/workflows/_deploy.yml
+    secrets: inherit
+    with:
+      environment: production
+      api_image: ${{ needs.verify.outputs.repo }}/zainstreat-api:${{ inputs.sha }}
+      web_image: ${{ needs.verify.outputs.repo }}/zainstreat-web:${{ inputs.sha }}
+      allow_env_changes: ${{ inputs.allow_env_changes }}

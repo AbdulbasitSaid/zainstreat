@@ -1,10 +1,22 @@
 {
+	# ACME account email (Phase 21 Decision 17): expiry notices, and lets
+	# Caddy fall back to ZeroSSL if Let's Encrypt rate-limits a hostname.
+	email {$ACME_EMAIL}
 	log {
 		format json
 	}
 }
 
+# Staging sets NOINDEX=true so every site is kept out of search engines
+# (Phase 21 Decision 12); production imports the empty snippet.
+(noindex-true) {
+	header X-Robots-Tag "noindex, nofollow"
+}
+(noindex-false) {
+}
+
 {$DOMAIN} {
+	import noindex-{$NOINDEX:false}
 	log {
 		format json
 	}
@@ -26,6 +38,7 @@ cms.{$DOMAIN} {
 }
 
 api.{$DOMAIN} {
+	import noindex-{$NOINDEX:false}
 	log {
 		format json
 	}
@@ -33,6 +46,7 @@ api.{$DOMAIN} {
 }
 
 logs.{$DOMAIN} {
+	import noindex-{$NOINDEX:false}
 	basic_auth {
 		{$DOZZLE_BASIC_AUTH_USER} {$DOZZLE_BASIC_AUTH_HASH}
 	}

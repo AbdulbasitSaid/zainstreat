@@ -1,0 +1,46 @@
+name: Staging host
+description: >
+  Assume the AWS role (OIDC) and look up the ephemeral zainstreat-staging
+  Lightsail instance (Phase 21). Outputs whether it's up, its public IP
+  and the sslip.io-style domain derived from it.
+inputs:
+  role-arn:
+    required: true
+  region:
+    required: true
+  dns-suffix:
+    description: STAGING_DNS_SUFFIX (sslip.io, or nip.io as a fallback)
+    default: sslip.io
+outputs:
+  up:
+    value: ${{ steps.lookup.outputs.up }}
+  ip:
+    value: ${{ steps.lookup.outputs.ip }}
+  domain:
+    value: ${{ steps.lookup.outputs.domain }}
+runs:
+  using: composite
+  steps:
+    - uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ inputs.role-arn }}
+        aws-region: ${{ inputs.region }}
+
+    - id: lookup
+      shell: bash
+      env:
+        SUFFIX: ${{ inputs.dns-suffix }}
+      run: |
+        state=$(aws lightsail get-instance-state --instance-name zainstreat-staging \
+          --query state.name --output text 2>/dev/null || echo absent)
+        ip=$(aws lightsail get-instance --instance-name zainstreat-staging \
+          --query instance.publicIpAddress --output text 2>/dev/null || true)
+        if [ "$state" = "running" ] && [ -n "$ip" ] && [ "$ip" != "None" ]; then
+          echo "up=true" >> "$GITHUB_OUTPUT"
+          echo "ip=$ip" >> "$GITHUB_OUTPUT"
+          echo "domain=${ip//./-}.${SUFFIX:-sslip.io}" >> "$GITHUB_OUTPUT"
+          echo "Staging is up at $ip."
+        else
+          echo "up=false" >> "$GITHUB_OUTPUT"
+          echo "Staging is not running (state: $state)."
+        fi

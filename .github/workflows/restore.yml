@@ -1,0 +1,112 @@
+name: Restore
+
+# Phase 21: restore a backup (from backup.yml) into an environment —
+# disaster recovery, the Phase 29 account move, or loading production data
+# into staging. Production is gated by the Environment's reviewer, and a
+# fresh backup is taken before anything is overwritten.
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Where to restore INTO
+        type: choice
+        options: [staging, production]
+        required: true
+      prefix:
+        description: Backup to restore, as printed by Backup (e.g. production/20261101T023000Z)
+        required: true
+      confirm:
+        description: Type RESTORE <environment> (e.g. RESTORE staging) to confirm
+        required: true
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      C: docker compose -f docker-compose.yml -f docker-compose.prod.yml
+      PREFIX: ${{ inputs.prefix }}
+    steps:
+      - name: Verify confirmation phrase
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          [ "$CONFIRM" = "RESTORE ${{ inputs.environment }}" ] \
+            || { echo "::error::Confirmation phrase didn't match 'RESTORE ${{ inputs.environment }}'."; exit 1; }
+          [[ "$PREFIX" =~ ^(production|staging)/[0-9]{8}T[0-9]{6}Z$ ]] \
+            || { echo "::error::prefix should look like production/20261101T023000Z."; exit 1; }
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Find staging
+        id: staging
+        if: inputs.environment == 'staging'
+        uses: ./.github/actions/staging-host
+        with:
+          role-arn: ${{ vars.AWS_ROLE_ARN }}
+          region: ${{ vars.AWS_REGION }}
+          dns-suffix: ${{ vars.STAGING_DNS_SUFFIX }}
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Set up SSH
+        uses: ./.github/actions/ssh-target
+        with:
+          host: ${{ inputs.environment == 'staging' && steps.staging.outputs.ip || vars.DEPLOY_HOST }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: Download backup
+        env:
+          BUCKET: ${{ vars.BACKUP_BUCKET }}
+        run: |
+          aws s3 cp "s3://$BUCKET/$PREFIX/db.dump" db.dump --only-show-errors
+          aws s3 cp "s3://$BUCKET/$PREFIX/minio.tgz" minio.tgz --only-show-errors
+          head -c 5 db.dump | grep -q PGDMP || { echo "::error::db.dump isn't a pg_dump custom-format file."; exit 1; }
+
+      - name: Back up production first
+        if: inputs.environment == 'production'
+        env:
+          BUCKET: ${{ vars.BACKUP_BUCKET }}
+        run: |
+          prefix="s3://$BUCKET/production/$(date -u +%Y%m%dT%H%M%SZ)-pre-restore"
+          ssh target 'SSH_ORIGINAL_COMMAND=db /opt/zainstreat/bin/backup-stream' > pre-db.dump
+          ssh target 'SSH_ORIGINAL_COMMAND=minio /opt/zainstreat/bin/backup-stream' > pre-minio.tgz
+          test -s pre-db.dump && test -s pre-minio.tgz || { echo "::error::Pre-restore backup failed; nothing was changed."; exit 1; }
+          aws s3 cp pre-db.dump "$prefix/db.dump" --only-show-errors
+          aws s3 cp pre-minio.tgz "$prefix/minio.tgz" --only-show-errors
+          echo "Pre-restore backup: ${prefix#"s3://$BUCKET/"}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Restore Postgres
+        run: |
+          ssh target "cd /opt/zainstreat && $C stop api web"
+          # --no-owner/--no-privileges: staging and production may use
+          # different database users.
+          ssh target "cd /opt/zainstreat && $C exec -T postgres sh -c 'pg_restore -U \"\$POSTGRES_USER\" -d \"\$POSTGRES_DB\" --clean --if-exists --no-owner --no-privileges'" < db.dump
+
+      - name: Restore MinIO
+        run: |
+          ssh target "cd /opt/zainstreat && $C stop minio"
+          ssh target "cd /opt/zainstreat && $C run --rm --no-deps -T --entrypoint sh minio -c 'find /data -mindepth 1 -delete && tar -C /data -xzf -'" < minio.tgz
+
+      - name: Start and check
+        env:
+          DOMAIN: ${{ inputs.environment == 'staging' && steps.staging.outputs.domain || vars.DOMAIN }}
+        run: |
+          ssh target "cd /opt/zainstreat && $C up -d"
+          for i in $(seq 1 30); do
+            curl -sf -o /dev/null -m 10 "https://api.$DOMAIN/health" \
+              && curl -sf -o /dev/null -m 10 "https://$DOMAIN/en" \
+              && { echo "Restored $PREFIX into ${{ inputs.environment }}." >> "$GITHUB_STEP_SUMMARY"; exit 0; }
+            sleep 10
+          done
+          echo "::error::Not healthy after the restore."
+          ssh target "cd /opt/zainstreat && $C ps && $C logs --tail 100 api" || true
+          exit 1
