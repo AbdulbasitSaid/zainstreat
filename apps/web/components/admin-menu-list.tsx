@@ -6,7 +6,7 @@ import Image from "next/image";
 import { Button } from "@/components/button";
 import { Notice } from "@/components/notice";
 import { ImageSlot } from "@/components/image-slot";
-import { AdminArchivedBadge } from "@/components/admin-archived-badge";
+import { AdminArchivedBadge, AdminDraftBadge } from "@/components/admin-archived-badge";
 import { formatPrice } from "@/lib/format";
 import type { AdminMenuItem } from "@/lib/admin-menu-items";
 
@@ -136,7 +136,15 @@ export function AdminMenuList({ items: initialItems }: { items: AdminMenuItem[] 
                     <span className="sr-only">Available</span>
                   </label>
                 </td>
-                <td className="py-3 pr-4">{item.is_archived && <AdminArchivedBadge />}</td>
+                <td className="py-3 pr-4">
+                  {item.is_archived ? (
+                    <AdminArchivedBadge />
+                  ) : !item.is_published ? (
+                    <AdminDraftBadge unpublished />
+                  ) : (
+                    item.has_draft && <AdminDraftBadge />
+                  )}
+                </td>
                 <td className="py-3">
                   <div className="flex items-center gap-2">
                     <Link

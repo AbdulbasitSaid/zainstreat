@@ -31,7 +31,7 @@ function getIsDesktopSnapshot() {
   return window.matchMedia(DESKTOP_QUERY).matches;
 }
 
-export function SiteHeader() {
+export function SiteHeader({ logoSrc }: { logoSrc?: string | null }) {
   const t = useTranslations("SiteHeader");
   const pathname = usePathname();
   const shouldReduceMotion = useReducedMotion();
@@ -95,7 +95,7 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-50 bg-cream/90 shadow-[0_1px_0_rgba(43,17,20,0.08)] backdrop-blur-md">
       <nav className="container flex items-center justify-between py-3.5" aria-label={t("navLabel")}>
-        <Logo />
+        <Logo src={logoSrc} />
         <button
           className="relative z-10 inline-flex h-10 w-10 flex-col items-center justify-center gap-1.5 rounded-full text-primary min-[769px]:hidden focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-accent focus-visible:outline-offset-2"
           aria-expanded={isMenuOpen}

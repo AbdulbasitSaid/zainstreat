@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/button";
+import { PREVIEW_DISABLED_TITLE, usePreview } from "@/lib/preview-context";
 import { Notice } from "@/components/notice";
 import { submitCateringEnquiry, type CreateCateringEnquiryRequest } from "@/lib/catering";
 
@@ -127,6 +128,7 @@ export function CateringEnquiryForm() {
   const [values, setValues] = useState<Values>(EMPTY_VALUES);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitting, setSubmitting] = useState(false);
+  const preview = usePreview();
   const [submitError, setSubmitError] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -375,7 +377,12 @@ export function CateringEnquiryForm() {
 
       {submitError && <Notice>{t("submitErrorGeneric")}</Notice>}
 
-      <Button type="submit" disabled={submitting} className="self-start">
+      <Button
+        type="submit"
+        disabled={submitting || preview}
+        title={preview ? PREVIEW_DISABLED_TITLE : undefined}
+        className="self-start"
+      >
         {submitting ? t("submittingEnquiry") : t("submitEnquiry")}
       </Button>
     </form>

@@ -1,3 +1,4 @@
+import type { EmailDelivery } from "@/components/admin-email-delivery-notice";
 import type { FulfilmentType, OrderStatus } from "@/lib/orders";
 
 export { ORDER_STATUSES, isOrderStatus, type OrderStatus } from "@/lib/orders";
@@ -69,6 +70,8 @@ export interface AdminOrder {
   created_at: string;
   updated_at: string;
   items: AdminOrderItem[];
+  // The latest customer email's outcome (Phase 25 Decision 6a).
+  customer_email_delivery: EmailDelivery | null;
 }
 
 export interface AdminOrderList {

@@ -7,6 +7,8 @@ import { SiteImage } from "@/components/site-image";
 import { ContactFormsTabs } from "@/components/contact-forms-tabs";
 import contact from "@/assets/images/contact.jpg";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
+import { getSiteContent } from "@/lib/api";
+import { siteImage } from "@/lib/site-content";
 import { localeAlternates } from "@/lib/seo";
 
 export async function generateMetadata({
@@ -33,6 +35,7 @@ export default async function ContactPage({
   const initialTab = tab === "catering" ? "catering" : "general";
   const t = await getTranslations("ContactPage");
   const tw = await getTranslations("Whatsapp");
+  const content = await getSiteContent();
 
   return (
     <main className="container">
@@ -45,7 +48,7 @@ export default async function ContactPage({
       <SplitRow
         media={
           <SiteImage
-            src={contact}
+            src={siteImage(content, "contact") ?? contact}
             alt={t("mapPlaceholderLabel")}
             className="min-h-[240px]"
           />
@@ -53,7 +56,7 @@ export default async function ContactPage({
         content={
           <ul className="m-0 flex list-none flex-col gap-3.5 p-0 text-[1.05rem] [&_a]:font-semibold [&_a]:text-primary [&_a:hover]:underline">
             <li>{t("phoneLabel")}: <a href="tel:+31630545277">{t("phoneValue")}</a></li>
-            <li>{t("emailLabel")}: <a href="mailto:zainstreat@gmail.com">{t("emailValue")}</a></li>
+            <li>{t("emailLabel")}: <a href="mailto:contact@zainstreat.com">{t("emailValue")}</a></li>
             <li>{t("whatsappLabel")}: <a href={buildWhatsAppLink(tw("prefilledMessage"))} target="_blank" rel="noopener noreferrer">{t("whatsappValue")}</a></li>
             <li>{t("hoursLabel")}: {t("hoursValue")}</li>
             <li>{t("instagramLabel")}: <a href="https://instagram.com/zain_treats" target="_blank" rel="noopener noreferrer">{t("instagramHandle")}</a></li>

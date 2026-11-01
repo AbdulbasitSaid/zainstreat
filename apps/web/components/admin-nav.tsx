@@ -10,6 +10,8 @@ const NAV_ITEMS = [
   { label: "Orders", href: "/orders", enabled: true },
   { label: "Menu", href: "/menu", enabled: true },
   { label: "Categories", href: "/categories", enabled: true },
+  { label: "Site content", href: "/site", enabled: true },
+  { label: "Changes", href: "/changes", enabled: true },
   { label: "Enquiries", href: "/enquiries", enabled: true },
   { label: "Settings", href: "/settings", enabled: false },
 ] as const;
@@ -26,7 +28,8 @@ function isActive(pathname: string, href: string) {
   return href === "/" ? path === "/" : path.startsWith(href);
 }
 
-export function AdminNav() {
+// `changesCount` badges "Changes" with the pending drafts (Phase 25).
+export function AdminNav({ changesCount = 0 }: { changesCount?: number }) {
   const pathname = usePathname();
 
   return (
@@ -44,6 +47,16 @@ export function AdminNav() {
             }`}
           >
             {item.label}
+            {item.href === "/changes" && changesCount > 0 && (
+              <span
+                aria-label={`${changesCount} pending`}
+                className={`rounded-full px-2 py-0.5 text-[0.7rem] ${
+                  isActive(pathname, item.href) ? "bg-white text-primary" : "bg-primary text-white"
+                }`}
+              >
+                {changesCount}
+              </span>
+            )}
           </Link>
         ) : (
           <span key={item.href} aria-disabled="true" className={`${ITEM_CLASSES} text-text-muted opacity-50`}>

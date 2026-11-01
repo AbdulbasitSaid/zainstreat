@@ -53,5 +53,28 @@ for (const locale of locales.filter((l) => l !== REFERENCE)) {
   }
 }
 
+// Phase 25: the admin-editable homepage keys exist in en.json's HomePage,
+// and the web's HOME_TEXT_KEYS matches the API's (apps/api/src/site_content.rs).
+function quotedList(file, name) {
+  const source = readFileSync(join(import.meta.dirname, file), "utf8");
+  const body = new RegExp(`${name}[^=]*=\\s*&?\\[([^\\]]*)\\]`).exec(source)?.[1];
+  if (body === undefined) throw new Error(`${name} not found in ${file}`);
+  return [...body.matchAll(/"(\w+)"/g)].map((m) => m[1]);
+}
+
+const webKeys = quotedList("../lib/site-content.ts", "HOME_TEXT_KEYS");
+const apiKeys = quotedList("../../api/src/site_content.rs", "HOME_TEXT_KEYS");
+const homeReport = [];
+for (const key of webKeys) {
+  if (!reference.has(`HomePage.${key}`)) homeReport.push(`HOME_TEXT_KEYS has ${key}, missing from en.json HomePage`);
+}
+for (const key of webKeys.filter((k) => !apiKeys.includes(k))) homeReport.push(`${key} is in lib/site-content.ts only`);
+for (const key of apiKeys.filter((k) => !webKeys.includes(k))) homeReport.push(`${key} is in site_content.rs only`);
+if (homeReport.length > 0) {
+  console.error(`HOME_TEXT_KEYS: ${homeReport.length} problem(s)`);
+  for (const line of homeReport) console.error(`  ${line}`);
+  problems += homeReport.length;
+}
+
 if (problems > 0) process.exit(1);
 console.log(`messages OK: ${locales.join(", ")} (${reference.size} keys)`);

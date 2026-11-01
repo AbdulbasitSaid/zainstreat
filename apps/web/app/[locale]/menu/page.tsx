@@ -3,7 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { PageHero } from "@/components/page-hero";
 import { Notice } from "@/components/notice";
 import { CategoryFilter } from "@/components/category-filter";
-import { MenuItemCard } from "@/components/menu-item-card";
+import { MenuBentoGrid } from "@/components/menu-bento-grid";
 import { getCategories, getMenuItems } from "@/lib/api";
 import { localeAlternates } from "@/lib/seo";
 
@@ -64,11 +64,7 @@ export default async function MenuPage({
           <section key={category.id}>
             <h2>{category.name}</h2>
             {categoryItems.length > 0 ? (
-              <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-6">
-                {categoryItems.map((item) => (
-                  <MenuItemCard key={item.id} item={item} />
-                ))}
-              </div>
+              <MenuBentoGrid items={categoryItems} />
             ) : (
               <Notice>{t("emptyCategory")}</Notice>
             )}

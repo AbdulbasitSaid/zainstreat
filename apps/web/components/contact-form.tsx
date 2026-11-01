@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/button";
+import { PREVIEW_DISABLED_TITLE, usePreview } from "@/lib/preview-context";
 import { Notice } from "@/components/notice";
 import { submitContactMessage, type CreateContactMessageRequest } from "@/lib/contact";
 
@@ -101,6 +102,7 @@ export function ContactForm() {
   const [values, setValues] = useState<Values>(EMPTY_VALUES);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitting, setSubmitting] = useState(false);
+  const preview = usePreview();
   const [submitError, setSubmitError] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -290,7 +292,12 @@ export function ContactForm() {
 
       {submitError && <Notice className="mb-4">{t("submitErrorGeneric")}</Notice>}
 
-      <Button type="submit" disabled={submitting} className="mb-4">
+      <Button
+        type="submit"
+        disabled={submitting || preview}
+        title={preview ? PREVIEW_DISABLED_TITLE : undefined}
+        className="mb-4"
+      >
         {submitting ? t("submittingMessage") : t("submitMessage")}
       </Button>
     </form>

@@ -4,6 +4,8 @@ import type { Metadata } from "next";
 import { getAdminMenuItem } from "@/lib/admin-menu-items-api";
 import { getAdminCategories } from "@/lib/admin-categories-api";
 import { AdminMenuItemForm } from "@/components/admin-menu-item-form";
+import { AdminPreviewPanel } from "@/components/admin-preview-panel";
+import { AdminArchivedBadge, AdminDraftBadge } from "@/components/admin-archived-badge";
 
 export const metadata: Metadata = {
   title: "Edit Menu Item | Zain's Admin",
@@ -28,13 +30,34 @@ export default async function EditAdminMenuItemPage({
     (category) => !category.is_archived || category.id === item.category_id,
   );
 
+  const shown = item.draft ?? item;
+  // The preview opens where the change shows: the homepage for a featured
+  // item, otherwise its menu category (Phase 25 Decision 24).
+  const previewPath = shown.is_featured ? "" : `/menu?category=${shown.category_id}`;
+
   return (
-    <div className="flex flex-col gap-8">
-      <Link href="/menu" className="text-sm font-semibold text-primary underline">
-        ‹ Back to menu
-      </Link>
-      <h1 className="m-0">Edit {item.name}</h1>
-      <AdminMenuItemForm categories={selectableCategories} initialValue={item} />
-    </div>
+    <AdminPreviewPanel previewPath={previewPath}>
+      <div className="flex flex-col gap-8">
+        <Link href="/menu" className="text-sm font-semibold text-primary underline">
+          ‹ Back to menu
+        </Link>
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="m-0">Edit {item.name}</h1>
+          {item.is_archived ? (
+            <AdminArchivedBadge />
+          ) : !item.is_published ? (
+            <AdminDraftBadge unpublished />
+          ) : (
+            item.has_draft && <AdminDraftBadge />
+          )}
+        </div>
+        {/* Remounts from fresh values after a publish or discard. */}
+        <AdminMenuItemForm
+          key={`${item.updated_at}|${item.draft_updated_at ?? ""}`}
+          categories={selectableCategories}
+          initialValue={item}
+        />
+      </div>
+    </AdminPreviewPanel>
   );
 }

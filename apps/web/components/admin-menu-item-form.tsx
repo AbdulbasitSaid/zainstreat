@@ -5,18 +5,32 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/button";
 import { Notice } from "@/components/notice";
 import { AdminImageUpload } from "@/components/admin-image-upload";
+import { AdminDraftBar, AdminDraftStatus } from "@/components/admin-draft-bar";
+import { useRefreshPreview } from "@/components/admin-preview-panel";
 import {
   AdminPriceOptionsEditor,
   type PriceOptionsValue,
 } from "@/components/admin-price-options-editor";
+import { discardDraft, publishEntries } from "@/lib/admin-drafts";
 import type { AdminCategory } from "@/lib/admin-categories";
-import type { AdminMenuItem } from "@/lib/admin-menu-items";
+import type { AdminMenuItem, MenuItemFields } from "@/lib/admin-menu-items";
+import { putDraft, useAutosaveDraft } from "@/lib/use-autosave-draft";
 
 interface FieldErrorItem {
   field: string;
   message: string;
 }
 
+function isValidationBody(body: unknown): body is { error: "validation_error"; fields: FieldErrorItem[] } {
+  return typeof body === "object" && body !== null && "fields" in body && Array.isArray(body.fields);
+}
+
+/**
+ * Creating an item posts it (it starts unpublished) and opens its edit
+ * page. Editing autosaves a draft (Phase 25 Decisions 15, 18, 22); the live
+ * menu only changes on "Publish this change". A published item's form
+ * starts from its pending draft, if any.
+ */
 export function AdminMenuItemForm({
   categories,
   initialValue,
@@ -25,27 +39,99 @@ export function AdminMenuItemForm({
   initialValue?: AdminMenuItem;
 }) {
   const router = useRouter();
-  const [categoryId, setCategoryId] = useState(initialValue?.category_id ?? categories[0]?.id);
-  const [name, setName] = useState(initialValue?.name ?? "");
-  const [description, setDescription] = useState(initialValue?.description ?? "");
-  const [isFeatured, setIsFeatured] = useState(initialValue?.is_featured ?? false);
+  const refreshPreview = useRefreshPreview();
+  const start: Partial<MenuItemFields> = initialValue?.draft ?? initialValue ?? {};
+  const [categoryId, setCategoryId] = useState(start.category_id ?? categories[0]?.id);
+  const [name, setName] = useState(start.name ?? "");
+  const [description, setDescription] = useState(start.description ?? "");
+  const [isFeatured, setIsFeatured] = useState(start.is_featured ?? false);
+  const startOptions = start.price_options?.map(({ label, price }) => ({ label, price })) ?? [];
   const [pricing, setPricing] = useState<PriceOptionsValue>({
-    price: initialValue?.price ?? "",
-    price_options: initialValue?.price_options.map(({ label, price }) => ({ label, price })) ?? [],
+    price: start.price ?? (startOptions.length > 0 ? null : ""),
+    price_options: startOptions,
   });
-  const [imageUrl, setImageUrl] = useState<string | null>(initialValue?.image_url ?? null);
+  const [imageUrl, setImageUrl] = useState<string | null>(start.image_url ?? null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrorItem[]>([]);
-  const [conflict, setConflict] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [pending, setPending] = useState(initialValue ? initialValue.has_draft || !initialValue.is_published : false);
 
   function fieldError(field: string) {
     return fieldErrors.find((error) => error.field === field)?.message;
   }
 
-  async function handleSubmit(event: FormEvent) {
+  // An empty price field would otherwise serialize as `""`, which fails
+  // Decimal parsing before the backend's own field-level validation ever
+  // runs (a raw deserialization error, not a clean `validation_error`) —
+  // substitute "0" so an incomplete submission still gets the backend's
+  // normal "must be positive" message instead of an opaque network error.
+  const fields: Omit<MenuItemFields, "category_id" | "image_url"> & {
+    category_id: number | undefined;
+    image_url: string | null;
+  } = {
+    category_id: categoryId,
+    name,
+    description: description.trim() === "" ? null : description,
+    price: pricing.price === null ? null : pricing.price.trim() === "" ? "0" : pricing.price,
+    price_options: pricing.price_options.map((option) => ({
+      label: option.label,
+      price: option.price.trim() === "" ? "0" : option.price,
+    })),
+    image_url: imageUrl,
+    is_featured: isFeatured,
+  };
+
+  const autosave = useAutosaveDraft({
+    value: fields,
+    // Category and photo are pickers, not typed; everything else is left
+    // to the API so its field errors show inline.
+    isValid: (value) => initialValue !== undefined && value.category_id !== undefined && value.image_url !== null,
+    save: (value, draftUpdatedAt) =>
+      putDraft<AdminMenuItem>(`/api/admin/menu-items/${initialValue?.id}/draft`, {
+        ...value,
+        draft_updated_at: draftUpdatedAt,
+      }),
+    initialDraftUpdatedAt: initialValue?.draft_updated_at ?? null,
+    onSaved: () => {
+      setFieldErrors([]);
+      setPending(true);
+      refreshPreview();
+    },
+    onInvalid: (body) => {
+      if (isValidationBody(body)) setFieldErrors(body.fields);
+    },
+  });
+
+  async function handlePublish() {
+    if (!initialValue) return "error" as const;
+    await autosave.flush();
+    const result = await publishEntries([
+      { kind: "menu_item", id: initialValue.id, draft_updated_at: autosave.draftUpdatedAt() },
+    ]);
+    if (result === "ok") {
+      autosave.reset(null);
+      setPending(false);
+      router.refresh();
+    }
+    return result;
+  }
+
+  async function handleDiscard() {
+    if (!initialValue) return "error" as const;
+    const result = await discardDraft("menu_item", initialValue.id);
+    if (result === "ok") {
+      if (!initialValue.is_published) {
+        router.push("/menu");
+      }
+      // The page remounts this form from the restored live values.
+      router.refresh();
+      refreshPreview();
+    }
+    return result;
+  }
+
+  async function handleCreate(event: FormEvent) {
     event.preventDefault();
     setFieldErrors([]);
-    setConflict(false);
 
     if (categoryId === undefined) {
       setFieldErrors([{ field: "category_id", message: "required" }]);
@@ -58,63 +144,38 @@ export function AdminMenuItemForm({
     }
 
     setSubmitting(true);
-
-    // An empty price field would otherwise serialize as `""`, which fails
-    // Decimal parsing before the backend's own field-level validation ever
-    // runs (a raw deserialization error, not a clean `validation_error`) —
-    // substitute "0" so an incomplete submission still gets the backend's
-    // normal "must be positive" message instead of an opaque network error.
-    const price = pricing.price === null ? null : pricing.price.trim() === "" ? "0" : pricing.price;
-    const priceOptions = pricing.price_options.map((option) => ({
-      label: option.label,
-      price: option.price.trim() === "" ? "0" : option.price,
-    }));
-
-    const payload = {
-      category_id: categoryId,
-      name,
-      description: description.trim() === "" ? null : description,
-      price,
-      price_options: priceOptions,
-      image_url: imageUrl,
-      is_featured: isFeatured,
-      // Ignored by create (nothing to conflict against yet) — required by
-      // the request shape regardless (requirement.md Decision 17).
-      updated_at: initialValue?.updated_at ?? new Date().toISOString(),
-    };
-    const url = initialValue ? `/api/admin/menu-items/${initialValue.id}` : "/api/admin/menu-items";
-    const method = initialValue ? "PATCH" : "POST";
-
-    const response = await fetch(url, {
-      method,
+    const response = await fetch("/api/admin/menu-items", {
+      method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(fields),
     });
-
     setSubmitting(false);
 
     if (response.ok) {
-      router.push("/menu");
-      router.refresh();
+      const created = (await response.json()) as AdminMenuItem;
+      router.push(`/menu/${created.id}`);
       return;
     }
 
-    const body = (await response.json()) as { error: string; fields?: FieldErrorItem[] };
-    if (body.error === "validation_error" && body.fields) {
-      setFieldErrors(body.fields);
-    } else if (body.error === "conflict") {
-      setConflict(true);
-    } else {
-      setFieldErrors([{ field: "name", message: "unexpected" }]);
-    }
+    const body: unknown = await response.json();
+    setFieldErrors(isValidationBody(body) ? body.fields : [{ field: "name", message: "unexpected" }]);
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="flex max-w-[36rem] flex-col gap-6">
-      {conflict && (
+    <form
+      onSubmit={initialValue ? (event) => event.preventDefault() : handleCreate}
+      noValidate
+      className="flex max-w-[36rem] flex-col gap-6"
+    >
+      {initialValue && (
+        <div className="flex min-h-6 flex-wrap items-center gap-3">
+          <AdminDraftStatus status={autosave.status} />
+        </div>
+      )}
+      {autosave.status === "conflict" && (
         <Notice>
           This item was changed elsewhere since you opened it. Reload the page to see the latest
-          version before saving again.
+          version; autosave is paused until then.
         </Notice>
       )}
 
@@ -167,8 +228,8 @@ export function AdminMenuItemForm({
       </div>
 
       <AdminPriceOptionsEditor
-        initialPrice={initialValue?.price ?? null}
-        initialOptions={initialValue?.price_options.map(({ label, price }) => ({ label, price })) ?? []}
+        initialPrice={start.price ?? null}
+        initialOptions={startOptions}
         onChange={setPricing}
       />
       {(fieldError("price") || fieldError("price_options")) && (
@@ -195,9 +256,19 @@ export function AdminMenuItemForm({
         Featured
       </label>
 
-      <Button type="submit" disabled={submitting || conflict} className="self-start">
-        {submitting ? "Saving…" : initialValue ? "Save changes" : "Create item"}
-      </Button>
+      {initialValue ? (
+        <AdminDraftBar
+          pending={pending}
+          isNew={!initialValue.is_published}
+          disabled={autosave.status === "conflict"}
+          onPublish={handlePublish}
+          onDiscard={handleDiscard}
+        />
+      ) : (
+        <Button type="submit" disabled={submitting} className="self-start">
+          {submitting ? "Saving…" : "Create item"}
+        </Button>
+      )}
     </form>
   );
 }

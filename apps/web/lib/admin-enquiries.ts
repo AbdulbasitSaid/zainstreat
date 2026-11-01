@@ -1,3 +1,4 @@
+import type { EmailDelivery } from "@/components/admin-email-delivery-notice";
 import type { AdminQuote, QuoteDisplayStatus } from "@/lib/quotes";
 
 export const ENQUIRIES_PAGE_SIZE = 25;
@@ -21,6 +22,8 @@ export interface CateringEnquiryDetail extends Omit<CateringEnquirySummary, "quo
   message: string | null;
   locale: string;
   quote: AdminQuote | null;
+  // The quote email's outcome (Phase 25 Decision 6a).
+  customer_email_delivery: EmailDelivery | null;
 }
 
 export interface CateringEnquiryList {

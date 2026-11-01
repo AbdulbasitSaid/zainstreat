@@ -11,7 +11,8 @@ export function SiteImage({
   priority = false,
   float = false,
 }: {
-  src: StaticImageData;
+  // A bundled default, or an admin-uploaded URL (Phase 25 Decision 13).
+  src: StaticImageData | string;
   alt: string;
   className?: string;
   priority?: boolean;
@@ -39,7 +40,11 @@ export function SiteImage({
         fill
         sizes="(max-width: 768px) 100vw, 50vw"
         className="object-cover"
-        placeholder="blur"
+        // Remote uploads have no build-time blur data. Dev's http://
+        // localhost:8080 API isn't reachable from the web container's
+        // optimizer, as in MenuItemCard.
+        placeholder={typeof src === "string" ? "empty" : "blur"}
+        unoptimized={typeof src === "string" && src.startsWith("http://")}
         priority={priority}
       />
     </div>

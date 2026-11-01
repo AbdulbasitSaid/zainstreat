@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { useTranslations } from "next-intl";
 import { getTranslations } from "next-intl/server";
 import { SiteImage } from "@/components/site-image";
 import { SplitRow } from "@/components/split-row";
@@ -9,7 +8,9 @@ import categoryMeals from "@/assets/images/category-meals.jpg";
 import categorySnacks from "@/assets/images/category-snacks.jpg";
 import categoryCatering from "@/assets/images/category-catering.jpg";
 import categoryEventRentals from "@/assets/images/category-event-rentals.jpg";
+import { getSiteContent } from "@/lib/api";
 import { localeAlternates } from "@/lib/seo";
+import { siteImage } from "@/lib/site-content";
 
 function SplitRowIndex({ children }: { children: string }) {
   return (
@@ -37,8 +38,8 @@ export async function generateMetadata({
   };
 }
 
-export default function ServicesPage() {
-  const t = useTranslations("ServicesPage");
+export default async function ServicesPage() {
+  const [t, content] = await Promise.all([getTranslations("ServicesPage"), getSiteContent()]);
   const supportingClass = "max-w-[48ch] text-[clamp(1.05rem,1.5vw,1.25rem)] text-text-muted";
 
   return (
@@ -50,7 +51,7 @@ export default function ServicesPage() {
       </PageHero>
 
       <SplitRow
-        media={<SiteImage src={categoryMeals} alt={t("mealsHeading")} />}
+        media={<SiteImage src={siteImage(content, "category_meals") ?? categoryMeals} alt={t("mealsHeading")} />}
         content={
           <div>
             <SplitRowIndex>01</SplitRowIndex>
@@ -63,7 +64,7 @@ export default function ServicesPage() {
       <SplitRow
         tinted
         reverse
-        media={<SiteImage src={categorySnacks} alt={t("snacksHeading")} />}
+        media={<SiteImage src={siteImage(content, "category_snacks") ?? categorySnacks} alt={t("snacksHeading")} />}
         content={
           <div>
             <SplitRowIndex>02</SplitRowIndex>
@@ -74,7 +75,7 @@ export default function ServicesPage() {
       />
 
       <SplitRow
-        media={<SiteImage src={categoryCatering} alt={t("cateringHeading")} />}
+        media={<SiteImage src={siteImage(content, "category_catering") ?? categoryCatering} alt={t("cateringHeading")} />}
         content={
           <div>
             <SplitRowIndex>03</SplitRowIndex>
@@ -90,7 +91,7 @@ export default function ServicesPage() {
       <SplitRow
         tinted
         reverse
-        media={<SiteImage src={categoryEventRentals} alt={t("eventRentalsHeading")} />}
+        media={<SiteImage src={siteImage(content, "category_event_rentals") ?? categoryEventRentals} alt={t("eventRentalsHeading")} />}
         content={
           <div>
             <SplitRowIndex>04</SplitRowIndex>

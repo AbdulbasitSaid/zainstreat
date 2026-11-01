@@ -3,11 +3,14 @@
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/button";
 import { useCart } from "@/lib/cart-context";
+import { PREVIEW_DISABLED_TITLE, usePreview } from "@/lib/preview-context";
 import type { MenuItem } from "@/lib/api";
 
 export function AddToCartControls({ item }: { item: MenuItem }) {
   const t = useTranslations("MenuPage");
   const { addLine } = useCart();
+  const preview = usePreview();
+  const previewProps = preview ? { disabled: true, title: PREVIEW_DISABLED_TITLE } : {};
 
   if (!item.is_available) return null;
 
@@ -17,6 +20,7 @@ export function AddToCartControls({ item }: { item: MenuItem }) {
       <Button
         variant="outline"
         className="mt-2 w-full justify-center"
+        {...previewProps}
         onClick={() =>
           addLine({
             itemId: item.id,
@@ -40,6 +44,7 @@ export function AddToCartControls({ item }: { item: MenuItem }) {
           key={option.id}
           variant="outline"
           className="w-full justify-between text-xs"
+          {...previewProps}
           onClick={() =>
             addLine({
               itemId: item.id,
