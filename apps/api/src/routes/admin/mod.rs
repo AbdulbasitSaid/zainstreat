@@ -5,13 +5,14 @@ pub mod media;
 pub mod menu_items;
 pub mod middleware;
 pub mod orders;
+pub mod quotes;
 
 pub(crate) const SESSION_USER_ID_KEY: &str = "user_id";
 
 use crate::AppState;
 use axum::{
     middleware::from_fn,
-    routing::{get, patch, post},
+    routing::{get, patch, post, put},
     Router,
 };
 
@@ -36,6 +37,8 @@ pub fn admin_router() -> Router<AppState> {
         .route("/media", media::upload_router())
         .route("/catering-enquiries", get(enquiries::list_catering_enquiries))
         .route("/catering-enquiries/{id}", get(enquiries::get_catering_enquiry))
+        .route("/catering-enquiries/{id}/quote", put(quotes::save_quote))
+        .route("/catering-enquiries/{id}/quote/send", post(quotes::send_quote))
         .route("/contact-messages", get(enquiries::list_contact_messages))
         .route("/contact-messages/{id}", get(enquiries::get_contact_message))
         .route_layer(from_fn(middleware::require_admin));

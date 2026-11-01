@@ -3,6 +3,7 @@ pub mod error;
 pub mod order_emails;
 pub mod order_status;
 pub mod payment;
+pub mod quote_status;
 pub mod rate_limit;
 pub mod routes;
 pub mod validation;

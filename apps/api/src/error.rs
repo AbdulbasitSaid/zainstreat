@@ -38,6 +38,10 @@ pub enum AppError {
     CategoryArchived,
     Conflict(serde_json::Value),
     InvalidStatusTransition,
+    /// A catering quote past its `valid_until` (Phase 23 Decision 3).
+    QuoteExpired,
+    /// Accept/decline sent for an older quote version (Phase 23 Decision 13).
+    QuoteChanged,
     Internal,
 }
 
@@ -157,6 +161,12 @@ impl IntoResponse for AppError {
                     Json(json!({ "error": "invalid_status_transition" })),
                 )
                     .into_response()
+            }
+            AppError::QuoteExpired => {
+                (StatusCode::CONFLICT, Json(json!({ "error": "quote_expired" }))).into_response()
+            }
+            AppError::QuoteChanged => {
+                (StatusCode::CONFLICT, Json(json!({ "error": "quote_changed" }))).into_response()
             }
             AppError::Internal => {
                 tracing::error!("internal server error");
