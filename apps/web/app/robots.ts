@@ -5,8 +5,9 @@ export default function robots(): MetadataRoute.Robots {
 
   return {
     // "/*/order/" matches the per-order token pages (/en/order/<token>), not
-    // the /en/order checkout page (Phase 20 Decision 4).
-    rules: { userAgent: "*", allow: "/", disallow: ["/admin", "/api", "/*/order/"] },
+    // the /en/order checkout page (Phase 20 Decision 4). Quote pages are
+    // token pages too (Phase 23 Decision 4).
+    rules: { userAgent: "*", allow: "/", disallow: ["/admin", "/api", "/*/order/", "/*/quote/"] },
     sitemap: `${base}/sitemap.xml`,
   };
 }
