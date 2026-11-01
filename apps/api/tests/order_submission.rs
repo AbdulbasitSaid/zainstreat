@@ -523,6 +523,19 @@ async fn locale_is_stored_and_defaults_to_english(pool: PgPool) {
     assert_eq!(stored_locale(&pool, &body["id"]).await, "en");
 }
 
+/// Phase 24 Decision 6: French is the third customer locale.
+#[sqlx::test]
+async fn french_locale_is_stored(pool: PgPool) {
+    seed_flat_item(&pool).await;
+    let mut payload = valid_payload(json!([{ "menu_item_id": 1, "price_option_id": null, "quantity": 1 }]));
+    payload["locale"] = json!("fr");
+
+    let (status, body) = post(pool.clone(), "/api/orders", payload).await;
+
+    assert_eq!(status, StatusCode::CREATED);
+    assert_eq!(stored_locale(&pool, &body["id"]).await, "fr");
+}
+
 #[sqlx::test]
 async fn unsupported_locale_is_rejected(pool: PgPool) {
     seed_flat_item(&pool).await;

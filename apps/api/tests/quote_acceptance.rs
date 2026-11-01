@@ -133,6 +133,19 @@ async fn unknown_and_malformed_tokens_404(pool: PgPool) {
     assert_eq!(status, StatusCode::NOT_FOUND);
 }
 
+/// Phase 24: a quote on a French enquiry creates a French order.
+#[sqlx::test]
+async fn accepting_a_french_quote_creates_a_french_order(pool: PgPool) {
+    let seeded = seed(&pool, true).await;
+    sqlx::query("UPDATE catering_enquiries SET locale = 'fr'").execute(&pool).await.unwrap();
+
+    let (status, _) = post(pool.clone(), &seeded.uri("accept"), json!({ "version": 1 })).await;
+    assert_eq!(status, StatusCode::OK);
+
+    let locale: String = sqlx::query_scalar("SELECT locale FROM orders").fetch_one(&pool).await.unwrap();
+    assert_eq!(locale, "fr");
+}
+
 #[sqlx::test]
 async fn a_draft_cannot_be_accepted(pool: PgPool) {
     let seeded = seed(&pool, false).await;

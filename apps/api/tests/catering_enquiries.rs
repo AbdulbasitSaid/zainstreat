@@ -163,6 +163,16 @@ async fn catering_enquiry_stores_its_locale_and_defaults_to_english(pool: PgPool
     assert_eq!(stored_locale(&pool, &body["id"]).await, "en");
 }
 
+/// Phase 24 Decision 6.
+#[sqlx::test]
+async fn catering_enquiry_stores_french(pool: PgPool) {
+    let mut payload = valid_payload();
+    payload["locale"] = json!("fr");
+    let (status, body) = post(pool.clone(), "/api/catering-enquiries", payload).await;
+    assert_eq!(status, StatusCode::CREATED);
+    assert_eq!(stored_locale(&pool, &body["id"]).await, "fr");
+}
+
 #[sqlx::test]
 async fn catering_enquiry_create_rejects_an_unsupported_locale(pool: PgPool) {
     let mut payload = valid_payload();

@@ -127,7 +127,8 @@ cases, keeping the CSS/JS split deliberate rather than all-or-nothing.
 
 ## Internationalization (i18n)
 
-- **`next-intl@^4.14`** — locale-prefixed routing (`/en/...`, `/nl/...`),
+- **`next-intl@^4.14`** — locale-prefixed routing (`/en/...`, `/nl/...`,
+  `/fr/...` since Phase 24),
   server/client translation hooks, and a `proxy.ts`-based middleware that
   auto-detects the visitor's locale from `Accept-Language` and persists an
   explicit override via a `NEXT_LOCALE` cookie.
@@ -480,7 +481,7 @@ or recreated repo can't match.
 | Frontend | Next.js (App Router) + React + TypeScript + Tailwind CSS v4 |
 | Animation | GSAP + ScrollTrigger + CustomEase (scroll/transitions/cursor/float) + Lenis (smooth scroll) + plain CSS (hover/focus) |
 | Site imagery | Static imports from `apps/web/assets/images/` (decoration); `placehold.co` (DB `image_url` fallback only) |
-| i18n | next-intl (locale-prefixed `/en`, `/nl` routing) |
+| i18n | next-intl (locale-prefixed `/en`, `/nl`, `/fr` routing) |
 | Backend API | Rust + Axum + sqlx + serde |
 | Database | PostgreSQL |
 | Admin auth | argon2 + tower-sessions (Postgres-backed sessions) |

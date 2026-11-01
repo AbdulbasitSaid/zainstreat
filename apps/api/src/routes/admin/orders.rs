@@ -1,6 +1,6 @@
 use crate::email::EmailConfig;
 use crate::error::{AppError, FieldError};
-use crate::order_emails::{contact_url, status_email, tracking_url, Locale};
+use crate::order_emails::{status_email, Locale};
 use crate::order_status::{admin_next, is_reopen, is_valid_status, ORDER_STATUSES};
 use crate::payment::payment_reference;
 use axum::{
@@ -330,8 +330,8 @@ pub async fn update_order_status(
             &order.customer_name,
             &reference,
             &order.status,
-            &tracking_url(email.site_url(), locale, order.public_token),
-            &contact_url(email.site_url(), locale),
+            email.site_url(),
+            order.public_token,
         ) {
             email.spawn_send(order.customer_email, subject, body);
         }

@@ -7,6 +7,7 @@ import { SiteImage } from "@/components/site-image";
 import { ContactFormsTabs } from "@/components/contact-forms-tabs";
 import contact from "@/assets/images/contact.jpg";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
+import { localeAlternates } from "@/lib/seo";
 
 export async function generateMetadata({
   params,
@@ -19,6 +20,7 @@ export async function generateMetadata({
   return {
     title: t("metaTitle"),
     description: t("metaDescription"),
+    alternates: localeAlternates(locale, "/contact"),
   };
 }
 

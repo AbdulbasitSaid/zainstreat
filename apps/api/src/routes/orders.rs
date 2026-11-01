@@ -1,6 +1,6 @@
 use crate::email::EmailConfig;
 use crate::error::{AppError, FieldError, UnavailableItem};
-use crate::order_emails::{invoice_email, tracking_url, Locale};
+use crate::order_emails::{invoice_email, Locale};
 use crate::order_status::CUSTOMER_COMPLETABLE;
 use crate::payment::{payment_reference, PaymentConfig, PaymentInstructions};
 use crate::validation::{is_valid_email, is_valid_phone};
@@ -380,8 +380,7 @@ pub async fn create_order(
 /// The customer's invoice email, for a cart order or an accepted catering
 /// quote (Phase 23 Decision 4).
 pub(crate) fn send_invoice(email: &EmailConfig, locale: Locale, order: &OrderResponse, placed_at: &str) {
-    let url = tracking_url(email.site_url(), locale, order.public_token);
-    let (subject, body) = invoice_email(locale, order, placed_at, &url);
+    let (subject, body) = invoice_email(locale, order, placed_at, email.site_url(), order.public_token);
     email.spawn_send(order.customer_email.clone(), subject, body);
 }
 

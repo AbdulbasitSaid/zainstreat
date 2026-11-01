@@ -18,10 +18,12 @@ HTTP smoke test of the running app, not just "it compiles."
    didn't change.
 
 2. **Web checks** (if `apps/web` changed), from inside `apps/web`:
+   - `pnpm check:messages` — every `messages/*.json` has the same keys,
+     `{placeholders}` and `<tags>` as `en.json`.
    - `pnpm lint` — full-project sweep (not just the one file the hook
      already checked).
    - `pnpm build`.
-   - Stop and report immediately if either fails; don't proceed to the
+   - Stop and report immediately if any of these fails; don't proceed to the
      live smoke test against a build that doesn't compile.
 
 3. **API checks** (if `apps/api` changed), from inside `apps/api`:

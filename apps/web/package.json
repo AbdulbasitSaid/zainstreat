@@ -7,7 +7,8 @@
     "dev": "next dev -H 0.0.0.0 -p 3000",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "check:messages": "node scripts/check-messages.mjs"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",

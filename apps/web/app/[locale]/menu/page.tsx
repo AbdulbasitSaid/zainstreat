@@ -5,6 +5,7 @@ import { Notice } from "@/components/notice";
 import { CategoryFilter } from "@/components/category-filter";
 import { MenuItemCard } from "@/components/menu-item-card";
 import { getCategories, getMenuItems } from "@/lib/api";
+import { localeAlternates } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,7 @@ export async function generateMetadata({
   return {
     title: t("metaTitle"),
     description: t("metaDescription"),
+    alternates: localeAlternates(locale, "/menu"),
   };
 }
 
