@@ -195,6 +195,9 @@ SES SMTP; without credentials the API logs every send as a no-op.
 4. Set `SES_SMTP_HOST`, `SES_SMTP_USERNAME`, `SES_SMTP_PASSWORD`,
    `EMAIL_FROM_ADDRESS` and `EMAIL_BUSINESS_NOTIFY_ADDRESS` on the
    Environment, then Promote (see "Changing a secret or setting").
+   `EMAIL_FROM_ADDRESS` is a bare address. The API adds the display name
+   "Zain's Treat n More" itself (Phase 24), because the deploy rejects a
+   `'` in env values.
 
 ## Resizing the production instance
 

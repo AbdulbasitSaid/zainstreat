@@ -1,3 +1,5 @@
+import { hasLocale } from "next-intl";
+import { routing, type AppLocale } from "@/i18n/routing";
 import { isOrderToken, type FulfilmentType } from "@/lib/orders";
 
 // The stored quote statuses plus "expired", which the API computes for a
@@ -66,16 +68,17 @@ export interface SendQuoteResponse {
   email_queued: boolean;
 }
 
-type ShareLocale = "en" | "nl";
-
 // The prefilled WhatsApp message when the owner shares a quote, in the
-// enquiry's language: specs/2026-11-01-phase-23-catering-quotations/copy.md §4.
-// Admin sits outside next-intl, so the two variants live here.
-const SHARE_MESSAGES: Record<ShareLocale, (name: string, id: number, date: string, url: string) => string> = {
+// enquiry's language: specs/2026-11-01-phase-23-catering-quotations/copy.md §4,
+// and the French in specs/2026-11-01-phase-24-french-locale/copy.md §5.
+// Admin sits outside next-intl, so the variants live here.
+const SHARE_MESSAGES: Record<AppLocale, (name: string, id: number, date: string, url: string) => string> = {
   en: (name, id, date, url) =>
     `Hi ${name}, here is your quote #${id} from Zain's Treat n More for your event on ${date}: ${url}`,
   nl: (name, id, date, url) =>
     `Hoi ${name}, hier is je offerte #${id} van Zain's Treat n More voor je evenement op ${date}: ${url}`,
+  fr: (name, id, date, url) =>
+    `Bonjour ${name}, voici votre devis #${id} de Zain's Treat n More pour votre événement du ${date} : ${url}`,
 };
 
 // "2026-12-05" -> "05-12-2026", the format the emails use.
@@ -91,7 +94,7 @@ export function quoteShareMessage(
   eventDate: string,
   url: string,
 ): string {
-  const message = SHARE_MESSAGES[locale === "nl" ? "nl" : "en"];
+  const message = SHARE_MESSAGES[hasLocale(routing.locales, locale) ? locale : "en"];
   return message(customerName, quoteId, formatQuoteDate(eventDate), url);
 }
 

@@ -2,7 +2,15 @@
 
 import { useLocale, useTranslations } from "next-intl";
 import { usePathname, useRouter } from "@/i18n/navigation";
-import { routing } from "@/i18n/routing";
+import { routing, type AppLocale } from "@/i18n/routing";
+
+// Each language in its own name, so visitors can find theirs whatever page
+// language they're on.
+const LOCALE_NAMES: Record<AppLocale, string> = {
+  en: "English",
+  nl: "Nederlands",
+  fr: "Français",
+};
 
 export function LocaleToggle() {
   const t = useTranslations("LocaleToggle");
@@ -20,7 +28,7 @@ export function LocaleToggle() {
       >
         {routing.locales.map((l) => (
           <option key={l} value={l}>
-            {l === "en" ? "English" : "Nederlands"}
+            {LOCALE_NAMES[l]}
           </option>
         ))}
       </select>

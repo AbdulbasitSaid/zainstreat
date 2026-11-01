@@ -61,20 +61,27 @@ and prod Compose files share the API's service name (`api`), so this
 resolves via Docker's internal DNS in both environments with no override
 needed.
 
-## Internationalization (Dutch/English)
+## Internationalization (English/Dutch/French)
 
-The public site is served under locale-prefixed routes (`/en`, `/nl`),
-powered by `next-intl`. Conventions for adding UI copy in future phases:
+The public site is served under locale-prefixed routes (`/en`, `/nl`,
+`/fr`), powered by `next-intl`; `apps/web/i18n/routing.ts` is the one list
+of locales. Conventions for adding UI copy in future phases:
 
-- Translation strings live in `apps/web/messages/en.json` and
-  `apps/web/messages/nl.json`, keyed by `PageName.keyName` (e.g.
-  `HomePage.heroHeadline`). Add a key to both files together — never ship
-  an English-only key. `SiteHeader`, `SiteFooter`, and one `PageName`
-  namespace per route (e.g. `AboutPage`, `ServicesPage`, `ContactPage`,
-  `MenuPage`) are the established message-key groups going forward
-  (Phase 5).
+- Translation strings live in `apps/web/messages/en.json`, `nl.json` and
+  `fr.json`, keyed by `PageName.keyName` (e.g. `HomePage.heroHeadline`).
+  Add a key to all three files together — never ship an English-only key.
+  `pnpm check:messages` (run by `/validate`) fails on a missing or extra
+  key, or a `{placeholder}`/`<tag>` that differs from `en.json`.
+  `SiteHeader`, `SiteFooter`, and one `PageName` namespace per route (e.g.
+  `AboutPage`, `ServicesPage`, `ContactPage`, `MenuPage`) are the
+  established message-key groups going forward (Phase 5).
+- A new indexable page goes in `PUBLIC_ROUTES` (`apps/web/lib/seo.ts`) and
+  sets `alternates: localeAlternates(locale, path)` in its metadata, so it
+  gets hreflang links and a sitemap entry (Phase 24).
 - `apps/web/components/locale-toggle.tsx` now renders inside
   `site-header.tsx` (Phase 5), closing the forward-reference this doc
   previously left open. Don't add a second toggle elsewhere.
 - The admin dashboard and the Rust API (`apps/api`) are out of scope for
-  translation — they stay English-only.
+  translation — they stay English-only. Customer emails are the
+  exception: each one carries all three languages, the customer's first
+  (`apps/api/src/order_emails.rs`, Phase 24 Decision 11).
