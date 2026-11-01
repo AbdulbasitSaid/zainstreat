@@ -407,14 +407,20 @@ Phase 20 (merged 2026-10-31) and Phase 21's Group 13 reconciliation.
 
 ## Phase 23 — Catering Quotations
 
-Event orders stay out of the cart flow (`mission.md`). This phase builds
-on Phase 15's catering enquiry.
+Planned 2026-11-01 (see
+`specs/2026-11-01-phase-23-catering-quotations/requirement.md`). Event
+orders stay out of the cart flow (`mission.md`). This phase builds on
+Phase 15's catering enquiry.
 
 - Admin: turn a catering enquiry into a quotation (line items, total,
   notes) and send it to the customer by email.
 - Customer accepts the quote via a link. From there it follows the same
   bank-transfer → owner confirms → processing → pickup/delivery →
   completed lifecycle as Phase 20/22.
+- A third fulfilment type, **on-site at the venue**, for quotes only,
+  with its own "Catering in progress" step (planned 2026-11-01).
+- Admin can also share the quote link by WhatsApp or copy it, so
+  quotes work even when email is off.
 
 ## Phase 24 — French Locale
 
