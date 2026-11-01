@@ -424,10 +424,21 @@ Phase 15's catering enquiry.
 
 ## Phase 24 — French Locale
 
+Planned 2026-11-01 (see
+`specs/2026-11-01-phase-24-french-locale/requirement.md`). Builds on
+Phase 23's customer emails and quote page.
+
 - Add `fr` as a third public locale alongside `en`/`nl` (`next-intl`
   routing, `messages/fr.json`, language toggle, sitemap,
   `Accept-Language` detection). Admin and the API stay English-only.
-- Translate the customer emails into French as well.
+- Translate the customer emails, the quote email and the admin's
+  WhatsApp quote message into French as well.
+- Customer emails change from one language to one email carrying all
+  three (the customer's language first), with a joined three-language
+  subject and the brand as the sender name.
+- hreflang alternates (`en`/`nl`/`fr` plus `x-default`) in page metadata
+  and the sitemap.
+- A message-key parity check so the three message files can't drift.
 
 ## Phase 25 — Admin-Editable Site Content
 
