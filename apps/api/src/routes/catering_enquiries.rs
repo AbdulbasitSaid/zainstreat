@@ -1,5 +1,6 @@
 use crate::email::EmailConfig;
 use crate::error::{AppError, FieldError};
+use crate::order_emails::Locale;
 use crate::validation::{is_valid_email, is_valid_phone};
 use axum::extract::State;
 use axum::{http::StatusCode, Json};
@@ -24,6 +25,9 @@ pub struct CreateCateringEnquiryRequest {
     pub location: String,
     pub services_required: Vec<String>,
     pub message: Option<String>,
+    /// The site language the customer enquired in, for their quote email.
+    /// Missing means `en` (Phase 23 Decision 5).
+    pub locale: Option<String>,
     // Honeypot (tech-stack.md "Spam/Abuse Mitigation"). Real users never
     // see or fill this field; `#[serde(default)]` so older/other callers
     // that omit it entirely still deserialize.
@@ -91,6 +95,12 @@ fn validate(payload: &CreateCateringEnquiryRequest) -> Vec<FieldError> {
         errors.push(FieldError { field: "message".into(), message: "too_long".into() });
     }
 
+    if let Some(locale) = &payload.locale
+        && Locale::parse(locale).is_none()
+    {
+        errors.push(FieldError { field: "locale".into(), message: "invalid".into() });
+    }
+
     errors
 }
 
@@ -114,11 +124,13 @@ pub async fn create_catering_enquiry(
         return Err(AppError::Validation(errors));
     }
 
+    let locale = payload.locale.as_deref().and_then(Locale::parse).unwrap_or(Locale::En);
+
     let row = sqlx::query!(
         r#"
         INSERT INTO catering_enquiries
-            (name, phone, email, event_type, event_date, guest_count, location, services_required, message)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            (name, phone, email, event_type, event_date, guest_count, location, services_required, message, locale)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         RETURNING id, created_at as "created_at: DateTime<Utc>"
         "#,
         payload.name.trim(),
@@ -130,6 +142,7 @@ pub async fn create_catering_enquiry(
         payload.location.trim(),
         &payload.services_required,
         payload.message.as_deref().map(str::trim),
+        locale.as_str(),
     )
     .fetch_one(&pool)
     .await?;
