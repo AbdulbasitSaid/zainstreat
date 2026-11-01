@@ -52,8 +52,15 @@ mod tests {
     fn only_a_sent_quote_in_date_can_be_accepted() {
         let today = date(10);
         for status in QUOTE_STATUSES {
-            assert_eq!(customer_can_accept(status, date(10), today), status == "sent", "{status}");
-            assert!(!customer_can_accept(status, date(9), today), "{status} expired");
+            assert_eq!(
+                customer_can_accept(status, date(10), today),
+                status == "sent",
+                "{status}"
+            );
+            assert!(
+                !customer_can_accept(status, date(9), today),
+                "{status} expired"
+            );
         }
     }
 

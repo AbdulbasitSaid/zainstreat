@@ -22,7 +22,11 @@ pub fn is_valid_status(value: &str) -> bool {
 /// Statuses from which the customer may confirm they received or
 /// collected the order (Phase 22 Decision 8), or that their event was
 /// catered (Phase 23 Decision 12).
-pub const CUSTOMER_COMPLETABLE: [&str; 3] = ["ready_for_collection", "out_for_delivery", "serving_on_site"];
+pub const CUSTOMER_COMPLETABLE: [&str; 3] = [
+    "ready_for_collection",
+    "out_for_delivery",
+    "serving_on_site",
+];
 
 pub fn customer_can_complete(status: &str) -> bool {
     CUSTOMER_COMPLETABLE.contains(&status)
@@ -36,13 +40,19 @@ pub fn customer_can_complete(status: &str) -> bool {
 /// case they pressed "received" too early; one the admin completed can't
 /// (Phase 22 Decision 8). `on_site` orders only come from accepted catering
 /// quotes (Phase 23 Decision 12).
-pub fn admin_next(status: &str, delivery_type: &str, completed_by: Option<&str>) -> &'static [&'static str] {
+pub fn admin_next(
+    status: &str,
+    delivery_type: &str,
+    completed_by: Option<&str>,
+) -> &'static [&'static str] {
     match (status, delivery_type, completed_by) {
         ("awaiting_payment" | "payment_claimed", _, _) => &["processing", "cancelled"],
         ("processing", "pickup", _) => &["ready_for_collection", "cancelled"],
         ("processing", "on_site", _) => &["serving_on_site", "cancelled"],
         ("processing", _, _) => &["out_for_delivery", "cancelled"],
-        ("ready_for_collection" | "out_for_delivery" | "serving_on_site", _, _) => &["completed", "cancelled"],
+        ("ready_for_collection" | "out_for_delivery" | "serving_on_site", _, _) => {
+            &["completed", "cancelled"]
+        }
         ("completed", "pickup", Some("customer")) => &["ready_for_collection"],
         ("completed", "on_site", Some("customer")) => &["serving_on_site"],
         ("completed", _, Some("customer")) => &["out_for_delivery"],
@@ -103,7 +113,11 @@ mod tests {
     #[test]
     fn no_skipping_ahead() {
         assert!(!allowed("awaiting_payment", "completed", "pickup"));
-        assert!(!allowed("payment_claimed", "ready_for_collection", "pickup"));
+        assert!(!allowed(
+            "payment_claimed",
+            "ready_for_collection",
+            "pickup"
+        ));
         assert!(!allowed("processing", "completed", "delivery"));
     }
 
@@ -145,9 +159,18 @@ mod tests {
 
     #[test]
     fn customer_completed_orders_reopen_to_their_ready_status() {
-        assert_eq!(admin_next("completed", "pickup", Some("customer")), &["ready_for_collection"]);
-        assert_eq!(admin_next("completed", "delivery", Some("customer")), &["out_for_delivery"]);
-        assert_eq!(admin_next("completed", "on_site", Some("customer")), &["serving_on_site"]);
+        assert_eq!(
+            admin_next("completed", "pickup", Some("customer")),
+            &["ready_for_collection"]
+        );
+        assert_eq!(
+            admin_next("completed", "delivery", Some("customer")),
+            &["out_for_delivery"]
+        );
+        assert_eq!(
+            admin_next("completed", "on_site", Some("customer")),
+            &["serving_on_site"]
+        );
         assert!(is_reopen("completed", "serving_on_site"));
         assert!(is_reopen("completed", "ready_for_collection"));
         assert!(!is_reopen("processing", "ready_for_collection"));
@@ -158,7 +181,10 @@ mod tests {
         for status in ORDER_STATUSES {
             assert_eq!(
                 customer_can_complete(status),
-                matches!(status, "ready_for_collection" | "out_for_delivery" | "serving_on_site"),
+                matches!(
+                    status,
+                    "ready_for_collection" | "out_for_delivery" | "serving_on_site"
+                ),
                 "{status}"
             );
         }

@@ -171,7 +171,8 @@ async fn category_draft_rejects_a_stale_draft_updated_at(pool: PgPool) {
 async fn category_archive_succeeds_when_no_active_items(pool: PgPool) {
     let cookie = login(&pool).await;
     let id = insert_category(&pool, "Rice").await;
-    let (_status, list_body) = get_with_cookie(pool.clone(), "/api/admin/categories", Some(&cookie)).await;
+    let (_status, list_body) =
+        get_with_cookie(pool.clone(), "/api/admin/categories", Some(&cookie)).await;
     let updated_at = list_body
         .as_array()
         .unwrap()
@@ -203,7 +204,8 @@ async fn category_archive_rejects_when_active_items_remain(pool: PgPool) {
     .await
     .unwrap();
 
-    let (_status, list_body) = get_with_cookie(pool.clone(), "/api/admin/categories", Some(&cookie)).await;
+    let (_status, list_body) =
+        get_with_cookie(pool.clone(), "/api/admin/categories", Some(&cookie)).await;
     let updated_at = list_body
         .as_array()
         .unwrap()
@@ -236,7 +238,8 @@ async fn category_archive_succeeds_when_only_archived_items_remain(pool: PgPool)
     .await
     .unwrap();
 
-    let (_status, list_body) = get_with_cookie(pool.clone(), "/api/admin/categories", Some(&cookie)).await;
+    let (_status, list_body) =
+        get_with_cookie(pool.clone(), "/api/admin/categories", Some(&cookie)).await;
     let updated_at = list_body
         .as_array()
         .unwrap()
@@ -259,7 +262,8 @@ async fn category_archive_succeeds_when_only_archived_items_remain(pool: PgPool)
 async fn category_archive_rejects_a_stale_updated_at(pool: PgPool) {
     let cookie = login(&pool).await;
     let id = insert_category(&pool, "Rice").await;
-    let (_status, list_body) = get_with_cookie(pool.clone(), "/api/admin/categories", Some(&cookie)).await;
+    let (_status, list_body) =
+        get_with_cookie(pool.clone(), "/api/admin/categories", Some(&cookie)).await;
     let original_updated_at = list_body
         .as_array()
         .unwrap()
@@ -288,10 +292,12 @@ async fn category_archive_rejects_a_stale_updated_at(pool: PgPool) {
     assert_eq!(status, StatusCode::CONFLICT);
     assert_eq!(body["error"], "conflict");
 
-    let is_archived: bool =
-        sqlx::query_scalar!("SELECT deleted_at IS NOT NULL as \"archived!\" FROM categories WHERE id = $1", id)
-            .fetch_one(&pool)
-            .await
-            .unwrap();
+    let is_archived: bool = sqlx::query_scalar!(
+        "SELECT deleted_at IS NOT NULL as \"archived!\" FROM categories WHERE id = $1",
+        id
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
     assert!(!is_archived);
 }

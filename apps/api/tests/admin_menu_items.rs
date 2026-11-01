@@ -5,7 +5,7 @@ use common::{
     get_with_cookie, insert_admin, insert_category, patch_with_cookie, post_multipart_with_cookie,
     post_with_cookie, put_with_cookie, session_cookie,
 };
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use sqlx::PgPool;
 
 const TINY_PNG: &[u8] = &[
@@ -155,7 +155,13 @@ async fn menu_item_create_rejects_both_price_and_price_options(pool: PgPool) {
     let (status, body, _set) =
         post_with_cookie(pool, "/api/admin/menu-items", payload, Some(&cookie)).await;
     assert_eq!(status, StatusCode::BAD_REQUEST);
-    assert!(body["fields"].as_array().unwrap().iter().any(|f| f["field"] == "price_options"));
+    assert!(
+        body["fields"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|f| f["field"] == "price_options")
+    );
 }
 
 #[sqlx::test]
@@ -175,7 +181,13 @@ async fn menu_item_create_rejects_neither_price_nor_price_options(pool: PgPool) 
     let (status, body, _set) =
         post_with_cookie(pool, "/api/admin/menu-items", payload, Some(&cookie)).await;
     assert_eq!(status, StatusCode::BAD_REQUEST);
-    assert!(body["fields"].as_array().unwrap().iter().any(|f| f["field"] == "price"));
+    assert!(
+        body["fields"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|f| f["field"] == "price")
+    );
 }
 
 #[sqlx::test]
@@ -197,20 +209,18 @@ async fn menu_item_create_rejects_an_archived_or_unknown_category(pool: PgPool) 
     let cookie = login(&pool).await;
     let category_id = insert_category(&pool, "Rice").await;
     let url = upload_image(&pool, &cookie).await;
-    sqlx::query!("UPDATE categories SET deleted_at = now() WHERE id = $1", category_id)
-        .execute(&pool)
-        .await
-        .unwrap();
+    sqlx::query!(
+        "UPDATE categories SET deleted_at = now() WHERE id = $1",
+        category_id
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
 
     let mut payload = flat_price_payload(category_id, "Jollof", "10.00");
     payload["image_url"] = json!(url);
-    let (status, body, _set) = post_with_cookie(
-        pool,
-        "/api/admin/menu-items",
-        payload,
-        Some(&cookie),
-    )
-    .await;
+    let (status, body, _set) =
+        post_with_cookie(pool, "/api/admin/menu-items", payload, Some(&cookie)).await;
     assert_eq!(status, StatusCode::BAD_REQUEST);
     assert_eq!(body["fields"][0]["field"], "category_id");
 }
@@ -276,8 +286,12 @@ async fn menu_item_draft_grandfathers_a_preexisting_non_api_image_url(pool: PgPo
     .await
     .unwrap();
 
-    let (_status, item) =
-        get_with_cookie(pool.clone(), &format!("/api/admin/menu-items/{id}"), Some(&cookie)).await;
+    let (_status, item) = get_with_cookie(
+        pool.clone(),
+        &format!("/api/admin/menu-items/{id}"),
+        Some(&cookie),
+    )
+    .await;
 
     let mut update_payload = flat_price_payload(category_id, "Jollof Renamed", "10.00");
     update_payload["image_url"] = json!(legacy_url);
@@ -598,17 +612,27 @@ async fn archived_menu_item_is_excluded_from_the_public_menu(pool: PgPool) {
     assert_eq!(status, StatusCode::OK);
 
     let (_status, public_body) = get_with_cookie(pool, "/api/menu-items", None).await;
-    let ids: Vec<i64> = public_body.as_array().unwrap().iter().map(|i| i["id"].as_i64().unwrap()).collect();
+    let ids: Vec<i64> = public_body
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|i| i["id"].as_i64().unwrap())
+        .collect();
     assert!(!ids.contains(&id));
 }
 
 #[sqlx::test]
-async fn category_archived_trigger_rejects_a_direct_insert_under_an_archived_category(pool: PgPool) {
+async fn category_archived_trigger_rejects_a_direct_insert_under_an_archived_category(
+    pool: PgPool,
+) {
     let category_id = insert_category(&pool, "Rice").await;
-    sqlx::query!("UPDATE categories SET deleted_at = now() WHERE id = $1", category_id)
-        .execute(&pool)
-        .await
-        .unwrap();
+    sqlx::query!(
+        "UPDATE categories SET deleted_at = now() WHERE id = $1",
+        category_id
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
 
     let result = sqlx::query!(
         "INSERT INTO menu_items (category_id, name, price) VALUES ($1, 'Jollof', 10.00)",

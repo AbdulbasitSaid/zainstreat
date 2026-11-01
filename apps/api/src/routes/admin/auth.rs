@@ -1,9 +1,9 @@
 use crate::error::AppError;
 use crate::routes::admin::SESSION_USER_ID_KEY;
-use argon2::password_hash::phc::PasswordHash;
-use argon2::password_hash::PasswordVerifier;
 use argon2::Argon2;
-use axum::{extract::State, http::StatusCode, Json};
+use argon2::password_hash::PasswordVerifier;
+use argon2::password_hash::phc::PasswordHash;
+use axum::{Json, extract::State, http::StatusCode};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use tower_sessions::Session;
@@ -12,8 +12,7 @@ use tower_sessions::Session;
 // password (NOT a real account's password) — verified against on an unknown
 // email so "no such user" and "wrong password" take a similar amount of time
 // (requirement.md Decision 6).
-const DUMMY_PASSWORD_HASH: &str =
-    "$argon2id$v=19$m=19456,t=2,p=1$pP8y4uKEEF1EKXwXfGJoLg$bI+rGRSb+HQmvycvyHuHX3MYty55Ws2CxQeMRp/ZK4s";
+const DUMMY_PASSWORD_HASH: &str = "$argon2id$v=19$m=19456,t=2,p=1$pP8y4uKEEF1EKXwXfGJoLg$bI+rGRSb+HQmvycvyHuHX3MYty55Ws2CxQeMRp/ZK4s";
 
 #[derive(Debug, Deserialize)]
 pub struct LoginRequest {
@@ -59,8 +58,7 @@ pub async fn login(
         .map(|u| u.password_hash.as_str())
         .unwrap_or(DUMMY_PASSWORD_HASH);
 
-    let parsed_hash =
-        PasswordHash::new(hash_to_check).map_err(|_| AppError::InvalidCredentials)?;
+    let parsed_hash = PasswordHash::new(hash_to_check).map_err(|_| AppError::InvalidCredentials)?;
     let verified = Argon2::default()
         .verify_password(payload.password.as_bytes(), &parsed_hash)
         .is_ok();

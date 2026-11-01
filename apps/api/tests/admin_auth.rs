@@ -18,7 +18,8 @@ async fn login_succeeds_and_me_reflects_session(pool: PgPool) {
     .await;
     assert_eq!(status, StatusCode::OK);
     assert_eq!(body["email"], "owner@example.com");
-    let cookie = session_cookie(&set_cookie.expect("login should set a session cookie")).to_string();
+    let cookie =
+        session_cookie(&set_cookie.expect("login should set a session cookie")).to_string();
 
     let (me_status, me_body) = get_with_cookie(pool, "/api/admin/me", Some(&cookie)).await;
     assert_eq!(me_status, StatusCode::OK);

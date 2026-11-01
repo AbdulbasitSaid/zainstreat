@@ -1,12 +1,19 @@
 use crate::email::{EmailConfig, OutgoingEmail};
 use crate::error::{AppError, FieldError};
 use crate::validation::{is_valid_email, is_valid_phone};
-use axum::{extract::State, http::StatusCode, Json};
+use axum::{Json, extract::State, http::StatusCode};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 
-const SUBJECTS: [&str; 6] = ["general", "catering", "event_rental", "menu", "order", "other"];
+const SUBJECTS: [&str; 6] = [
+    "general",
+    "catering",
+    "event_rental",
+    "menu",
+    "order",
+    "other",
+];
 const MESSAGE_MAX_LENGTH: usize = 1000;
 
 #[derive(Debug, Deserialize)]
@@ -32,31 +39,55 @@ fn validate(payload: &CreateContactMessageRequest) -> Vec<FieldError> {
 
     let trimmed_name = payload.name.trim();
     if trimmed_name.is_empty() {
-        errors.push(FieldError { field: "name".into(), message: "required".into() });
+        errors.push(FieldError {
+            field: "name".into(),
+            message: "required".into(),
+        });
     }
 
     if payload.email.trim().is_empty() {
-        errors.push(FieldError { field: "email".into(), message: "required".into() });
+        errors.push(FieldError {
+            field: "email".into(),
+            message: "required".into(),
+        });
     } else if !is_valid_email(&payload.email) {
-        errors.push(FieldError { field: "email".into(), message: "invalid".into() });
+        errors.push(FieldError {
+            field: "email".into(),
+            message: "invalid".into(),
+        });
     }
 
     let trimmed_phone = payload.phone.trim();
     if trimmed_phone.is_empty() {
-        errors.push(FieldError { field: "phone".into(), message: "required".into() });
+        errors.push(FieldError {
+            field: "phone".into(),
+            message: "required".into(),
+        });
     } else if !is_valid_phone(trimmed_phone) {
-        errors.push(FieldError { field: "phone".into(), message: "invalid".into() });
+        errors.push(FieldError {
+            field: "phone".into(),
+            message: "invalid".into(),
+        });
     }
 
     if !SUBJECTS.contains(&payload.subject.as_str()) {
-        errors.push(FieldError { field: "subject".into(), message: "invalid".into() });
+        errors.push(FieldError {
+            field: "subject".into(),
+            message: "invalid".into(),
+        });
     }
 
     let trimmed_message = payload.message.trim();
     if trimmed_message.is_empty() {
-        errors.push(FieldError { field: "message".into(), message: "required".into() });
+        errors.push(FieldError {
+            field: "message".into(),
+            message: "required".into(),
+        });
     } else if trimmed_message.chars().count() > MESSAGE_MAX_LENGTH {
-        errors.push(FieldError { field: "message".into(), message: "too_long".into() });
+        errors.push(FieldError {
+            field: "message".into(),
+            message: "too_long".into(),
+        });
     }
 
     errors
@@ -71,7 +102,10 @@ pub async fn create_contact_message(
     if !payload.website.trim().is_empty() {
         return Ok((
             StatusCode::CREATED,
-            Json(ContactMessageResponse { id: 0, created_at: Utc::now() }),
+            Json(ContactMessageResponse {
+                id: 0,
+                created_at: Utc::now(),
+            }),
         ));
     }
 
@@ -112,5 +146,11 @@ pub async fn create_contact_message(
         });
     }
 
-    Ok((StatusCode::CREATED, Json(ContactMessageResponse { id: row.id, created_at: row.created_at })))
+    Ok((
+        StatusCode::CREATED,
+        Json(ContactMessageResponse {
+            id: row.id,
+            created_at: row.created_at,
+        }),
+    ))
 }

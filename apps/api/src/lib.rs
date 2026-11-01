@@ -9,18 +9,18 @@ pub mod routes;
 pub mod site_content;
 pub mod validation;
 
-use axum::extract::FromRef;
 use axum::Router;
+use axum::extract::FromRef;
 use sqlx::PgPool;
 use tower::ServiceBuilder;
 use tower_http::{
+    LatencyUnit,
     request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer},
     trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer},
-    LatencyUnit,
 };
 use tower_sessions::{
-    cookie::{time::Duration, SameSite},
     Expiry, SessionManagerLayer,
+    cookie::{SameSite, time::Duration},
 };
 use tower_sessions_sqlx_store::PostgresStore;
 use tracing::Level;
@@ -74,7 +74,8 @@ impl FromRef<AppState> for payment::PaymentConfig {
 /// type in this codebase stays chrono.
 pub(crate) fn chrono_to_offset(dt: chrono::DateTime<chrono::Utc>) -> time::OffsetDateTime {
     time::OffsetDateTime::from_unix_timestamp_nanos(
-        dt.timestamp_nanos_opt().expect("updated_at fits in i64 nanoseconds") as i128,
+        dt.timestamp_nanos_opt()
+            .expect("updated_at fits in i64 nanoseconds") as i128,
     )
     .expect("valid offset datetime")
 }
@@ -126,5 +127,10 @@ pub async fn build_app(
                 )
                 .layer(PropagateRequestIdLayer::x_request_id()),
         )
-        .with_state(AppState { pool, media, email, payment }))
+        .with_state(AppState {
+            pool,
+            media,
+            email,
+            payment,
+        }))
 }

@@ -13,6 +13,7 @@ pub(crate) const SESSION_USER_ID_KEY: &str = "user_id";
 
 use crate::AppState;
 use axum::{
+    Router,
     middleware::from_fn,
     routing::{delete, get, patch, post, put},
     Router,
@@ -36,10 +37,19 @@ pub fn admin_router() -> Router<AppState> {
         .route("/menu-items/{id}/availability", patch(menu_items::update_availability))
         .route("/menu-items/{id}/archive", post(menu_items::archive_menu_item))
         .route("/media", media::upload_router())
-        .route("/catering-enquiries", get(enquiries::list_catering_enquiries))
-        .route("/catering-enquiries/{id}", get(enquiries::get_catering_enquiry))
+        .route(
+            "/catering-enquiries",
+            get(enquiries::list_catering_enquiries),
+        )
+        .route(
+            "/catering-enquiries/{id}",
+            get(enquiries::get_catering_enquiry),
+        )
         .route("/catering-enquiries/{id}/quote", put(quotes::save_quote))
-        .route("/catering-enquiries/{id}/quote/send", post(quotes::send_quote))
+        .route(
+            "/catering-enquiries/{id}/quote/send",
+            post(quotes::send_quote),
+        )
         .route("/contact-messages", get(enquiries::list_contact_messages))
         .route("/contact-messages/{id}", get(enquiries::get_contact_message))
         // Phase 25: drafts, live preview and publish.
@@ -54,5 +64,7 @@ pub fn admin_router() -> Router<AppState> {
         .route("/drafts/{kind}/{id}", delete(drafts::discard_draft))
         .route_layer(from_fn(middleware::require_admin));
 
-    Router::new().route("/login", post(auth::login)).merge(protected)
+    Router::new()
+        .route("/login", post(auth::login))
+        .merge(protected)
 }

@@ -1,5 +1,5 @@
-use crate::error::AppError;
 use crate::MediaConfig;
+use crate::error::AppError;
 use axum::{
     extract::{Path, State},
     http::header,
@@ -44,7 +44,10 @@ pub async fn get_media(
     Ok((
         [
             (header::CONTENT_TYPE, content_type),
-            (header::CACHE_CONTROL, "public, max-age=31536000, immutable".to_string()),
+            (
+                header::CACHE_CONTROL,
+                "public, max-age=31536000, immutable".to_string(),
+            ),
         ],
         bytes,
     )

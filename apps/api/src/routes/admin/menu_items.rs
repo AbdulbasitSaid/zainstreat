@@ -1,9 +1,9 @@
+use crate::MediaConfig;
 use crate::chrono_to_offset;
 use crate::error::{AppError, FieldError};
-use crate::MediaConfig;
 use axum::{
-    extract::{Path, State},
     Json,
+    extract::{Path, State},
 };
 use chrono::{DateTime, Utc};
 use rust_decimal::Decimal;
@@ -129,7 +129,10 @@ pub(crate) async fn validate_menu_item(
     let mut errors = Vec::new();
 
     if payload.name.trim().is_empty() {
-        errors.push(FieldError { field: "name".into(), message: "required".into() });
+        errors.push(FieldError {
+            field: "name".into(),
+            message: "required".into(),
+        });
     }
 
     // requirement.md Decision 5 — exactly one of price / price_options.
@@ -175,12 +178,18 @@ pub(crate) async fn validate_menu_item(
     // external URL actually reaching storage) stays closed without
     // bricking edits to every pre-existing row.
     match &payload.image_url {
-        None => errors.push(FieldError { field: "image_url".into(), message: "required".into() }),
+        None => errors.push(FieldError {
+            field: "image_url".into(),
+            message: "required".into(),
+        }),
         Some(url)
             if existing_image_url != Some(url.as_str())
                 && !is_valid_media_url(url, &media.public_base_url) =>
         {
-            errors.push(FieldError { field: "image_url".into(), message: "invalid".into() });
+            errors.push(FieldError {
+                field: "image_url".into(),
+                message: "invalid".into(),
+            });
         }
         Some(_) => {}
     }
@@ -196,7 +205,10 @@ pub(crate) async fn validate_menu_item(
     .await?
     .unwrap_or(false);
     if !category_active {
-        errors.push(FieldError { field: "category_id".into(), message: "invalid".into() });
+        errors.push(FieldError {
+            field: "category_id".into(),
+            message: "invalid".into(),
+        });
     }
 
     if errors.is_empty() {
@@ -215,7 +227,11 @@ fn rows_to_responses(
         options_by_item
             .entry(row.menu_item_id)
             .or_default()
-            .push(AdminPriceOptionResponse { id: row.id, label: row.label, price: row.price });
+            .push(AdminPriceOptionResponse {
+                id: row.id,
+                label: row.label,
+                price: row.price,
+            });
     }
 
     items
@@ -319,7 +335,10 @@ pub async fn get_menu_item(
     .await?;
 
     Ok(Json(
-        rows_to_responses(vec![item], option_rows).into_iter().next().expect("one row in, one row out"),
+        rows_to_responses(vec![item], option_rows)
+            .into_iter()
+            .next()
+            .expect("one row in, one row out"),
     ))
 }
 
@@ -329,7 +348,9 @@ pub async fn get_menu_item(
 /// identical to what a GET would return).
 async fn menu_item_or_conflict(pool: PgPool, id: i64) -> AppError {
     match get_menu_item(State(pool), Path(id)).await {
-        Ok(Json(current)) => AppError::Conflict(serde_json::to_value(current).expect("serializable")),
+        Ok(Json(current)) => {
+            AppError::Conflict(serde_json::to_value(current).expect("serializable"))
+        }
         Err(err) => err,
     }
 }

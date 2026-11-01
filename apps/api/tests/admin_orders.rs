@@ -120,13 +120,22 @@ async fn orders_list_filters_by_status(pool: PgPool) {
     insert_order(&pool, "Cy", "ready_for_collection", "30.00").await;
 
     let cookie = login(&pool).await;
-    let (status, body) =
-        get_with_cookie(pool, "/api/admin/orders?status=ready_for_collection", Some(&cookie)).await;
+    let (status, body) = get_with_cookie(
+        pool,
+        "/api/admin/orders?status=ready_for_collection",
+        Some(&cookie),
+    )
+    .await;
     assert_eq!(status, StatusCode::OK);
     assert_eq!(body["total"], 1);
     assert_eq!(body["orders"].as_array().unwrap().len(), 1);
     assert_eq!(body["orders"][0]["status"], "ready_for_collection");
-    assert!(body["orders"][0]["payment_reference"].as_str().unwrap().starts_with("ZTM-"));
+    assert!(
+        body["orders"][0]["payment_reference"]
+            .as_str()
+            .unwrap()
+            .starts_with("ZTM-")
+    );
 }
 
 #[sqlx::test]
@@ -164,8 +173,7 @@ async fn orders_list_rejects_an_out_of_range_limit(pool: PgPool) {
     assert_eq!(status, StatusCode::BAD_REQUEST);
     assert_eq!(body["fields"][0]["field"], "limit");
 
-    let (status, body) =
-        get_with_cookie(pool, "/api/admin/orders?limit=101", Some(&cookie)).await;
+    let (status, body) = get_with_cookie(pool, "/api/admin/orders?limit=101", Some(&cookie)).await;
     assert_eq!(status, StatusCode::BAD_REQUEST);
     assert_eq!(body["fields"][0]["field"], "limit");
 }
@@ -190,8 +198,7 @@ async fn order_detail_returns_items(pool: PgPool) {
 #[sqlx::test]
 async fn order_detail_404s_for_an_unknown_id(pool: PgPool) {
     let cookie = login(&pool).await;
-    let (status, body) =
-        get_with_cookie(pool, "/api/admin/orders/999999", Some(&cookie)).await;
+    let (status, body) = get_with_cookie(pool, "/api/admin/orders/999999", Some(&cookie)).await;
     assert_eq!(status, StatusCode::NOT_FOUND);
     assert_eq!(body["error"], "not_found");
 }
@@ -211,14 +218,18 @@ async fn confirming_payment_moves_to_processing_and_stamps_it(pool: PgPool) {
     assert_eq!(status, StatusCode::OK);
     assert_eq!(body["status"], "processing");
 
-    let after: (String, chrono::DateTime<chrono::Utc>, chrono::DateTime<chrono::Utc>, Option<chrono::DateTime<chrono::Utc>>) =
-        sqlx::query_as(
-            "SELECT status, created_at, updated_at, payment_confirmed_at FROM orders WHERE id = $1",
-        )
-        .bind(id)
-        .fetch_one(&pool)
-        .await
-        .unwrap();
+    let after: (
+        String,
+        chrono::DateTime<chrono::Utc>,
+        chrono::DateTime<chrono::Utc>,
+        Option<chrono::DateTime<chrono::Utc>>,
+    ) = sqlx::query_as(
+        "SELECT status, created_at, updated_at, payment_confirmed_at FROM orders WHERE id = $1",
+    )
+    .bind(id)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
 
     assert_eq!(after.0, "processing");
     assert!(after.2 > after.1);
@@ -251,13 +262,22 @@ async fn pickup_and_delivery_follow_their_own_branch(pool: PgPool) {
         ("delivery", "out_for_delivery"),
         ("on_site", "serving_on_site"),
     ] {
-        let id = insert_order_of_type(&pool, "Ada", "awaiting_payment", "10.00", delivery_type).await;
+        let id =
+            insert_order_of_type(&pool, "Ada", "awaiting_payment", "10.00", delivery_type).await;
         for next in ["processing", handover, "completed"] {
             // The detail's `next_statuses` is what the admin UI renders as
             // buttons, so it must offer exactly the step being taken.
-            let (_, detail) =
-                get_with_cookie(pool.clone(), &format!("/api/admin/orders/{id}"), Some(&cookie)).await;
-            assert_eq!(detail["next_statuses"], json!([next, "cancelled"]), "{delivery_type}: before {next}");
+            let (_, detail) = get_with_cookie(
+                pool.clone(),
+                &format!("/api/admin/orders/{id}"),
+                Some(&cookie),
+            )
+            .await;
+            assert_eq!(
+                detail["next_statuses"],
+                json!([next, "cancelled"]),
+                "{delivery_type}: before {next}"
+            );
 
             let (status, body) = patch_with_cookie(
                 pool.clone(),
@@ -270,9 +290,17 @@ async fn pickup_and_delivery_follow_their_own_branch(pool: PgPool) {
             assert_eq!(body["status"], next);
         }
 
-        let (_, detail) =
-            get_with_cookie(pool.clone(), &format!("/api/admin/orders/{id}"), Some(&cookie)).await;
-        assert_eq!(detail["next_statuses"], json!([]), "{delivery_type}: completed is terminal");
+        let (_, detail) = get_with_cookie(
+            pool.clone(),
+            &format!("/api/admin/orders/{id}"),
+            Some(&cookie),
+        )
+        .await;
+        assert_eq!(
+            detail["next_statuses"],
+            json!([]),
+            "{delivery_type}: completed is terminal"
+        );
     }
 }
 
@@ -300,7 +328,11 @@ async fn status_update_rejects_invalid_transitions(pool: PgPool) {
             Some(&cookie),
         )
         .await;
-        assert_eq!(status, StatusCode::CONFLICT, "{expected_status} -> {target}");
+        assert_eq!(
+            status,
+            StatusCode::CONFLICT,
+            "{expected_status} -> {target}"
+        );
         assert_eq!(body["error"], "invalid_status_transition");
 
         let row_status: String = sqlx::query_scalar!("SELECT status FROM orders WHERE id = $1", id)
@@ -373,7 +405,12 @@ async fn summary_counts_every_status_and_recent_orders(pool: PgPool) {
     assert!(body["recent"].as_array().unwrap().len() <= 5);
 }
 
-async fn patch_status(pool: &PgPool, cookie: &str, id: i64, status: &str) -> (StatusCode, serde_json::Value) {
+async fn patch_status(
+    pool: &PgPool,
+    cookie: &str,
+    id: i64,
+    status: &str,
+) -> (StatusCode, serde_json::Value) {
     patch_with_cookie(
         pool.clone(),
         &format!("/api/admin/orders/{id}/status"),
@@ -393,12 +430,21 @@ async fn status_steps_stamp_their_timestamps(pool: PgPool) {
         ("delivery", "out_for_delivery"),
         ("on_site", "serving_on_site"),
     ] {
-        let id = insert_order_of_type(&pool, "Ada", "awaiting_payment", "10.00", delivery_type).await;
+        let id =
+            insert_order_of_type(&pool, "Ada", "awaiting_payment", "10.00", delivery_type).await;
         for next in ["processing", handover, "completed"] {
-            assert_eq!(patch_status(&pool, &cookie, id, next).await.0, StatusCode::OK);
+            assert_eq!(
+                patch_status(&pool, &cookie, id, next).await.0,
+                StatusCode::OK
+            );
         }
 
-        let (_, detail) = get_with_cookie(pool.clone(), &format!("/api/admin/orders/{id}"), Some(&cookie)).await;
+        let (_, detail) = get_with_cookie(
+            pool.clone(),
+            &format!("/api/admin/orders/{id}"),
+            Some(&cookie),
+        )
+        .await;
         for field in ["payment_confirmed_at", "ready_at", "completed_at"] {
             assert!(detail[field].is_string(), "{delivery_type}: {field}");
         }
@@ -407,8 +453,16 @@ async fn status_steps_stamp_their_timestamps(pool: PgPool) {
     }
 
     let cancelled = insert_order(&pool, "Bo", "processing", "10.00").await;
-    assert_eq!(patch_status(&pool, &cookie, cancelled, "cancelled").await.0, StatusCode::OK);
-    let (_, detail) = get_with_cookie(pool.clone(), &format!("/api/admin/orders/{cancelled}"), Some(&cookie)).await;
+    assert_eq!(
+        patch_status(&pool, &cookie, cancelled, "cancelled").await.0,
+        StatusCode::OK
+    );
+    let (_, detail) = get_with_cookie(
+        pool.clone(),
+        &format!("/api/admin/orders/{cancelled}"),
+        Some(&cookie),
+    )
+    .await;
     assert!(detail["cancelled_at"].is_string());
 }
 
@@ -426,14 +480,24 @@ async fn customer_completed_orders_can_be_reopened(pool: PgPool) {
     .await
     .unwrap();
 
-    let (_, detail) = get_with_cookie(pool.clone(), &format!("/api/admin/orders/{id}"), Some(&cookie)).await;
+    let (_, detail) = get_with_cookie(
+        pool.clone(),
+        &format!("/api/admin/orders/{id}"),
+        Some(&cookie),
+    )
+    .await;
     assert_eq!(detail["next_statuses"], json!(["out_for_delivery"]));
 
     let (status, body) = patch_status(&pool, &cookie, id, "out_for_delivery").await;
     assert_eq!(status, StatusCode::OK);
     assert_eq!(body["status"], "out_for_delivery");
 
-    let (_, detail) = get_with_cookie(pool.clone(), &format!("/api/admin/orders/{id}"), Some(&cookie)).await;
+    let (_, detail) = get_with_cookie(
+        pool.clone(),
+        &format!("/api/admin/orders/{id}"),
+        Some(&cookie),
+    )
+    .await;
     assert!(detail["completed_at"].is_null());
     assert!(detail["completed_by"].is_null());
     assert!(detail["ready_at"].is_string());

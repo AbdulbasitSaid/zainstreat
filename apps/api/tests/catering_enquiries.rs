@@ -3,7 +3,7 @@ mod common;
 use axum::http::StatusCode;
 use chrono::{Duration, Utc};
 use common::post;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use sqlx::PgPool;
 
 fn valid_payload() -> Value {
@@ -50,7 +50,13 @@ async fn catering_enquiry_create_rejects_an_invalid_phone(pool: PgPool) {
     payload["phone"] = json!("1234567890");
     let (status, body) = post(pool, "/api/catering-enquiries", payload).await;
     assert_eq!(status, StatusCode::BAD_REQUEST);
-    assert!(body["fields"].as_array().unwrap().iter().any(|f| f["field"] == "phone"));
+    assert!(
+        body["fields"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|f| f["field"] == "phone")
+    );
 }
 
 #[sqlx::test]
@@ -59,7 +65,13 @@ async fn catering_enquiry_create_rejects_an_unknown_event_type(pool: PgPool) {
     payload["event_type"] = json!("quincea\u{f1}era");
     let (status, body) = post(pool, "/api/catering-enquiries", payload).await;
     assert_eq!(status, StatusCode::BAD_REQUEST);
-    assert!(body["fields"].as_array().unwrap().iter().any(|f| f["field"] == "event_type"));
+    assert!(
+        body["fields"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|f| f["field"] == "event_type")
+    );
 }
 
 #[sqlx::test]
@@ -70,7 +82,11 @@ async fn catering_enquiry_create_rejects_a_past_event_date(pool: PgPool) {
     let (status, body) = post(pool, "/api/catering-enquiries", payload).await;
     assert_eq!(status, StatusCode::BAD_REQUEST);
     let fields = body["fields"].as_array().unwrap();
-    assert!(fields.iter().any(|f| f["field"] == "event_date" && f["message"] == "must_be_future"));
+    assert!(
+        fields
+            .iter()
+            .any(|f| f["field"] == "event_date" && f["message"] == "must_be_future")
+    );
 }
 
 #[sqlx::test]
@@ -79,7 +95,13 @@ async fn catering_enquiry_create_rejects_a_zero_guest_count(pool: PgPool) {
     payload["guest_count"] = json!(0);
     let (status, body) = post(pool, "/api/catering-enquiries", payload).await;
     assert_eq!(status, StatusCode::BAD_REQUEST);
-    assert!(body["fields"].as_array().unwrap().iter().any(|f| f["field"] == "guest_count"));
+    assert!(
+        body["fields"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|f| f["field"] == "guest_count")
+    );
 }
 
 #[sqlx::test]
@@ -88,7 +110,13 @@ async fn catering_enquiry_create_rejects_an_empty_services_required(pool: PgPool
     payload["services_required"] = json!([]);
     let (status, body) = post(pool, "/api/catering-enquiries", payload).await;
     assert_eq!(status, StatusCode::BAD_REQUEST);
-    assert!(body["fields"].as_array().unwrap().iter().any(|f| f["field"] == "services_required"));
+    assert!(
+        body["fields"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|f| f["field"] == "services_required")
+    );
 }
 
 #[sqlx::test]
@@ -97,7 +125,13 @@ async fn catering_enquiry_create_rejects_an_unknown_service(pool: PgPool) {
     payload["services_required"] = json!(["catering", "bouncy_castle"]);
     let (status, body) = post(pool, "/api/catering-enquiries", payload).await;
     assert_eq!(status, StatusCode::BAD_REQUEST);
-    assert!(body["fields"].as_array().unwrap().iter().any(|f| f["field"] == "services_required"));
+    assert!(
+        body["fields"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|f| f["field"] == "services_required")
+    );
 }
 
 #[sqlx::test]
@@ -123,11 +157,16 @@ async fn catering_enquiry_create_persists_services_required_as_submitted(pool: P
     .fetch_one(&pool)
     .await
     .unwrap();
-    assert_eq!(services, vec!["catering".to_string(), "event_rental".to_string()]);
+    assert_eq!(
+        services,
+        vec!["catering".to_string(), "event_rental".to_string()]
+    );
 }
 
 #[sqlx::test]
-async fn catering_enquiry_create_honeypot_filled_reports_success_but_persists_nothing(pool: PgPool) {
+async fn catering_enquiry_create_honeypot_filled_reports_success_but_persists_nothing(
+    pool: PgPool,
+) {
     let mut payload = valid_payload();
     payload["website"] = json!("http://spam.example");
     let (status, _body) = post(pool.clone(), "/api/catering-enquiries", payload).await;
@@ -142,10 +181,13 @@ async fn catering_enquiry_create_honeypot_filled_reports_success_but_persists_no
 }
 
 async fn stored_locale(pool: &PgPool, id: &Value) -> String {
-    sqlx::query_scalar!("SELECT locale FROM catering_enquiries WHERE id = $1", id.as_i64().unwrap())
-        .fetch_one(pool)
-        .await
-        .unwrap()
+    sqlx::query_scalar!(
+        "SELECT locale FROM catering_enquiries WHERE id = $1",
+        id.as_i64().unwrap()
+    )
+    .fetch_one(pool)
+    .await
+    .unwrap()
 }
 
 /// Phase 23 Decision 5: the enquiry remembers the site language for the
@@ -179,5 +221,11 @@ async fn catering_enquiry_create_rejects_an_unsupported_locale(pool: PgPool) {
     payload["locale"] = json!("de");
     let (status, body) = post(pool, "/api/catering-enquiries", payload).await;
     assert_eq!(status, StatusCode::BAD_REQUEST);
-    assert!(body["fields"].as_array().unwrap().iter().any(|f| f["field"] == "locale"));
+    assert!(
+        body["fields"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|f| f["field"] == "locale")
+    );
 }

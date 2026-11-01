@@ -1,5 +1,5 @@
-use argon2::password_hash::PasswordHasher;
 use argon2::Argon2;
+use argon2::password_hash::PasswordHasher;
 use sqlx::postgres::PgPoolOptions;
 
 fn arg_value(flag: &str) -> Option<String> {
@@ -29,11 +29,14 @@ async fn main() {
     // Decision 10). Without it, prompt interactively as before.
     let password = if has_flag("--password-stdin") {
         let mut line = String::new();
-        std::io::stdin().read_line(&mut line).expect("failed to read password from stdin");
+        std::io::stdin()
+            .read_line(&mut line)
+            .expect("failed to read password from stdin");
         line.trim_end_matches(['\r', '\n']).to_string()
     } else {
         let password = rpassword::prompt_password("Password: ").expect("failed to read password");
-        let confirm = rpassword::prompt_password("Confirm password: ").expect("failed to read password");
+        let confirm =
+            rpassword::prompt_password("Confirm password: ").expect("failed to read password");
         if password != confirm {
             eprintln!("passwords did not match");
             std::process::exit(1);
