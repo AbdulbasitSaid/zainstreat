@@ -34,7 +34,11 @@ async fn completed_at(pool: &PgPool, id: i64) -> Option<chrono::DateTime<chrono:
 
 #[sqlx::test]
 async fn customer_completes_a_ready_order(pool: PgPool) {
-    for (status, delivery_type) in [("ready_for_collection", "pickup"), ("out_for_delivery", "delivery")] {
+    for (status, delivery_type) in [
+        ("ready_for_collection", "pickup"),
+        ("out_for_delivery", "delivery"),
+        ("serving_on_site", "on_site"),
+    ] {
         let (id, token) = insert_order(&pool, status, delivery_type).await;
 
         let (code, body) =

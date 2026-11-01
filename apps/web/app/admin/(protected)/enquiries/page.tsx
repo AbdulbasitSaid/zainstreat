@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { ENQUIRIES_PAGE_SIZE } from "@/lib/admin-enquiries";
 import { getAdminCateringEnquiries, getAdminContactMessages } from "@/lib/admin-enquiries-api";
+import { AdminQuoteStatusBadge } from "@/components/admin-quote-status-badge";
 import { formatDateTime } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Enquiries | Zain's Admin" };
@@ -55,6 +56,7 @@ export default async function AdminEnquiriesPage({
                   <th scope="col" className="py-3 pr-4 font-semibold">Event</th>
                   <th scope="col" className="py-3 pr-4 font-semibold">Date</th>
                   <th scope="col" className="py-3 pr-4 font-semibold">Guests</th>
+                  <th scope="col" className="py-3 pr-4 font-semibold">Quote</th>
                   <th scope="col" className="py-3 font-semibold">Submitted</th>
                 </tr>
               </thead>
@@ -69,6 +71,9 @@ export default async function AdminEnquiriesPage({
                     <td className="py-3 pr-4">{e.event_type}</td>
                     <td className="py-3 pr-4">{e.event_date}</td>
                     <td className="py-3 pr-4">{e.guest_count}</td>
+                    <td className="py-3 pr-4">
+                      {e.quote_status ? <AdminQuoteStatusBadge status={e.quote_status} /> : "—"}
+                    </td>
                     <td className="py-3">{formatDateTime(e.created_at)}</td>
                   </tr>
                 ))}

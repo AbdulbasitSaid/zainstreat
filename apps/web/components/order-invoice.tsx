@@ -42,7 +42,9 @@ export function OrderInvoice({ order }: { order: OrderResponse }) {
         <p className="m-0">
           {order.delivery_type === "delivery" && order.delivery_address
             ? t("deliveryLine", { address: order.delivery_address })
-            : t("pickupLine")}
+            : order.delivery_type === "on_site" && order.delivery_address
+              ? t("servedAtLine", { address: order.delivery_address })
+              : t("pickupLine")}
         </p>
       </div>
 

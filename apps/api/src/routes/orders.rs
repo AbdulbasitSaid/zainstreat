@@ -364,9 +364,7 @@ pub async fn create_order(
         completed_by: None,
     };
 
-    let url = tracking_url(email.site_url(), locale, response.public_token);
-    let (subject, body) = invoice_email(locale, &response, &order.placed_at, &url);
-    email.spawn_send(response.customer_email.clone(), subject, body);
+    send_invoice(&email, locale, &response, &order.placed_at);
 
     if let Some(business_address) = email.business_notify_address() {
         email.spawn_send(
@@ -377,6 +375,14 @@ pub async fn create_order(
     }
 
     Ok((StatusCode::CREATED, Json(response)))
+}
+
+/// The customer's invoice email, for a cart order or an accepted catering
+/// quote (Phase 23 Decision 4).
+pub(crate) fn send_invoice(email: &EmailConfig, locale: Locale, order: &OrderResponse, placed_at: &str) {
+    let url = tracking_url(email.site_url(), locale, order.public_token);
+    let (subject, body) = invoice_email(locale, order, placed_at, &url);
+    email.spawn_send(order.customer_email.clone(), subject, body);
 }
 
 fn delivery_line(order: &OrderResponse) -> String {
@@ -401,11 +407,11 @@ fn new_order_owner_email_body(order: &OrderResponse, admin_url: &str) -> String 
 
 /// Malformed and unknown tokens both come back as 404, so the two can't be
 /// told apart (Phase 20 Decision 7).
-fn parse_token(token: &str) -> Result<Uuid, AppError> {
+pub(crate) fn parse_token(token: &str) -> Result<Uuid, AppError> {
     Uuid::parse_str(token).map_err(|_| AppError::NotFound)
 }
 
-async fn load_order_by_token(
+pub(crate) async fn load_order_by_token(
     pool: &PgPool,
     payment: &PaymentConfig,
     token: Uuid,

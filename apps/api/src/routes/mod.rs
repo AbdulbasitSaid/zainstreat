@@ -6,6 +6,7 @@ pub mod health;
 pub mod media;
 pub mod menu_items;
 pub mod orders;
+pub mod quotes;
 
 use crate::AppState;
 use axum::{
@@ -26,6 +27,15 @@ pub fn api_router() -> Router<AppState> {
         .route(
             "/orders/by-token/{token}/received",
             post(orders::confirm_received).route_layer(crate::rate_limit::enquiry_rate_limiter()),
+        )
+        .route("/quotes/by-token/{token}", get(quotes::get_quote_by_token))
+        .route(
+            "/quotes/by-token/{token}/accept",
+            post(quotes::accept_quote).route_layer(crate::rate_limit::enquiry_rate_limiter()),
+        )
+        .route(
+            "/quotes/by-token/{token}/decline",
+            post(quotes::decline_quote).route_layer(crate::rate_limit::enquiry_rate_limiter()),
         )
         .route(
             "/catering-enquiries",

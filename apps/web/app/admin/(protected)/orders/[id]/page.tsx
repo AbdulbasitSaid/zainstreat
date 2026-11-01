@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { FULFILMENT_LABELS } from "@/lib/admin-orders";
 import { getAdminOrder } from "@/lib/admin-orders-api";
+import { AdminCateringTag } from "@/components/admin-catering-tag";
 import { AdminStatusBadge } from "@/components/admin-status-badge";
 import { AdminOrderActions } from "@/components/admin-order-actions";
 import { formatDateTime, formatPrice } from "@/lib/format";
@@ -40,7 +42,10 @@ export default async function AdminOrderDetailPage({
 
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="m-0">Order #{order.id}</h1>
-        <AdminStatusBadge status={order.status} />
+        <div className="flex flex-wrap items-center gap-2">
+          {order.catering_enquiry_id !== null && <AdminCateringTag enquiryId={order.catering_enquiry_id} />}
+          <AdminStatusBadge status={order.status} />
+        </div>
       </div>
 
       <AdminOrderActions
@@ -55,7 +60,7 @@ export default async function AdminOrderDetailPage({
         <Field label="Customer" value={order.customer_name} />
         <Field label="Email" value={order.customer_email} />
         <Field label="Phone" value={order.customer_phone} />
-        <Field label="Type" value={order.delivery_type} />
+        <Field label="Type" value={FULFILMENT_LABELS[order.delivery_type]} />
         <Field label="Address" value={order.delivery_address ?? "—"} />
         <Field label="Placed" value={formatDateTime(order.created_at)} />
         {order.payment_claimed_at && (
@@ -66,7 +71,11 @@ export default async function AdminOrderDetailPage({
         )}
         {order.ready_at && (
           <Field
-            label={order.delivery_type === "pickup" ? "Ready for collection" : "Out for delivery"}
+            label={
+              { pickup: "Ready for collection", delivery: "Out for delivery", on_site: "Catering started" }[
+                order.delivery_type
+              ]
+            }
             value={formatDateTime(order.ready_at)}
           />
         )}

@@ -1,7 +1,7 @@
 mod common;
 
 use axum::http::StatusCode;
-use common::post;
+use common::{build_test_app, post, post_on};
 use serde_json::{json, Value};
 use sqlx::PgPool;
 
@@ -535,4 +535,22 @@ async fn unsupported_locale_is_rejected(pool: PgPool) {
     assert_eq!(body["error"], "validation_error");
     let fields = body["fields"].as_array().unwrap();
     assert!(fields.iter().any(|f| f["field"] == "locale"));
+}
+
+/// Phase 23 Decision 12: on-site fulfilment is for accepted catering quotes
+/// only; the cart keeps pickup/delivery.
+#[sqlx::test]
+async fn cart_orders_cannot_be_on_site(pool: PgPool) {
+    seed_flat_item(&pool).await;
+    let mut payload = valid_payload(json!([{ "menu_item_id": 1, "price_option_id": null, "quantity": 1 }]));
+    payload["delivery_type"] = json!("on_site");
+    payload["delivery_address"] = json!("Zaal De Linde, Utrecht");
+
+    // An unknown `delivery_type` fails deserialization; axum answers in plain
+    // text, which `post_on` tolerates.
+    let (status, _) = post_on(build_test_app(pool.clone()).await, "/api/orders", payload).await;
+
+    assert!(status.is_client_error(), "{status}");
+    let count = sqlx::query_scalar!("SELECT COUNT(*) FROM orders").fetch_one(&pool).await.unwrap();
+    assert_eq!(count, Some(0));
 }

@@ -77,6 +77,12 @@ impl EmailConfig {
         &self.admin_url
     }
 
+    /// False when SES isn't fully configured and every send is skipped, so
+    /// admin can offer to share a quote link instead (Phase 23 Decision 14).
+    pub fn is_enabled(&self) -> bool {
+        self.settings.is_some()
+    }
+
     pub fn business_notify_address(&self) -> Option<String> {
         self.settings.as_ref().map(|s| s.business_notify_address.clone())
     }

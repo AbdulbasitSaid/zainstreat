@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE catering_quotes\n        SET status = 'sent', sent_at = now(), decline_reason = NULL, declined_at = NULL, updated_at = now()\n        WHERE id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "954a8fda4adae875c0aa209347b3b258a510131a5af37ded12644a5d40f77c45"
+}

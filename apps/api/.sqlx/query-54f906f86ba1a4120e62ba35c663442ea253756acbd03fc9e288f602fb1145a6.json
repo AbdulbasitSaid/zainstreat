@@ -1,0 +1,41 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO orders\n            (customer_name, customer_email, customer_phone, delivery_type,\n             delivery_address, notes, subtotal, delivery_fee, total, locale)\n        VALUES ($1, $2, $3, $4, $5, $6, $7, 0, $7, $8)\n        RETURNING id, public_token,\n                  to_char(created_at AT TIME ZONE 'Europe/Amsterdam', 'DD-MM-YYYY HH24:MI') as \"placed_at!\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "public_token",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "placed_at!",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Numeric",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "54f906f86ba1a4120e62ba35c663442ea253756acbd03fc9e288f602fb1145a6"
+}

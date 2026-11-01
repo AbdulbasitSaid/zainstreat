@@ -10,11 +10,12 @@ const STEP_REACHED: Record<Exclude<OrderStatus, "cancelled">, number> = {
   processing: 2,
   ready_for_collection: 3,
   out_for_delivery: 3,
+  serving_on_site: 3,
   completed: 4,
 };
 
 // The customer's view of the Phase 20 lifecycle, with its pickup/delivery
-// branch (Phase 22 Decision 3).
+// branch (Phase 22 Decision 3) and Phase 23's on-site catering branch.
 export function OrderProgress({ order }: { order: OrderResponse }) {
   const t = useTranslations("Order.tracking");
   const locale = useLocale();
@@ -38,11 +39,17 @@ export function OrderProgress({ order }: { order: OrderResponse }) {
     );
   }
 
+  const handoverLabel = {
+    pickup: t("readyForCollection"),
+    delivery: t("onTheWay"),
+    on_site: t("cateringInProgress"),
+  }[order.delivery_type];
+
   const steps = [
     { label: t("placed"), at: order.created_at },
     { label: t("paymentSent"), at: order.payment_claimed_at },
     { label: t("paymentConfirmed"), at: order.payment_confirmed_at },
-    { label: order.delivery_type === "pickup" ? t("readyForCollection") : t("onTheWay"), at: order.ready_at },
+    { label: handoverLabel, at: order.ready_at },
     { label: t("completed"), at: order.completed_at },
   ];
   const reached = STEP_REACHED[order.status];

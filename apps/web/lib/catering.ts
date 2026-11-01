@@ -8,6 +8,8 @@ export interface CreateCateringEnquiryRequest {
   location: string;
   services_required: string[];
   message: string | null;
+  // The site language, for the customer's quote email (Phase 23 Decision 5).
+  locale: string;
   website: string; // honeypot — always "" for a real submission
 }
 

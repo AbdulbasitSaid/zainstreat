@@ -7,6 +7,7 @@ const STATUS_CLASSES: Record<OrderStatus, string> = {
   processing: "bg-cream text-text",
   ready_for_collection: "bg-whatsapp/15 text-whatsapp-dark",
   out_for_delivery: "bg-whatsapp/15 text-whatsapp-dark",
+  serving_on_site: "bg-whatsapp/15 text-whatsapp-dark",
   completed: "bg-card text-text-muted",
   cancelled: "bg-text/10 text-text-muted",
 };

@@ -24,6 +24,7 @@ struct OrderSummaryRow {
     total: Decimal,
     status: String,
     created_at: DateTime<Utc>,
+    catering_enquiry_id: Option<i64>,
 }
 
 #[derive(Debug, Serialize)]
@@ -36,6 +37,9 @@ pub struct OrderSummaryResponse {
     pub total: Decimal,
     pub status: String,
     pub created_at: DateTime<Utc>,
+    /// Set when the order came from an accepted catering quote (Phase 23
+    /// Decision 7).
+    pub catering_enquiry_id: Option<i64>,
 }
 
 impl From<OrderSummaryRow> for OrderSummaryResponse {
@@ -48,6 +52,7 @@ impl From<OrderSummaryRow> for OrderSummaryResponse {
             total: row.total,
             status: row.status,
             created_at: row.created_at,
+            catering_enquiry_id: row.catering_enquiry_id,
         }
     }
 }
@@ -105,7 +110,8 @@ pub async fn list_orders(
         OrderSummaryRow,
         r#"
         SELECT id, customer_name, delivery_type, total, status,
-               created_at as "created_at: DateTime<Utc>"
+               created_at as "created_at: DateTime<Utc>",
+               (SELECT q.enquiry_id FROM catering_quotes q WHERE q.order_id = orders.id) as "catering_enquiry_id?"
         FROM orders
         WHERE ($1::TEXT IS NULL OR status = $1)
         ORDER BY created_at DESC, id DESC
@@ -160,6 +166,7 @@ pub struct AdminOrderResponse {
     pub cancelled_at: Option<DateTime<Utc>>,
     /// `customer` or `admin`, once completed (Phase 22 Decision 8).
     pub completed_by: Option<String>,
+    pub catering_enquiry_id: Option<i64>,
     /// The admin UI renders these as buttons, so `admin_next` has no
     /// TypeScript mirror to drift from (Phase 20 open risk 4).
     pub next_statuses: &'static [&'static str],
@@ -185,7 +192,8 @@ pub async fn get_order(
                cancelled_at as "cancelled_at: DateTime<Utc>",
                completed_by,
                created_at as "created_at: DateTime<Utc>",
-               updated_at as "updated_at: DateTime<Utc>"
+               updated_at as "updated_at: DateTime<Utc>",
+               (SELECT q.enquiry_id FROM catering_quotes q WHERE q.order_id = orders.id) as "catering_enquiry_id?"
         FROM orders
         WHERE id = $1
         "#,
@@ -228,6 +236,7 @@ pub async fn get_order(
         completed_at: order.completed_at,
         cancelled_at: order.cancelled_at,
         completed_by: order.completed_by,
+        catering_enquiry_id: order.catering_enquiry_id,
         next_statuses,
         created_at: order.created_at,
         updated_at: order.updated_at,
@@ -289,7 +298,7 @@ pub async fn update_order_status(
             updated_at = now(),
             payment_confirmed_at = CASE WHEN $2 = 'processing' THEN now() ELSE payment_confirmed_at END,
             ready_at = CASE
-                WHEN $2 IN ('ready_for_collection', 'out_for_delivery') AND NOT $3 THEN now()
+                WHEN $2 IN ('ready_for_collection', 'out_for_delivery', 'serving_on_site') AND NOT $3 THEN now()
                 ELSE ready_at END,
             completed_at = CASE WHEN $2 = 'completed' THEN now() WHEN $3 THEN NULL ELSE completed_at END,
             completed_by = CASE WHEN $2 = 'completed' THEN 'admin' WHEN $3 THEN NULL ELSE completed_by END,
@@ -297,7 +306,8 @@ pub async fn update_order_status(
         WHERE id = $1
         RETURNING id, customer_name, customer_email, delivery_type, total, status,
                   public_token, locale,
-                  created_at as "created_at: DateTime<Utc>"
+                  created_at as "created_at: DateTime<Utc>",
+                  (SELECT q.enquiry_id FROM catering_quotes q WHERE q.order_id = orders.id) as "catering_enquiry_id?"
         "#,
         id,
         payload.status,
@@ -335,6 +345,7 @@ pub async fn update_order_status(
         total: order.total,
         status: order.status,
         created_at: order.created_at,
+        catering_enquiry_id: order.catering_enquiry_id,
     }))
 }
 
@@ -357,7 +368,7 @@ pub async fn orders_summary(
     .fetch_all(&pool)
     .await?;
 
-    // Seed all seven at zero so the dashboard renders every tile even before a
+    // Seed every status at zero so the dashboard renders every tile even before a
     // single order of that status exists.
     let mut counts: HashMap<String, i64> =
         ORDER_STATUSES.iter().map(|s| ((*s).to_string(), 0)).collect();
@@ -382,7 +393,8 @@ pub async fn orders_summary(
         OrderSummaryRow,
         r#"
         SELECT id, customer_name, delivery_type, total, status,
-               created_at as "created_at: DateTime<Utc>"
+               created_at as "created_at: DateTime<Utc>",
+               (SELECT q.enquiry_id FROM catering_quotes q WHERE q.order_id = orders.id) as "catering_enquiry_id?"
         FROM orders
         ORDER BY created_at DESC, id DESC
         LIMIT $1

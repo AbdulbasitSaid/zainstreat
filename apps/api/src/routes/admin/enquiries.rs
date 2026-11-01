@@ -1,4 +1,6 @@
+use crate::email::EmailConfig;
 use crate::error::AppError;
+use crate::routes::admin::quotes::{load_admin_quote, AdminQuoteResponse};
 use axum::{
     extract::{Path, Query, State},
     Json,
@@ -30,6 +32,24 @@ pub struct CateringEnquirySummary {
     pub event_date: NaiveDate,
     pub guest_count: i32,
     pub created_at: DateTime<Utc>,
+    /// The quote's display status, or `None` before one is started
+    /// (Phase 23 Decision 8).
+    pub quote_status: Option<String>,
+}
+
+struct CateringEnquiryDetailRow {
+    id: i64,
+    name: String,
+    phone: String,
+    email: String,
+    event_type: String,
+    event_date: NaiveDate,
+    guest_count: i32,
+    location: String,
+    services_required: Vec<String>,
+    message: Option<String>,
+    locale: String,
+    created_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Serialize)]
@@ -44,7 +64,9 @@ pub struct CateringEnquiryDetail {
     pub location: String,
     pub services_required: Vec<String>,
     pub message: Option<String>,
+    pub locale: String,
     pub created_at: DateTime<Utc>,
+    pub quote: Option<AdminQuoteResponse>,
 }
 
 #[derive(Debug, Serialize)]
@@ -63,9 +85,13 @@ pub async fn list_catering_enquiries(
 
     let enquiries = sqlx::query_as!(
         CateringEnquirySummary,
-        r#"SELECT id, name, event_type, event_date as "event_date: NaiveDate", guest_count,
-                  created_at as "created_at: DateTime<Utc>"
-           FROM catering_enquiries ORDER BY created_at DESC LIMIT $1 OFFSET $2"#,
+        r#"SELECT e.id, e.name, e.event_type, e.event_date as "event_date: NaiveDate", e.guest_count,
+                  e.created_at as "created_at: DateTime<Utc>",
+                  CASE WHEN q.status = 'sent' AND q.valid_until < (now() AT TIME ZONE 'Europe/Amsterdam')::date
+                       THEN 'expired' ELSE q.status END as "quote_status?"
+           FROM catering_enquiries e
+           LEFT JOIN catering_quotes q ON q.enquiry_id = e.id
+           ORDER BY e.created_at DESC LIMIT $1 OFFSET $2"#,
         limit,
         offset
     )
@@ -82,12 +108,13 @@ pub async fn list_catering_enquiries(
 
 pub async fn get_catering_enquiry(
     State(pool): State<PgPool>,
+    State(email): State<EmailConfig>,
     Path(id): Path<i64>,
 ) -> Result<Json<CateringEnquiryDetail>, AppError> {
-    let enquiry = sqlx::query_as!(
-        CateringEnquiryDetail,
+    let row = sqlx::query_as!(
+        CateringEnquiryDetailRow,
         r#"SELECT id, name, phone, email, event_type, event_date as "event_date: NaiveDate", guest_count, location,
-                  services_required, message,
+                  services_required, message, locale,
                   created_at as "created_at: DateTime<Utc>"
            FROM catering_enquiries WHERE id = $1"#,
         id
@@ -96,7 +123,23 @@ pub async fn get_catering_enquiry(
     .await?
     .ok_or(AppError::NotFound)?;
 
-    Ok(Json(enquiry))
+    let quote = load_admin_quote(&pool, email.site_url(), id).await?;
+
+    Ok(Json(CateringEnquiryDetail {
+        id: row.id,
+        name: row.name,
+        phone: row.phone,
+        email: row.email,
+        event_type: row.event_type,
+        event_date: row.event_date,
+        guest_count: row.guest_count,
+        location: row.location,
+        services_required: row.services_required,
+        message: row.message,
+        locale: row.locale,
+        created_at: row.created_at,
+        quote,
+    }))
 }
 
 #[derive(Debug, Serialize)]
