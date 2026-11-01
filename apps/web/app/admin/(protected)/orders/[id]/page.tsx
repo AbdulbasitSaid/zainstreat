@@ -6,6 +6,7 @@ import { getAdminOrder } from "@/lib/admin-orders-api";
 import { AdminCateringTag } from "@/components/admin-catering-tag";
 import { AdminStatusBadge } from "@/components/admin-status-badge";
 import { AdminOrderActions } from "@/components/admin-order-actions";
+import { AdminEmailDeliveryNotice } from "@/components/admin-email-delivery-notice";
 import { formatDateTime, formatPrice } from "@/lib/format";
 
 export const metadata: Metadata = {
@@ -47,6 +48,12 @@ export default async function AdminOrderDetailPage({
           <AdminStatusBadge status={order.status} />
         </div>
       </div>
+
+      <AdminEmailDeliveryNotice
+        delivery={order.customer_email_delivery}
+        phone={order.customer_phone}
+        whatsAppMessage={`Hi ${order.customer_name}, about your Zain's Treat n More order ${order.payment_reference}:`}
+      />
 
       <AdminOrderActions
         orderId={order.id}

@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                UPDATE menu_items mi\n                SET draft = NULL, draft_updated_at = NULL,\n                    deleted_at = CASE WHEN mi.published_at IS NULL THEN now() ELSE mi.deleted_at END,\n                    updated_at = CASE WHEN mi.published_at IS NULL THEN now() ELSE mi.updated_at END\n                FROM (SELECT id, draft FROM menu_items WHERE id = $1 AND deleted_at IS NULL FOR UPDATE) before\n                WHERE mi.id = before.id\n                RETURNING mi.image_url, before.draft\n                ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "image_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "draft",
+        "type_info": "Jsonb"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      true,
+      true
+    ]
+  },
+  "hash": "d71ed956877661262ba37bcf8fbf3b87b3e3e68c8aadb7b499b440778c9819f4"
+}

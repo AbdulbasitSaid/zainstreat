@@ -1,4 +1,4 @@
-use crate::email::EmailConfig;
+use crate::email::{EmailConfig, OutgoingEmail};
 use crate::error::{AppError, FieldError};
 use crate::validation::{is_valid_email, is_valid_phone};
 use axum::{Json, extract::State, http::StatusCode};
@@ -130,10 +130,10 @@ pub async fn create_contact_message(
     .await?;
 
     if let Some(to) = email.business_notify_address() {
-        email.spawn_send(
+        email.spawn_send(OutgoingEmail {
             to,
-            format!("New contact message from {}", payload.name.trim()),
-            format!(
+            subject: format!("New contact message from {}", payload.name.trim()),
+            body: format!(
                 "Name: {}\nEmail: {}\nPhone: {}\nSubject: {}\n\n{}",
                 payload.name.trim(),
                 payload.email.trim(),
@@ -141,7 +141,9 @@ pub async fn create_contact_message(
                 payload.subject,
                 payload.message.trim(),
             ),
-        );
+            reply_to: Some(payload.email.trim().to_string()),
+            track: None,
+        });
     }
 
     Ok((

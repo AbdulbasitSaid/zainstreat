@@ -1,3 +1,4 @@
+import { hasLocale } from "next-intl";
 import createMiddleware from "next-intl/middleware";
 import { NextResponse, type NextRequest } from "next/server";
 import { routing } from "./i18n/routing";
@@ -5,6 +6,9 @@ import { routing } from "./i18n/routing";
 const intlMiddleware = createMiddleware(routing);
 
 const ADMIN_PREFIX = "/admin";
+const PREVIEW_PREFIX = "/preview";
+// next-intl's internal request header for the matched locale.
+const NEXT_INTL_LOCALE_HEADER = "X-NEXT-INTL-LOCALE";
 
 // The admin is served from cms.<host> (Phase 21 Decision 11): the same app,
 // rewritten onto app/admin/**. cms.zainstreat.com in production,
@@ -18,6 +22,19 @@ export default function proxy(request: NextRequest) {
   if (host.startsWith("cms.")) {
     // Same-origin route handlers (app/api/admin/*) stay where they are.
     if (pathname.startsWith("/api/")) return NextResponse.next();
+    // Live preview (Phase 25 Decision 21): /preview/{locale}/... renders the
+    // public page; it only shows draft data once /api/preview/enable has
+    // checked the admin session and turned draft mode on.
+    if (pathname.startsWith(`${PREVIEW_PREFIX}/`)) {
+      const url = request.nextUrl.clone();
+      url.pathname = pathname.slice(PREVIEW_PREFIX.length);
+      // The rewrite skips next-intl's middleware, which is what normally
+      // tells the server components the locale.
+      const locale = url.pathname.split("/")[1] ?? "";
+      const headers = new Headers(request.headers);
+      if (hasLocale(routing.locales, locale)) headers.set(NEXT_INTL_LOCALE_HEADER, locale);
+      return NextResponse.rewrite(url, { request: { headers } });
+    }
     const url = request.nextUrl.clone();
     url.pathname = pathname === "/" ? ADMIN_PREFIX : `${ADMIN_PREFIX}${pathname}`;
     return NextResponse.rewrite(url);
@@ -31,7 +48,12 @@ export default function proxy(request: NextRequest) {
     return NextResponse.redirect(`${proto}://cms.${host}${adminPath}${search}`, 308);
   }
 
-  if (pathname.startsWith("/api/admin/")) {
+  // The admin proxies and the live preview only exist on the cms host.
+  if (
+    pathname.startsWith("/api/admin/") ||
+    pathname.startsWith("/api/preview/") ||
+    pathname.startsWith(`${PREVIEW_PREFIX}/`)
+  ) {
     return new NextResponse(null, { status: 404 });
   }
 

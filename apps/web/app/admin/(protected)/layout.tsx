@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentAdmin } from "@/lib/admin-auth";
+import { adminApiJson } from "@/lib/admin-api";
 import { AdminNav } from "@/components/admin-nav";
 import { AdminLogoutButton } from "@/components/admin-logout-button";
 
@@ -14,12 +15,14 @@ export default async function ProtectedAdminLayout({
   if (!admin) {
     redirect("/login");
   }
+  // A missing badge never breaks the admin.
+  const changes = await adminApiJson<{ count: number }>("/api/admin/changes?count=1").catch(() => ({ count: 0 }));
 
   return (
     <div className="min-h-dvh md:grid md:grid-cols-[15rem_1fr]">
       <aside className="flex flex-col gap-6 border-b border-text/10 bg-background-soft/40 p-5 md:min-h-dvh md:border-b-0 md:border-r">
         <p className="m-0 text-base font-semibold text-primary">Zain&apos;s Admin</p>
-        <AdminNav />
+        <AdminNav changesCount={changes.count} />
         <div className="flex flex-col items-start gap-3 pt-4 md:mt-auto">
           <p className="m-0 text-xs text-text-muted">Signed in as {admin.name}</p>
           <AdminLogoutButton />

@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { Reveal } from "@/components/reveal";
 import { SiteImage } from "@/components/site-image";
 import { SplitRow } from "@/components/split-row";
 import { Eyebrow } from "@/components/eyebrow";
 import { ButtonLink, buttonClasses } from "@/components/button";
-import { MenuItemCard } from "@/components/menu-item-card";
+import { MenuBentoGrid } from "@/components/menu-bento-grid";
 import { Link } from "@/i18n/navigation";
-import { getMenuItems } from "@/lib/api";
+import { getMenuItems, getSiteContent } from "@/lib/api";
+import { getHomeText } from "@/lib/home-text";
+import { siteImage } from "@/lib/site-content";
+import type { AppLocale } from "@/i18n/routing";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
 import hero from "@/assets/images/hero.jpg";
 import categoryMeals from "@/assets/images/category-meals.jpg";
@@ -61,10 +64,10 @@ const PROMISE_ITEMS = [
 ] as const;
 
 const CATEGORY_ITEMS = [
-  { labelKey: "servicesMeals", src: categoryMeals },
-  { labelKey: "servicesSnacks", src: categorySnacks },
-  { labelKey: "servicesCatering", src: categoryCatering },
-  { labelKey: "servicesEventRentals", src: categoryEventRentals },
+  { labelKey: "servicesMeals", slot: "category_meals", src: categoryMeals },
+  { labelKey: "servicesSnacks", slot: "category_snacks", src: categorySnacks },
+  { labelKey: "servicesCatering", slot: "category_catering", src: categoryCatering },
+  { labelKey: "servicesEventRentals", slot: "category_event_rentals", src: categoryEventRentals },
 ] as const;
 
 export async function generateMetadata({
@@ -83,7 +86,9 @@ export async function generateMetadata({
 }
 
 export default async function Home() {
-  const t = await getTranslations("HomePage");
+  // Admin overrides of the homepage text and images (Phase 25 Decisions 12–13).
+  const [locale, content] = await Promise.all([getLocale(), getSiteContent()]);
+  const t = await getHomeText(locale as AppLocale, content);
   const tw = await getTranslations("Whatsapp");
   const heroHeadingClass = "mb-4 text-[clamp(2.5rem,5vw,4.25rem)]";
   const heroSupportingClass = "max-w-[48ch] text-[clamp(1.05rem,1.5vw,1.25rem)] text-text-muted";
@@ -121,7 +126,7 @@ export default async function Home() {
         }
         media={
           <SiteImage
-            src={hero}
+            src={siteImage(content, "hero") ?? hero}
             alt={t.markup("heroHeadline", { em: (chunks) => chunks })}
             priority
             float
@@ -132,10 +137,10 @@ export default async function Home() {
       <section className="container">
         <Reveal>
           <div className="flex flex-wrap justify-center gap-x-10 gap-y-8">
-            {CATEGORY_ITEMS.map(({ labelKey, src }) => (
+            {CATEGORY_ITEMS.map(({ labelKey, slot, src }) => (
               <div key={labelKey} className="flex w-[150px] flex-col items-center gap-3.5 text-center">
                 <SiteImage
-                  src={src}
+                  src={siteImage(content, slot) ?? src}
                   alt={t(labelKey)}
                   className="h-[150px] w-[150px] min-h-0 rounded-full"
                   float
@@ -157,11 +162,7 @@ export default async function Home() {
               <Eyebrow>{t("featuredMenuEyebrow")}</Eyebrow>
               <h2>{t("featuredMenuHeading")}</h2>
             </div>
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-6">
-              {featuredItems.map((item) => (
-                <MenuItemCard key={item.id} item={item} />
-              ))}
-            </div>
+            <MenuBentoGrid items={featuredItems} />
             <div className="mt-10 text-center">
               <ButtonLink href="/menu" variant="outline">
                 {t("viewFullMenu")}
@@ -207,7 +208,7 @@ export default async function Home() {
 
       <SplitRow
         className="container"
-        media={<SiteImage src={aboutHero} alt={t("aboutPreview")} />}
+        media={<SiteImage src={siteImage(content, "about_hero") ?? aboutHero} alt={t("aboutPreview")} />}
         content={
           <div>
             <p className={heroSupportingClass}>{t("aboutPreview")}</p>

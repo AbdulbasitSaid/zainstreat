@@ -7,6 +7,7 @@ pub mod media;
 pub mod menu_items;
 pub mod orders;
 pub mod quotes;
+pub mod site_content;
 
 use crate::AppState;
 use axum::{
@@ -18,6 +19,7 @@ pub fn api_router() -> Router<AppState> {
     Router::new()
         .route("/categories", get(categories::list_categories))
         .route("/menu-items", get(menu_items::list_menu_items))
+        .route("/site-content", get(site_content::get_site_content))
         .route("/orders", post(orders::create_order))
         .route("/orders/by-token/{token}", get(orders::get_order_by_token))
         .route(

@@ -54,7 +54,9 @@ pub struct ListMenuItemsQuery {
 }
 
 /// Returns all non-deleted items, including unavailable ones — see
-/// requirement.md Decision 5. Does NOT filter on is_available.
+/// requirement.md Decision 5. Does NOT filter on is_available. Only
+/// published items in published categories are listed, and drafts are
+/// never read (Phase 25 Decision 17).
 ///
 /// Price options are fetched in one extra query across the entire table
 /// (not scoped to `category_id`) and grouped in Rust — the table has
@@ -67,12 +69,15 @@ pub async fn list_menu_items(
     let items = sqlx::query_as!(
         MenuItemRow,
         r#"
-        SELECT id, category_id, name, description, price, image_url,
-               is_available, is_featured
-        FROM menu_items
-        WHERE deleted_at IS NULL
-          AND ($1::BIGINT IS NULL OR category_id = $1)
-        ORDER BY display_order, id
+        SELECT mi.id, mi.category_id, mi.name, mi.description, mi.price, mi.image_url,
+               mi.is_available, mi.is_featured
+        FROM menu_items mi
+        JOIN categories c ON c.id = mi.category_id
+        WHERE mi.deleted_at IS NULL
+          AND mi.published_at IS NOT NULL
+          AND c.published_at IS NOT NULL
+          AND ($1::BIGINT IS NULL OR mi.category_id = $1)
+        ORDER BY mi.display_order, mi.id
         "#,
         params.category_id
     )

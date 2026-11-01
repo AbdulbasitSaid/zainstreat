@@ -528,3 +528,37 @@ async fn summary_lists_the_orders_waiting_on_payment_confirmation(pool: PgPool) 
     assert_eq!(status, StatusCode::OK);
     assert_eq!(body["claimed_ids"], json!([first, second]));
 }
+
+#[sqlx::test]
+async fn order_detail_reports_the_latest_customer_email(pool: PgPool) {
+    let cookie = login(&pool).await;
+    let id = insert_order(&pool, "Ada", "awaiting_payment", "12.50").await;
+
+    let (_status, body) = get_with_cookie(pool.clone(), &format!("/api/admin/orders/{id}"), Some(&cookie)).await;
+    assert!(body["customer_email_delivery"].is_null());
+
+    // Phase 25 Decision 6a: an SES sandbox rejection is recorded as `failed`.
+    sqlx::query!(
+        "INSERT INTO email_deliveries (order_id, kind, recipient, status, created_at) VALUES ($1, 'invoice', 'c@example.com', 'sent', now() - interval '1 hour')",
+        id
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+    sqlx::query!(
+        "INSERT INTO email_deliveries (order_id, kind, recipient, status, error) VALUES ($1, 'status', 'c@example.com', 'failed', '554 Message rejected: Email address is not verified.')",
+        id
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let (status, body) = get_with_cookie(pool, &format!("/api/admin/orders/{id}"), Some(&cookie)).await;
+    assert_eq!(status, StatusCode::OK);
+    let delivery = &body["customer_email_delivery"];
+    assert_eq!(delivery["status"], "failed");
+    assert_eq!(delivery["kind"], "status");
+    assert!(delivery["error"].as_str().unwrap().contains("not verified"));
+    assert!(delivery["at"].is_string());
+    assert_eq!(delivery["needs_follow_up"], true);
+}

@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT name, price, is_available FROM menu_items WHERE id = $1 AND deleted_at IS NULL AND published_at IS NOT NULL",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "price",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 2,
+        "name": "is_available",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "246a6a139b88729aab3832689858682f92e23656c78492afc54343a5e6e9c9d4"
+}

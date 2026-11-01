@@ -1,4 +1,4 @@
-use crate::email::EmailConfig;
+use crate::email::{EmailConfig, OutgoingEmail};
 use crate::error::{AppError, FieldError};
 use crate::order_emails::Locale;
 use crate::payment::{PaymentConfig, payment_reference};
@@ -245,18 +245,18 @@ pub async fn accept_quote(
     // After the commit, like `create_order`: the customer gets the usual
     // invoice, and the owner a heads-up.
     let response = load_order_by_token(&pool, &payment, order.public_token).await?;
-    send_invoice(&email, &response, &order.placed_at);
+    send_invoice(&email, &pool, &response, &order.placed_at);
 
     if let Some(business_address) = email.business_notify_address() {
-        email.spawn_send(
-            business_address,
-            format!(
+        email.spawn_send(OutgoingEmail {
+            to: business_address,
+            subject: format!(
                 "Quote #{} accepted — order {} — €{}",
                 quote.id,
                 payment_reference(order.id),
                 response.total
             ),
-            format!(
+            body: format!(
                 "{} accepted quote #{} for their {} on {event_date} ({} guests).\n\nOrder {} has been created and is awaiting payment.\n\n{}/orders/{}",
                 quote.name,
                 quote.id,
@@ -266,7 +266,9 @@ pub async fn accept_quote(
                 email.admin_url(),
                 order.id,
             ),
-        );
+            reply_to: Some(quote.email.clone()),
+            track: None,
+        });
     }
 
     Ok(Json(AcceptQuoteResponse {
@@ -309,7 +311,7 @@ pub async fn decline_quote(
         SET status = 'declined', declined_at = now(), decline_reason = $2, updated_at = now()
         FROM catering_enquiries e
         WHERE e.id = q.enquiry_id AND q.public_token = $1 AND q.status = 'sent' AND q.version = $3
-        RETURNING q.id, q.enquiry_id, e.name, e.event_type, e.event_date as "event_date: NaiveDate"
+        RETURNING q.id, q.enquiry_id, e.name, e.email, e.event_type, e.event_date as "event_date: NaiveDate"
         "#,
         token,
         reason,
@@ -331,10 +333,10 @@ pub async fn decline_quote(
     tracing::info!(quote_id = row.id, "customer declined catering quote");
 
     if let Some(business_address) = email.business_notify_address() {
-        email.spawn_send(
-            business_address,
-            format!("Quote #{} declined by {}", row.id, row.name),
-            format!(
+        email.spawn_send(OutgoingEmail {
+            to: business_address,
+            subject: format!("Quote #{} declined by {}", row.id, row.name),
+            body: format!(
                 "{} declined quote #{} for their {} on {}.\n\nReason: {}\n\n{}/enquiries/catering/{}",
                 row.name,
                 row.id,
@@ -344,7 +346,9 @@ pub async fn decline_quote(
                 email.admin_url(),
                 row.enquiry_id,
             ),
-        );
+            reply_to: Some(row.email.clone()),
+            track: None,
+        });
     }
 
     Ok(Json(quote))

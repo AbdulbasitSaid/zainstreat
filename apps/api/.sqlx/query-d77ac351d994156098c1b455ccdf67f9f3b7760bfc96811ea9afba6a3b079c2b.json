@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO menu_items (id, category_id, name, price, published_at) VALUES\n            (1, 1, 'Jollof Rice', 13.00, now()),\n            (2, 1, 'Secret Special', 9.00, NULL),\n            (3, 2, 'Item In New Category', 5.00, now())\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "d77ac351d994156098c1b455ccdf67f9f3b7760bfc96811ea9afba6a3b079c2b"
+}

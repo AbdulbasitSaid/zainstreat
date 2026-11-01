@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                    SELECT label, price FROM menu_item_price_options\n                    WHERE menu_item_id = $1 AND deleted_at IS NULL\n                    ORDER BY display_order, id\n                    ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "label",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "price",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "b90b4a2ff57063aa61e9c07ce26cd0c1499bcaf8d9ebb029d4fd10bce4be811a"
+}

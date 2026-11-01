@@ -1,0 +1,2 @@
+ALTER TABLE categories ALTER COLUMN published_at DROP DEFAULT;
+ALTER TABLE menu_items ALTER COLUMN published_at DROP DEFAULT;

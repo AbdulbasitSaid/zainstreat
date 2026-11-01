@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO email_deliveries (order_id, kind, recipient, status, error) VALUES ($1, 'status', 'c@example.com', 'failed', '554 Message rejected: Email address is not verified.')",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "841291d702d2c29cf76725ea00107bcad36f17a7adee56e3227066702abfae0c"
+}

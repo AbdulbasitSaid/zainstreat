@@ -1,4 +1,4 @@
-use crate::email::EmailConfig;
+use crate::email::{latest_delivery, DeliveryRef, EmailConfig, EmailDeliveryStatus, OutgoingEmail};
 use crate::error::{AppError, FieldError};
 use crate::order_emails::status_email;
 use crate::order_status::{ORDER_STATUSES, admin_next, is_reopen, is_valid_status};
@@ -187,6 +187,9 @@ pub struct AdminOrderResponse {
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub items: Vec<AdminOrderItemResponse>,
+    /// The latest customer email's outcome (Phase 25 Decision 6a).
+    /// `customer_email` is already the address, hence the longer name.
+    pub customer_email_delivery: Option<EmailDeliveryStatus>,
 }
 
 pub async fn get_order(
@@ -229,11 +232,8 @@ pub async fn get_order(
     .fetch_all(&pool)
     .await?;
 
-    let next_statuses = admin_next(
-        &order.status,
-        &order.delivery_type,
-        order.completed_by.as_deref(),
-    );
+    let next_statuses = admin_next(&order.status, &order.delivery_type, order.completed_by.as_deref());
+    let customer_email_delivery = latest_delivery(&pool, Some(order.id), None).await?;
 
     Ok(Json(AdminOrderResponse {
         id: order.id,
@@ -259,6 +259,7 @@ pub async fn get_order(
         created_at: order.created_at,
         updated_at: order.updated_at,
         items,
+        customer_email_delivery,
     }))
 }
 
@@ -353,7 +354,13 @@ pub async fn update_order_status(
             email.site_url(),
             order.public_token,
         ) {
-            email.spawn_send(order.customer_email, subject, body);
+            email.spawn_send(OutgoingEmail {
+                to: order.customer_email,
+                subject,
+                body,
+                reply_to: None,
+                track: Some(DeliveryRef { pool: pool.clone(), order_id: Some(order.id), quote_id: None, kind: "status" }),
+            });
         }
     }
 

@@ -100,6 +100,7 @@ jobs:
           V_SES_SMTP_PASSWORD: ${{ secrets.SES_SMTP_PASSWORD }}
           V_EMAIL_FROM_ADDRESS: ${{ vars.EMAIL_FROM_ADDRESS }}
           V_EMAIL_BUSINESS_NOTIFY_ADDRESS: ${{ vars.EMAIL_BUSINESS_NOTIFY_ADDRESS }}
+          V_EMAIL_SUBJECT_PREFIX: ${{ vars.EMAIL_SUBJECT_PREFIX }}
           V_BANK_ACCOUNT_NAME: ${{ vars.BANK_ACCOUNT_NAME }}
           V_BANK_IBAN: ${{ vars.BANK_IBAN }}
           V_BANK_BIC: ${{ vars.BANK_BIC }}

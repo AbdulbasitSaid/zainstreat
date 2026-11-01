@@ -1,0 +1,80 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, category_id, name, description, price, image_url, is_available, is_featured,\n               draft, draft_updated_at as \"draft_updated_at: DateTime<Utc>\",\n               published_at as \"published_at: DateTime<Utc>\"\n        FROM menu_items\n        WHERE deleted_at IS NULL\n        ORDER BY display_order, id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "category_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "price",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 5,
+        "name": "image_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "is_available",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 7,
+        "name": "is_featured",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 8,
+        "name": "draft",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 9,
+        "name": "draft_updated_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "published_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "1fc65db317daa2b12e02c47bd22053993db793faaec9a9a5250b9e922461e3f7"
+}

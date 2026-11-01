@@ -72,8 +72,9 @@ database's password — only do that as part of a deliberate rotation.
 - **Down:** run **Staging down** and type `DELETE STAGING`. Data goes
   with it. The workflow (and the IAM role) only delete an instance tagged
   `env=staging`.
-- Staging sends `X-Robots-Tag: noindex` everywhere, and its
-  `EMAIL_BUSINESS_NOTIFY_ADDRESS` is the developer's, not the business's.
+- Staging sends `X-Robots-Tag: noindex` everywhere. It notifies
+  `contact@zainstreat.com` like production, but its
+  `EMAIL_SUBJECT_PREFIX` (`[STAGING] `) tags every subject (Phase 25).
 - If sslip.io is down, set the `STAGING_DNS_SUFFIX` repository variable to
   `nip.io` and run Staging up again.
 
@@ -197,7 +198,60 @@ SES SMTP; without credentials the API logs every send as a no-op.
    Environment, then Promote (see "Changing a secret or setting").
    `EMAIL_FROM_ADDRESS` is a bare address. The API adds the display name
    "Zain's Treat n More" itself (Phase 24), because the deploy rejects a
-   `'` in env values.
+   `'` in env values. The optional `EMAIL_SUBJECT_PREFIX` goes in front of
+   every subject (`[STAGING] ` on staging, unset on production).
+
+### `contact@zainstreat.com` (Phase 25)
+
+- **Sending.** `contact@` is both `EMAIL_FROM_ADDRESS` and
+  `EMAIL_BUSINESS_NOTIFY_ADDRESS` on staging and production. The verified
+  `zainstreat.com` SES domain identity covers it, so no extra identity is
+  needed.
+- **Reply-To.** Customer emails (invoice, status update, quote) reply to
+  `contact@`. Owner notifications (new order, payment claimed, quote
+  accepted/declined, catering enquiry, contact message) reply to the
+  customer, so the owner can answer straight from the notification.
+- **Receiving.** The domain's DNS is a **Lightsail DNS zone**
+  (Lightsail → Domains & DNS) in the same AWS account as SES and the
+  servers. Namecheap is only the registrar. Its `awsdns` nameservers look
+  like Route 53, but there's no Route 53 hosted zone. Inbound mail is
+  forwarded by **ImprovMX** (free plan):
+  - Apex records: `MX 10 mx1.improvmx.com`, `MX 20 mx2.improvmx.com`
+    (in the Lightsail console the priority is its own field), and the
+    only SPF TXT record
+    `v=spf1 include:spf.improvmx.com include:amazonses.com ~all`.
+    DMARC stays `p=none`. SES's DKIM signature survives forwarding, so
+    forwarded notifications pass DMARC.
+  - The ImprovMX alias `contact` forwards to the developer's inbox for
+    now. **Before production launch**, change the alias target to the
+    owner's inbox in the ImprovMX dashboard. It's a dashboard edit, with
+    no code or DNS change.
+- **Failed customer emails.** Each customer email is recorded in
+  `email_deliveries` (`queued` → `sent`/`failed`). If the latest one for
+  an order or quote failed, or is still unconfirmed after 5 minutes, the
+  admin order or enquiry page shows "Customer email may not have been
+  delivered" next to the WhatsApp and copy-link buttons. While SES is in
+  the sandbox, any unverified recipient fails this way.
+
+## Editing the site (Phase 25)
+
+- **Site content** (`cms.<host>/site`): the logo, eight site images and the
+  homepage text in English, Dutch and French. An empty text field or a
+  "Reset to default" image falls back to the bundled default.
+- **Drafts.** Site content, menu item and category edits autosave as a
+  draft about a second after typing stops. The public site and ordering
+  only ever see published data. New items and categories start
+  **Unpublished**. Availability and archive still take effect at once.
+- **Publish.** Each editor has "Publish this change" and "Discard draft".
+  `cms.<host>/changes` lists everything pending, with a before/after diff,
+  and **Publish all** applies it in one step. If anything changed since the
+  page loaded, nothing is published and the page asks for a reload.
+- **Live preview.** Editors show the real public page with the draft
+  applied in a device simulator (Mobile S 320px to Desktop XL 1920px, one
+  device or all at once). `cms.<host>/preview-all` is the full-screen
+  version. It uses Next.js draft mode on the cms host only. If a frame
+  says "Preview couldn't start here", log in again or use "Open in a new
+  tab".
 
 ## Resizing the production instance
 

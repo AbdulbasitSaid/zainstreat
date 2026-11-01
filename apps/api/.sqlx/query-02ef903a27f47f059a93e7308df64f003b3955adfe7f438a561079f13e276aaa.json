@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE menu_items mi\n        SET deleted_at = now(), updated_at = now(), draft = NULL, draft_updated_at = NULL\n        FROM (SELECT id, draft FROM menu_items WHERE id = $1 FOR UPDATE) before\n        WHERE mi.id = before.id AND mi.updated_at = $2\n        RETURNING mi.image_url, before.draft\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "image_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "draft",
+        "type_info": "Jsonb"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      true,
+      true
+    ]
+  },
+  "hash": "02ef903a27f47f059a93e7308df64f003b3955adfe7f438a561079f13e276aaa"
+}

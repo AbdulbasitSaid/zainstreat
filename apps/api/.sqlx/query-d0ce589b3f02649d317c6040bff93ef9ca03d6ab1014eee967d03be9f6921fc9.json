@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT image_url, deleted_at as \"deleted_at: DateTime<Utc>\",\n               draft_updated_at as \"draft_updated_at: DateTime<Utc>\",\n               published_at as \"published_at: DateTime<Utc>\"\n        FROM menu_items WHERE id = $1\n        FOR UPDATE\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "image_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "deleted_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 2,
+        "name": "draft_updated_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 3,
+        "name": "published_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "d0ce589b3f02649d317c6040bff93ef9ca03d6ab1014eee967d03be9f6921fc9"
+}

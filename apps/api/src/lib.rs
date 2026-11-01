@@ -6,6 +6,7 @@ pub mod payment;
 pub mod quote_status;
 pub mod rate_limit;
 pub mod routes;
+pub mod site_content;
 pub mod validation;
 
 use axum::Router;

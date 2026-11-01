@@ -1,0 +1,47 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT status, kind, error, created_at as \"at: DateTime<Utc>\",\n               (status = 'failed' OR (status = 'queued' AND created_at < now() - interval '5 minutes'))\n                   as \"needs_follow_up!\"\n        FROM email_deliveries\n        WHERE ($1::BIGINT IS NOT NULL AND order_id = $1) OR ($2::BIGINT IS NOT NULL AND quote_id = $2)\n        ORDER BY created_at DESC, id DESC\n        LIMIT 1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "kind",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "error",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "needs_follow_up!",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      null
+    ]
+  },
+  "hash": "18e71b2b40c5685fc8e7657b4893ae1e513c4ef518d660cd911d498aa0ae8f7d"
+}

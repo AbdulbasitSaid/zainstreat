@@ -1,5 +1,7 @@
 import { isOrderToken, type OrderResponse } from "@/lib/orders";
+import { previewFetchInit } from "@/lib/preview";
 import { isQuoteToken, type PublicQuote } from "@/lib/quotes";
+import { EMPTY_SITE_CONTENT, type SiteContent } from "@/lib/site-content";
 
 export interface Category {
   id: number;
@@ -41,13 +43,47 @@ async function apiFetch<T>(path: string): Promise<T> {
   return (await response.json()) as T;
 }
 
-export function getCategories(): Promise<Category[]> {
-  return apiFetch<Category[]>("/api/categories");
+// In draft mode, read the admin preview endpoint (drafts overlaid,
+// unpublished rows included); without an admin session it 401s and the
+// page falls back to published data (Phase 25 Decision 21).
+async function previewFetch<T>(path: string): Promise<T | null> {
+  const init = await previewFetchInit();
+  if (!init || !API_BASE_URL) return null;
+
+  const response = await fetch(`${API_BASE_URL}/api/admin/preview${path}`, init);
+  if (!response.ok) return null;
+  return (await response.json()) as T;
 }
 
-export function getMenuItems(categoryId?: number): Promise<MenuItem[]> {
+export async function getCategories(): Promise<Category[]> {
+  return (await previewFetch<Category[]>("/categories")) ?? apiFetch<Category[]>("/api/categories");
+}
+
+export async function getMenuItems(categoryId?: number): Promise<MenuItem[]> {
   const query = categoryId !== undefined ? `?category_id=${categoryId}` : "";
-  return apiFetch<MenuItem[]>(`/api/menu-items${query}`);
+  return (
+    (await previewFetch<MenuItem[]>(`/menu-items${query}`)) ??
+    apiFetch<MenuItem[]>(`/api/menu-items${query}`)
+  );
+}
+
+// Fails soft to the bundled defaults. The published document is cached
+// under a tag (revalidated on publish) rather than fetched no-store, so the
+// layout reading it doesn't make about/services/contact dynamic.
+export async function getSiteContent(): Promise<SiteContent> {
+  try {
+    const preview = await previewFetch<SiteContent>("/site-content");
+    if (preview) return preview;
+    if (!API_BASE_URL) return EMPTY_SITE_CONTENT;
+
+    const response = await fetch(`${API_BASE_URL}/api/site-content`, {
+      next: { tags: ["site-content"], revalidate: 300 },
+    });
+    if (!response.ok) return EMPTY_SITE_CONTENT;
+    return (await response.json()) as SiteContent;
+  } catch {
+    return EMPTY_SITE_CONTENT;
+  }
 }
 
 // `null` for an unknown or malformed token, so the page can 404 without

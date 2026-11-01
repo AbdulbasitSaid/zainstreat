@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { AdminQuoteEditor } from "@/components/admin-quote-editor";
 import { AdminQuoteStatusBadge } from "@/components/admin-quote-status-badge";
+import { AdminEmailDeliveryNotice } from "@/components/admin-email-delivery-notice";
 import { getAdminCateringEnquiry } from "@/lib/admin-enquiries-api";
 import { formatDateTime } from "@/lib/format";
 
@@ -74,6 +75,11 @@ export default async function AdminCateringEnquiryDetailPage({
         {enquiry.quote?.display_status === "expired" && (
           <p className="m-0">Expired: extend the valid-until date, save, and send it again.</p>
         )}
+        <AdminEmailDeliveryNotice
+          delivery={enquiry.customer_email_delivery}
+          phone={enquiry.phone}
+            whatsAppMessage={`Hi ${enquiry.name}, about your catering quote from Zain's Treat n More:`}
+        />
         <AdminQuoteEditor enquiry={enquiry} />
       </section>
     </div>

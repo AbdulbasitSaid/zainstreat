@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO menu_items (category_id, name, price, image_url) VALUES ($1, 'Jollof', 13.00, '/images/menu/jollof.jpg') RETURNING id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "521847043c1e638862f221741669063850b39236882dc835094bec44ad211667"
+}

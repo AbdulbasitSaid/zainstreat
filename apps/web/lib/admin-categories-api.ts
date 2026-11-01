@@ -4,3 +4,7 @@ import type { AdminCategory } from "@/lib/admin-categories";
 export function getAdminCategories(): Promise<AdminCategory[]> {
   return adminApiJson<AdminCategory[]>("/api/admin/categories");
 }
+
+export function getAdminCategory(id: number): Promise<AdminCategory> {
+  return adminApiJson<AdminCategory>(`/api/admin/categories/${id}`);
+}

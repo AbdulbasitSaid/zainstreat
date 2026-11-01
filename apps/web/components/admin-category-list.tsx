@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/button";
 import { Notice } from "@/components/notice";
-import { AdminArchivedBadge } from "@/components/admin-archived-badge";
+import { AdminArchivedBadge, AdminDraftBadge } from "@/components/admin-archived-badge";
 import type { AdminCategory } from "@/lib/admin-categories";
 
 interface ApiResponse {
@@ -70,7 +70,15 @@ export function AdminCategoryList({ categories: initialCategories }: { categorie
               <tr key={category.id} className="border-b border-text/10">
                 <td className="py-3 pr-4 font-semibold">{category.name}</td>
                 <td className="py-3 pr-4 text-text-muted">{category.description ?? "—"}</td>
-                <td className="py-3 pr-4">{category.is_archived && <AdminArchivedBadge />}</td>
+                <td className="py-3 pr-4">
+                  {category.is_archived ? (
+                    <AdminArchivedBadge />
+                  ) : !category.is_published ? (
+                    <AdminDraftBadge unpublished />
+                  ) : (
+                    category.has_draft && <AdminDraftBadge />
+                  )}
+                </td>
                 <td className="py-3">
                   <div className="flex items-center gap-2">
                     <Link

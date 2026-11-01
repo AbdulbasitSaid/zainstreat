@@ -11,9 +11,10 @@ use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use std::collections::HashMap;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PriceOptionInput {
     pub label: String,
+    #[serde(serialize_with = "rust_decimal::serde::str::serialize")]
     pub price: Decimal,
 }
 
@@ -47,6 +48,14 @@ pub struct AdminMenuItemResponse {
     pub is_archived: bool,
     pub price_options: Vec<AdminPriceOptionResponse>,
     pub updated_at: DateTime<Utc>,
+    /// Phase 25 Decision 15: new items start unpublished.
+    pub is_published: bool,
+    pub has_draft: bool,
+    /// The pending edit of a published item; the form loads this instead
+    /// of the live columns when present.
+    pub draft: Option<MenuItemFields>,
+    /// The optimistic-concurrency token for draft saves and publish.
+    pub draft_updated_at: Option<DateTime<Utc>>,
 }
 
 struct MenuItemRow {
@@ -61,19 +70,33 @@ struct MenuItemRow {
     is_featured: bool,
     deleted_at: Option<DateTime<Utc>>,
     updated_at: DateTime<Utc>,
+    draft: Option<serde_json::Value>,
+    draft_updated_at: Option<DateTime<Utc>>,
+    published_at: Option<DateTime<Utc>>,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct UpsertMenuItemRequest {
+/// A menu item's editable content: the create body, the draft-save body
+/// and the shape stored in `menu_items.draft` (Phase 25 Decision 15).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct MenuItemFields {
     pub category_id: i64,
     pub name: String,
     pub description: Option<String>,
+    #[serde(serialize_with = "rust_decimal::serde::str_option::serialize")]
     pub price: Option<Decimal>,
     #[serde(default)]
     pub price_options: Vec<PriceOptionInput>,
     pub image_url: Option<String>,
     pub is_featured: bool,
-    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SaveMenuItemDraftRequest {
+    #[serde(flatten)]
+    pub fields: MenuItemFields,
+    /// `null` for the first draft of a published item, or for an
+    /// unpublished item that has never been saved since it was created.
+    pub draft_updated_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -91,16 +114,16 @@ pub struct ArchiveMenuItemRequest {
 /// key this API itself issued via `POST /api/admin/media`, never an
 /// arbitrary string. Checks the same prefix `media_key_from_url` below
 /// strips unconditionally for deletion.
-fn is_valid_media_url(url: &str, public_base_url: &str) -> bool {
+pub(crate) fn is_valid_media_url(url: &str, public_base_url: &str) -> bool {
     url.strip_prefix(public_base_url)
         .and_then(|rest| rest.strip_prefix("/api/media/"))
         .is_some_and(|key| !key.is_empty() && !key.contains('/'))
 }
 
-async fn validate_menu_item(
+pub(crate) async fn validate_menu_item(
     pool: &PgPool,
     media: &MediaConfig,
-    payload: &UpsertMenuItemRequest,
+    payload: &MenuItemFields,
     existing_image_url: Option<&str>,
 ) -> Result<(), AppError> {
     let mut errors = Vec::new();
@@ -215,6 +238,10 @@ fn rows_to_responses(
         .into_iter()
         .map(|item| AdminMenuItemResponse {
             price_options: options_by_item.remove(&item.id).unwrap_or_default(),
+            is_published: item.published_at.is_some(),
+            has_draft: item.draft.is_some(),
+            draft: item.draft.and_then(|draft| parse_draft(item.id, draft)),
+            draft_updated_at: item.draft_updated_at,
             id: item.id,
             category_id: item.category_id,
             category_name: item.category_name,
@@ -239,7 +266,9 @@ pub async fn list_menu_items(
         SELECT mi.id, mi.category_id, c.name as category_name, mi.name, mi.description,
                mi.price, mi.image_url, mi.is_available, mi.is_featured,
                mi.deleted_at as "deleted_at: DateTime<Utc>",
-               mi.updated_at as "updated_at: DateTime<Utc>"
+               mi.updated_at as "updated_at: DateTime<Utc>",
+               mi.draft, mi.draft_updated_at as "draft_updated_at: DateTime<Utc>",
+               mi.published_at as "published_at: DateTime<Utc>"
         FROM menu_items mi
         JOIN categories c ON c.id = mi.category_id
         ORDER BY mi.display_order, mi.id
@@ -279,7 +308,9 @@ pub async fn get_menu_item(
         SELECT mi.id, mi.category_id, c.name as category_name, mi.name, mi.description,
                mi.price, mi.image_url, mi.is_available, mi.is_featured,
                mi.deleted_at as "deleted_at: DateTime<Utc>",
-               mi.updated_at as "updated_at: DateTime<Utc>"
+               mi.updated_at as "updated_at: DateTime<Utc>",
+               mi.draft, mi.draft_updated_at as "draft_updated_at: DateTime<Utc>",
+               mi.published_at as "published_at: DateTime<Utc>"
         FROM menu_items mi
         JOIN categories c ON c.id = mi.category_id
         WHERE mi.id = $1
@@ -346,10 +377,12 @@ async fn insert_price_options(
     Ok(())
 }
 
+/// New items start unpublished (Phase 25 Decision 15): the column defaults
+/// to now() for hand-inserted rows, so NULL is set explicitly here.
 pub async fn create_menu_item(
     State(pool): State<PgPool>,
     State(media): State<MediaConfig>,
-    Json(payload): Json<UpsertMenuItemRequest>,
+    Json(payload): Json<MenuItemFields>,
 ) -> Result<Json<AdminMenuItemResponse>, AppError> {
     validate_menu_item(&pool, &media, &payload, None).await?;
 
@@ -357,9 +390,9 @@ pub async fn create_menu_item(
 
     let item_id: i64 = sqlx::query_scalar!(
         r#"
-        INSERT INTO menu_items (category_id, name, description, price, image_url, is_featured, display_order)
+        INSERT INTO menu_items (category_id, name, description, price, image_url, is_featured, display_order, published_at)
         VALUES ($1, $2, $3, $4, $5, $6,
-            (SELECT COALESCE(MAX(display_order), -1) + 1 FROM menu_items WHERE category_id = $1))
+            (SELECT COALESCE(MAX(display_order), -1) + 1 FROM menu_items WHERE category_id = $1), NULL)
         RETURNING id
         "#,
         payload.category_id,
@@ -378,98 +411,136 @@ pub async fn create_menu_item(
     get_menu_item(State(pool), Path(item_id)).await
 }
 
-pub async fn update_menu_item(
+/// Phase 25 Decision 15: a published item's edit is stored in `draft`
+/// and only reaches the live columns on publish; an unpublished item has no
+/// live audience, so its edit writes the live columns directly. Either way
+/// `draft_updated_at` is the concurrency token, and no media is deleted
+/// here — the preview may still be showing the previous image.
+pub async fn save_menu_item_draft(
     State(pool): State<PgPool>,
     State(media): State<MediaConfig>,
     Path(id): Path<i64>,
-    Json(payload): Json<UpsertMenuItemRequest>,
+    Json(payload): Json<SaveMenuItemDraftRequest>,
 ) -> Result<Json<AdminMenuItemResponse>, AppError> {
-    // Read before validation — doubles as both the OCC-era image-cleanup
-    // diff below and the grandfathering check inside `validate_menu_item`
-    // for a row's own unchanged (possibly pre-this-phase) image_url.
-    let previous_image_url: Option<String> =
-        sqlx::query_scalar!("SELECT image_url FROM menu_items WHERE id = $1", id)
-            .fetch_optional(&pool)
-            .await?
-            .flatten();
-
-    validate_menu_item(&pool, &media, &payload, previous_image_url.as_deref()).await?;
-
     let mut tx = pool.begin().await?;
 
-    // requirement.md Decision 17 — conditional on the caller's `updated_at`;
-    // 0 affected rows means either the id is unknown or someone else updated
-    // it first (disambiguated below). A check_violation here (Group 1a's
-    // trigger, archived category) is converted to `AppError::CategoryArchived`
-    // by the `?` below via `error.rs`'s `From<sqlx::Error>`.
-    let affected = sqlx::query!(
+    let row = sqlx::query!(
         r#"
-        UPDATE menu_items
-        SET category_id = $3, name = $4, description = $5, price = $6,
-            image_url = $7, is_featured = $8, updated_at = now()
-        WHERE id = $1 AND updated_at = $2
+        SELECT image_url, deleted_at as "deleted_at: DateTime<Utc>",
+               draft_updated_at as "draft_updated_at: DateTime<Utc>",
+               published_at as "published_at: DateTime<Utc>"
+        FROM menu_items WHERE id = $1
+        FOR UPDATE
         "#,
-        id,
-        chrono_to_offset(payload.updated_at),
-        payload.category_id,
-        payload.name.trim(),
-        payload.description,
-        payload.price,
-        payload.image_url,
-        payload.is_featured,
+        id
     )
-    .execute(&mut *tx)
+    .fetch_optional(&mut *tx)
     .await?
-    .rows_affected();
+    .ok_or(AppError::NotFound)?;
 
-    if affected == 0 {
+    if row.deleted_at.is_some() {
+        return Err(AppError::NotFound);
+    }
+    if row.draft_updated_at != payload.draft_updated_at {
         tx.rollback().await?;
         return Err(menu_item_or_conflict(pool, id).await);
     }
 
-    // requirement.md Decision 6 — full replace, not a diff.
+    // The grandfathering check is against the live image (requirement.md
+    // Decision 18).
+    validate_menu_item(&pool, &media, &payload.fields, row.image_url.as_deref()).await?;
+
+    if row.published_at.is_none() {
+        apply_menu_item_fields(&mut tx, id, &payload.fields).await?;
+        sqlx::query!("UPDATE menu_items SET draft_updated_at = now() WHERE id = $1", id)
+            .execute(&mut *tx)
+            .await?;
+    } else {
+        sqlx::query!(
+            "UPDATE menu_items SET draft = $2, draft_updated_at = now() WHERE id = $1",
+            id,
+            serde_json::to_value(&payload.fields).expect("serializable"),
+        )
+        .execute(&mut *tx)
+        .await?;
+    }
+
+    tx.commit().await?;
+
+    get_menu_item(State(pool), Path(id)).await
+}
+
+/// Writes `fields` to the live columns and fully replaces the price
+/// options (requirement.md Decision 6). Shared by an unpublished item's
+/// draft save and by publish. A check_violation here (Group 1a's trigger,
+/// archived category) becomes `AppError::CategoryArchived` via `?`.
+pub(crate) async fn apply_menu_item_fields(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    id: i64,
+    fields: &MenuItemFields,
+) -> Result<(), AppError> {
+    sqlx::query!(
+        r#"
+        UPDATE menu_items
+        SET category_id = $2, name = $3, description = $4, price = $5,
+            image_url = $6, is_featured = $7, updated_at = now()
+        WHERE id = $1
+        "#,
+        id,
+        fields.category_id,
+        fields.name.trim(),
+        fields.description,
+        fields.price,
+        fields.image_url,
+        fields.is_featured,
+    )
+    .execute(&mut **tx)
+    .await?;
+
     sqlx::query!(
         r#"UPDATE menu_item_price_options SET deleted_at = now() WHERE menu_item_id = $1 AND deleted_at IS NULL"#,
         id
     )
-    .execute(&mut *tx)
+    .execute(&mut **tx)
     .await?;
-    insert_price_options(&mut tx, id, &payload.price_options).await?;
+    insert_price_options(tx, id, &fields.price_options).await?;
+    Ok(())
+}
 
-    tx.commit().await?;
+/// A stored draft always deserializes (it was validated on save); a row
+/// that somehow doesn't is logged and treated as having no draft.
+pub(crate) fn parse_draft(id: i64, draft: serde_json::Value) -> Option<MenuItemFields> {
+    match serde_json::from_value(draft) {
+        Ok(fields) => Some(fields),
+        Err(err) => {
+            tracing::error!(%err, id, "unreadable menu item draft");
+            None
+        }
+    }
+}
 
-    // requirement.md Decision 4 addendum (open risk 2) — the row is already
-    // committed to the new image_url, so a delete failure here must never
-    // fail the request; it only leaves one orphaned object behind, same as
-    // today. Only fires when the image actually changed (including removal),
-    // never on an edit that leaves it untouched.
-    if previous_image_url.is_some()
-        && previous_image_url != payload.image_url
-        && let Some(key) = media_key_from_url(
-            previous_image_url.as_deref().unwrap(),
-            &media.public_base_url,
-        )
-        && let Err(err) = media
-            .client
-            .delete_object()
-            .bucket(&media.bucket)
-            .key(&key)
-            .send()
-            .await
-    {
+/// The content preview shows and publish applies: the draft when there is
+/// one, otherwise the live columns. One function, so preview and publish
+/// can't disagree (plan 5.5).
+pub(crate) fn effective_fields(live: MenuItemFields, draft: Option<MenuItemFields>) -> MenuItemFields {
+    draft.unwrap_or(live)
+}
+
+/// Deletes a MinIO object this API issued. A failure only leaves an orphan
+/// behind, so it is logged and never fails the request (requirement.md
+/// Decision 4 addendum).
+pub(crate) async fn delete_media_object(media: &MediaConfig, url: &str) {
+    let Some(key) = media_key_from_url(url, &media.public_base_url) else { return };
+    if let Err(err) = media.client.delete_object().bucket(&media.bucket).key(&key).send().await {
         tracing::warn!(%err, %key, "failed to delete superseded media object");
     }
-
-    get_menu_item(State(pool), Path(id)).await
 }
 
 /// `image_url`s this API issues always look like
 /// `{public_base_url}/api/media/{key}` (admin/media.rs) — strip that prefix
 /// to recover the object key for a `DeleteObject` call.
-fn media_key_from_url(url: &str, public_base_url: &str) -> Option<String> {
-    url.strip_prefix(public_base_url)?
-        .strip_prefix("/api/media/")
-        .map(str::to_string)
+pub(crate) fn media_key_from_url(url: &str, public_base_url: &str) -> Option<String> {
+    url.strip_prefix(public_base_url)?.strip_prefix("/api/media/").map(str::to_string)
 }
 
 pub async fn update_availability(
@@ -494,22 +565,36 @@ pub async fn update_availability(
     get_menu_item(State(pool), Path(id)).await
 }
 
+/// Archiving also discards a pending draft (Phase 25 Decision 16),
+/// including the draft's own uploaded photo.
 pub async fn archive_menu_item(
     State(pool): State<PgPool>,
+    State(media): State<MediaConfig>,
     Path(id): Path<i64>,
     Json(payload): Json<ArchiveMenuItemRequest>,
 ) -> Result<Json<AdminMenuItemResponse>, AppError> {
-    let affected = sqlx::query!(
-        r#"UPDATE menu_items SET deleted_at = now(), updated_at = now() WHERE id = $1 AND updated_at = $2"#,
+    let archived = sqlx::query!(
+        r#"
+        UPDATE menu_items mi
+        SET deleted_at = now(), updated_at = now(), draft = NULL, draft_updated_at = NULL
+        FROM (SELECT id, draft FROM menu_items WHERE id = $1 FOR UPDATE) before
+        WHERE mi.id = before.id AND mi.updated_at = $2
+        RETURNING mi.image_url, before.draft
+        "#,
         id,
         chrono_to_offset(payload.updated_at),
     )
-    .execute(&pool)
-    .await?
-    .rows_affected();
+    .fetch_optional(&pool)
+    .await?;
 
-    if affected == 0 {
+    let Some(archived) = archived else {
         return Err(menu_item_or_conflict(pool, id).await);
+    };
+
+    if let Some(draft_image) = archived.draft.and_then(|draft| parse_draft(id, draft)).and_then(|d| d.image_url)
+        && archived.image_url.as_deref() != Some(draft_image.as_str())
+    {
+        delete_media_object(&media, &draft_image).await;
     }
 
     get_menu_item(State(pool), Path(id)).await
