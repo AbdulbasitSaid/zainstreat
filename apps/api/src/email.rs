@@ -1,5 +1,5 @@
-use lettre::message::Mailbox;
 use lettre::Address;
+use lettre::message::Mailbox;
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::{AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor};
 use std::sync::Arc;
@@ -54,11 +54,26 @@ impl EmailConfig {
         // The admin lives on its own host (Phase 21 Decision 20).
         let admin_url = base_url("PUBLIC_ADMIN_URL", DEFAULT_ADMIN_URL);
 
-        let (Some(smtp_host), Some(smtp_username), Some(smtp_password), Some(from_address), Some(business_notify_address)) =
-            (smtp_host, smtp_username, smtp_password, from_address, business_notify_address)
+        let (
+            Some(smtp_host),
+            Some(smtp_username),
+            Some(smtp_password),
+            Some(from_address),
+            Some(business_notify_address),
+        ) = (
+            smtp_host,
+            smtp_username,
+            smtp_password,
+            from_address,
+            business_notify_address,
+        )
         else {
             tracing::warn!("email sending disabled: SES env vars not fully set");
-            return Self { settings: None, site_url, admin_url };
+            return Self {
+                settings: None,
+                site_url,
+                admin_url,
+            };
         };
 
         Self {
@@ -91,7 +106,9 @@ impl EmailConfig {
     }
 
     pub fn business_notify_address(&self) -> Option<String> {
-        self.settings.as_ref().map(|s| s.business_notify_address.clone())
+        self.settings
+            .as_ref()
+            .map(|s| s.business_notify_address.clone())
     }
 
     /// Fire-and-forget: spawns the send, logs failure, never returns an
@@ -120,7 +137,10 @@ async fn send(settings: &SesSettings, to: &str, subject: &str, body: String) -> 
 
     let mailer = AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(&settings.smtp_host)
         .map_err(|e| e.to_string())?
-        .credentials(Credentials::new(settings.smtp_username.clone(), settings.smtp_password.clone()))
+        .credentials(Credentials::new(
+            settings.smtp_username.clone(),
+            settings.smtp_password.clone(),
+        ))
         .build();
 
     mailer.send(email).await.map_err(|e| e.to_string())?;

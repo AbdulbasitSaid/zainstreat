@@ -41,8 +41,12 @@ async fn customer_completes_a_ready_order(pool: PgPool) {
     ] {
         let (id, token) = insert_order(&pool, status, delivery_type).await;
 
-        let (code, body) =
-            post(pool.clone(), &format!("/api/orders/by-token/{token}/received"), json!({})).await;
+        let (code, body) = post(
+            pool.clone(),
+            &format!("/api/orders/by-token/{token}/received"),
+            json!({}),
+        )
+        .await;
         assert_eq!(code, StatusCode::OK, "{status}");
         assert_eq!(body["status"], "completed");
         assert_eq!(body["completed_by"], "customer");
@@ -68,11 +72,20 @@ async fn second_confirmation_is_a_no_op(pool: PgPool) {
 
 #[sqlx::test]
 async fn orders_not_yet_handed_over_conflict(pool: PgPool) {
-    for status in ["awaiting_payment", "payment_claimed", "processing", "cancelled"] {
+    for status in [
+        "awaiting_payment",
+        "payment_claimed",
+        "processing",
+        "cancelled",
+    ] {
         let (id, token) = insert_order(&pool, status, "pickup").await;
 
-        let (code, body) =
-            post(pool.clone(), &format!("/api/orders/by-token/{token}/received"), json!({})).await;
+        let (code, body) = post(
+            pool.clone(),
+            &format!("/api/orders/by-token/{token}/received"),
+            json!({}),
+        )
+        .await;
         assert_eq!(code, StatusCode::CONFLICT, "{status}");
         assert_eq!(body["error"], "invalid_status_transition");
         assert!(completed_at(&pool, id).await.is_none());
@@ -99,7 +112,14 @@ async fn token_response_carries_the_tracking_timestamps(pool: PgPool) {
 
     let (code, body) = get(pool, &format!("/api/orders/by-token/{token}")).await;
     assert_eq!(code, StatusCode::OK);
-    for field in ["payment_claimed_at", "payment_confirmed_at", "ready_at", "completed_at", "cancelled_at", "completed_by"] {
+    for field in [
+        "payment_claimed_at",
+        "payment_confirmed_at",
+        "ready_at",
+        "completed_at",
+        "cancelled_at",
+        "completed_by",
+    ] {
         assert!(body[field].is_null(), "{field}");
     }
 }
@@ -112,9 +132,17 @@ async fn confirmation_is_rate_limited(pool: PgPool) {
     let uri = format!("/api/orders/by-token/{token}/received");
 
     for _ in 0..5 {
-        let (code, _) = post_on_with_header(app.clone(), &uri, json!({}), "x-forwarded-for", "198.51.100.7").await;
+        let (code, _) = post_on_with_header(
+            app.clone(),
+            &uri,
+            json!({}),
+            "x-forwarded-for",
+            "198.51.100.7",
+        )
+        .await;
         assert_eq!(code, StatusCode::OK);
     }
-    let (code, _) = post_on_with_header(app, &uri, json!({}), "x-forwarded-for", "198.51.100.7").await;
+    let (code, _) =
+        post_on_with_header(app, &uri, json!({}), "x-forwarded-for", "198.51.100.7").await;
     assert_eq!(code, StatusCode::TOO_MANY_REQUESTS);
 }

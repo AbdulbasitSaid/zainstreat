@@ -58,6 +58,9 @@ Checked on 2026-11-01 unless noted. Where the implementation deviated from
       *(Not checked yet. Local dev has email off, so the API skipped the
       sends. The text is covered by the unit tests. Needs a staging
       deploy.)*
+      *(Staging at `0b7f7c1`, SES on: placed `nl` order ZTM-6 and `fr`
+      order ZTM-7 to `techsihir@gmail.com`. The inbox check is still
+      open.)*
 
 ### Web (Groups 3–5)
 
@@ -76,11 +79,11 @@ Checked on 2026-11-01 unless noted. Where the implementation deviated from
       French text. The same for `/fr/about`, `/fr/services`, `/fr/menu`,
       `/fr/contact`, `/fr/terms` and `/fr/food-regulations`.
       *(All seven routes return `200` in `en`, `nl` and `fr`.)*
-- [ ] The switcher shows English / Nederlands / Français on every
+- [x] The switcher shows English / Nederlands / Français on every
       locale, and switching keeps the current path.
-      *(Half checked. The HTML on `/fr` lists English / Nederlands /
-      Français, with Français selected. Switching in a browser is manual
-      and not checked yet.)*
+      *(Checked in a browser on staging: `/fr/menu` → `/nl/menu` and
+      `/en/contact` → `/fr/contact`. After choosing `nl`, `/` with
+      `Accept-Language: fr` still went to `/nl`, so the choice sticks.)*
 - [x] `curl -s localhost:3000/fr/about` contains `<link
       rel="canonical" href="…/fr/about">` and `<link rel="alternate"
       hreflang=…>` for `en`, `nl`, `fr` and `x-default` (→ `/en/about`).
@@ -132,7 +135,18 @@ Checked on 2026-11-01 unless noted. Where the implementation deviated from
       - order tracking stepper
       - quote page
       - contact forms
-      *(Manual, not checked yet.)*
+      *(Checked on staging in a 375px same-origin iframe. No overflow on:
+      - `/fr` with the mobile menu open
+      - menu
+      - `/fr/order` (checkout)
+      - the tracking stepper
+      - contact, services and about
+
+      **Fails on cart:** with an item in it, `/fr/cart` is 414px wide and
+      "Retirer" is off-screen. It isn't French-only: `/en/cart` is 421px
+      and `/nl/cart` is 444px. `components/cart-line-item.tsx:22` is a
+      single non-wrapping flex row. The quote page isn't checked yet; it
+      needs a sent quote.)*
 
 ### Sweep
 

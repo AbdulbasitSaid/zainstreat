@@ -1,6 +1,6 @@
 pub mod admin;
-pub mod catering_enquiries;
 pub mod categories;
+pub mod catering_enquiries;
 pub mod contact_messages;
 pub mod health;
 pub mod media;
@@ -10,8 +10,8 @@ pub mod quotes;
 
 use crate::AppState;
 use axum::{
-    routing::{get, post},
     Router,
+    routing::{get, post},
 };
 
 pub fn api_router() -> Router<AppState> {

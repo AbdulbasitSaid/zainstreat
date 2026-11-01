@@ -3,7 +3,7 @@ mod common;
 use axum::http::StatusCode;
 use chrono::{Duration, Utc};
 use common::{get_with_cookie, insert_admin, post_with_cookie, put_with_cookie, session_cookie};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use sqlx::PgPool;
 
 async fn insert_enquiry(pool: &PgPool, locale: &str) -> i64 {
@@ -52,7 +52,13 @@ fn valid_quote() -> Value {
 }
 
 async fn save(pool: &PgPool, cookie: &str, enquiry_id: i64, body: Value) -> (StatusCode, Value) {
-    put_with_cookie(pool.clone(), &format!("/api/admin/catering-enquiries/{enquiry_id}/quote"), body, Some(cookie)).await
+    put_with_cookie(
+        pool.clone(),
+        &format!("/api/admin/catering-enquiries/{enquiry_id}/quote"),
+        body,
+        Some(cookie),
+    )
+    .await
 }
 
 async fn send(pool: &PgPool, cookie: &str, enquiry_id: i64) -> (StatusCode, Value) {
@@ -71,7 +77,12 @@ fn field_errors(body: &Value) -> Vec<(String, String)> {
         .as_array()
         .unwrap()
         .iter()
-        .map(|f| (f["field"].as_str().unwrap().to_string(), f["message"].as_str().unwrap().to_string()))
+        .map(|f| {
+            (
+                f["field"].as_str().unwrap().to_string(),
+                f["message"].as_str().unwrap().to_string(),
+            )
+        })
         .collect()
 }
 
@@ -102,7 +113,8 @@ async fn saving_again_replaces_the_lines_and_bumps_the_version(pool: PgPool) {
     save(&pool, &cookie, enquiry, valid_quote()).await;
 
     let mut fewer = valid_quote();
-    fewer["items"] = json!([{ "description": "Puff puff tray", "quantity": 3, "unit_price": "20" }]);
+    fewer["items"] =
+        json!([{ "description": "Puff puff tray", "quantity": 3, "unit_price": "20" }]);
     let (status, body) = save(&pool, &cookie, enquiry, fewer).await;
 
     assert_eq!(status, StatusCode::OK);
@@ -136,7 +148,11 @@ async fn invalid_quotes_are_rejected_field_by_field(pool: PgPool) {
     cases.push((no_items, "items", "empty"));
 
     let mut too_many = valid_quote();
-    too_many["items"] = json!((0..51).map(|_| json!({ "description": "x", "quantity": 1, "unit_price": "1" })).collect::<Vec<_>>());
+    too_many["items"] = json!(
+        (0..51)
+            .map(|_| json!({ "description": "x", "quantity": 1, "unit_price": "1" }))
+            .collect::<Vec<_>>()
+    );
     cases.push((too_many, "items", "too_many"));
 
     let mut negative = valid_quote();
@@ -210,7 +226,10 @@ async fn sending_an_out_of_date_quote_is_rejected(pool: PgPool) {
     let (status, body) = send(&pool, &cookie, enquiry).await;
 
     assert_eq!(status, StatusCode::BAD_REQUEST);
-    assert_eq!(field_errors(&body), vec![("valid_until".to_string(), "must_be_future".to_string())]);
+    assert_eq!(
+        field_errors(&body),
+        vec![("valid_until".to_string(), "must_be_future".to_string())]
+    );
 }
 
 #[sqlx::test]
@@ -254,29 +273,54 @@ async fn enquiry_detail_and_list_carry_the_quote(pool: PgPool) {
     let other = insert_enquiry(&pool, "en").await;
     let cookie = login(&pool).await;
 
-    let (_, detail) =
-        get_with_cookie(pool.clone(), &format!("/api/admin/catering-enquiries/{enquiry}"), Some(&cookie)).await;
+    let (_, detail) = get_with_cookie(
+        pool.clone(),
+        &format!("/api/admin/catering-enquiries/{enquiry}"),
+        Some(&cookie),
+    )
+    .await;
     assert_eq!(detail["locale"], "nl");
     assert!(detail["quote"].is_null());
 
     save(&pool, &cookie, enquiry, valid_quote()).await;
     send(&pool, &cookie, enquiry).await;
 
-    let (_, detail) =
-        get_with_cookie(pool.clone(), &format!("/api/admin/catering-enquiries/{enquiry}"), Some(&cookie)).await;
+    let (_, detail) = get_with_cookie(
+        pool.clone(),
+        &format!("/api/admin/catering-enquiries/{enquiry}"),
+        Some(&cookie),
+    )
+    .await;
     assert_eq!(detail["quote"]["status"], "sent");
     assert_eq!(detail["quote"]["items"].as_array().unwrap().len(), 2);
 
-    let (_, list) = get_with_cookie(pool.clone(), "/api/admin/catering-enquiries", Some(&cookie)).await;
+    let (_, list) =
+        get_with_cookie(pool.clone(), "/api/admin/catering-enquiries", Some(&cookie)).await;
     let status_of = |id: i64| {
-        list["enquiries"].as_array().unwrap().iter().find(|e| e["id"] == id).unwrap()["quote_status"].clone()
+        list["enquiries"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|e| e["id"] == id)
+            .unwrap()["quote_status"]
+            .clone()
     };
     assert_eq!(status_of(enquiry), "sent");
     assert!(status_of(other).is_null());
 
     // Expiry is computed, not stored.
-    sqlx::query("UPDATE catering_quotes SET valid_until = CURRENT_DATE - 2").execute(&pool).await.unwrap();
-    let (_, list) = get_with_cookie(pool.clone(), "/api/admin/catering-enquiries", Some(&cookie)).await;
-    let expired = list["enquiries"].as_array().unwrap().iter().find(|e| e["id"] == enquiry).unwrap().clone();
+    sqlx::query("UPDATE catering_quotes SET valid_until = CURRENT_DATE - 2")
+        .execute(&pool)
+        .await
+        .unwrap();
+    let (_, list) =
+        get_with_cookie(pool.clone(), "/api/admin/catering-enquiries", Some(&cookie)).await;
+    let expired = list["enquiries"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|e| e["id"] == enquiry)
+        .unwrap()
+        .clone();
     assert_eq!(expired["quote_status"], "expired");
 }

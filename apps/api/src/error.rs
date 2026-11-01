@@ -1,7 +1,7 @@
 use axum::{
+    Json,
     http::StatusCode,
     response::{IntoResponse, Response},
-    Json,
 };
 use serde::Serialize;
 use serde_json::json;
@@ -112,7 +112,11 @@ impl IntoResponse for AppError {
             }
             AppError::Unauthorized => {
                 tracing::warn!("rejected request with no valid admin session");
-                (StatusCode::UNAUTHORIZED, Json(json!({ "error": "unauthorized" }))).into_response()
+                (
+                    StatusCode::UNAUTHORIZED,
+                    Json(json!({ "error": "unauthorized" })),
+                )
+                    .into_response()
             }
             AppError::InvalidCredentials => {
                 tracing::warn!("admin login failed");
@@ -134,7 +138,10 @@ impl IntoResponse for AppError {
                 (StatusCode::NOT_FOUND, Json(json!({ "error": "not_found" }))).into_response()
             }
             AppError::CategoryHasActiveItems(items) => {
-                tracing::warn!(?items, "category archive rejected: active menu items remain");
+                tracing::warn!(
+                    ?items,
+                    "category archive rejected: active menu items remain"
+                );
                 (
                     StatusCode::CONFLICT,
                     Json(json!({ "error": "category_has_active_items", "items": items })),
@@ -162,12 +169,16 @@ impl IntoResponse for AppError {
                 )
                     .into_response()
             }
-            AppError::QuoteExpired => {
-                (StatusCode::CONFLICT, Json(json!({ "error": "quote_expired" }))).into_response()
-            }
-            AppError::QuoteChanged => {
-                (StatusCode::CONFLICT, Json(json!({ "error": "quote_changed" }))).into_response()
-            }
+            AppError::QuoteExpired => (
+                StatusCode::CONFLICT,
+                Json(json!({ "error": "quote_expired" })),
+            )
+                .into_response(),
+            AppError::QuoteChanged => (
+                StatusCode::CONFLICT,
+                Json(json!({ "error": "quote_changed" })),
+            )
+                .into_response(),
             AppError::Internal => {
                 tracing::error!("internal server error");
                 (

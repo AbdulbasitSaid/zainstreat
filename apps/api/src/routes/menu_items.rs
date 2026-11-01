@@ -1,7 +1,7 @@
 use crate::error::AppError;
 use axum::{
-    extract::{Query, State},
     Json,
+    extract::{Query, State},
 };
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};

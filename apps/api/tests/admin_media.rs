@@ -1,7 +1,9 @@
 mod common;
 
 use axum::http::StatusCode;
-use common::{get_raw_with_cookie, insert_admin, post_multipart_with_cookie, post_with_cookie, session_cookie};
+use common::{
+    get_raw_with_cookie, insert_admin, post_multipart_with_cookie, post_with_cookie, session_cookie,
+};
 use serde_json::json;
 use sqlx::PgPool;
 

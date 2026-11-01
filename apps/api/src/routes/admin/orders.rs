@@ -1,11 +1,11 @@
 use crate::email::EmailConfig;
 use crate::error::{AppError, FieldError};
-use crate::order_emails::{status_email, Locale};
-use crate::order_status::{admin_next, is_reopen, is_valid_status, ORDER_STATUSES};
+use crate::order_emails::status_email;
+use crate::order_status::{ORDER_STATUSES, admin_next, is_reopen, is_valid_status};
 use crate::payment::payment_reference;
 use axum::{
-    extract::{Path, Query, State},
     Json,
+    extract::{Path, Query, State},
 };
 use chrono::{DateTime, Utc};
 use rust_decimal::Decimal;
@@ -81,17 +81,26 @@ pub async fn list_orders(
     if let Some(status) = &params.status
         && !is_valid_status(status)
     {
-        errors.push(FieldError { field: "status".into(), message: "invalid".into() });
+        errors.push(FieldError {
+            field: "status".into(),
+            message: "invalid".into(),
+        });
     }
 
     let limit = params.limit.unwrap_or(DEFAULT_LIMIT);
     if !(1..=MAX_LIMIT).contains(&limit) {
-        errors.push(FieldError { field: "limit".into(), message: "out_of_range".into() });
+        errors.push(FieldError {
+            field: "limit".into(),
+            message: "out_of_range".into(),
+        });
     }
 
     let offset = params.offset.unwrap_or(0);
     if offset < 0 {
-        errors.push(FieldError { field: "offset".into(), message: "out_of_range".into() });
+        errors.push(FieldError {
+            field: "offset".into(),
+            message: "out_of_range".into(),
+        });
     }
 
     if !errors.is_empty() {
@@ -127,7 +136,12 @@ pub async fn list_orders(
     .map(OrderSummaryResponse::from)
     .collect();
 
-    Ok(Json(OrderListResponse { orders, total, limit, offset }))
+    Ok(Json(OrderListResponse {
+        orders,
+        total,
+        limit,
+        offset,
+    }))
 }
 
 #[derive(Debug, Serialize)]
@@ -215,7 +229,11 @@ pub async fn get_order(
     .fetch_all(&pool)
     .await?;
 
-    let next_statuses = admin_next(&order.status, &order.delivery_type, order.completed_by.as_deref());
+    let next_statuses = admin_next(
+        &order.status,
+        &order.delivery_type,
+        order.completed_by.as_deref(),
+    );
 
     Ok(Json(AdminOrderResponse {
         id: order.id,
@@ -278,8 +296,12 @@ pub async fn update_order_status(
     // pickup/delivery branch are accepted.
     // Phase 22 Decision 8: a customer-completed order may also go back to
     // its ready status.
-    if !admin_next(&current.status, &current.delivery_type, current.completed_by.as_deref())
-        .contains(&payload.status.as_str())
+    if !admin_next(
+        &current.status,
+        &current.delivery_type,
+        current.completed_by.as_deref(),
+    )
+    .contains(&payload.status.as_str())
     {
         return Err(AppError::InvalidStatusTransition);
     }
@@ -323,10 +345,8 @@ pub async fn update_order_status(
     // After the commit, like `create_order`: a failed send never undoes the
     // status change. A reopen is silent (Phase 22 Decisions 6, 8).
     if !reopened {
-        let locale = Locale::parse(&order.locale).unwrap_or(Locale::En);
         let reference = payment_reference(order.id);
         if let Some((subject, body)) = status_email(
-            locale,
             &order.customer_name,
             &reference,
             &order.status,
@@ -362,16 +382,16 @@ pub struct OrdersSummaryResponse {
 pub async fn orders_summary(
     State(pool): State<PgPool>,
 ) -> Result<Json<OrdersSummaryResponse>, AppError> {
-    let rows = sqlx::query!(
-        r#"SELECT status, COUNT(*) as "count!" FROM orders GROUP BY status"#
-    )
-    .fetch_all(&pool)
-    .await?;
+    let rows = sqlx::query!(r#"SELECT status, COUNT(*) as "count!" FROM orders GROUP BY status"#)
+        .fetch_all(&pool)
+        .await?;
 
     // Seed every status at zero so the dashboard renders every tile even before a
     // single order of that status exists.
-    let mut counts: HashMap<String, i64> =
-        ORDER_STATUSES.iter().map(|s| ((*s).to_string(), 0)).collect();
+    let mut counts: HashMap<String, i64> = ORDER_STATUSES
+        .iter()
+        .map(|s| ((*s).to_string(), 0))
+        .collect();
     for row in rows {
         counts.insert(row.status, row.count);
     }
@@ -407,9 +427,15 @@ pub async fn orders_summary(
     .map(OrderSummaryResponse::from)
     .collect();
 
-    let claimed_ids = sqlx::query_scalar!("SELECT id FROM orders WHERE status = 'payment_claimed' ORDER BY id")
-        .fetch_all(&pool)
-        .await?;
+    let claimed_ids =
+        sqlx::query_scalar!("SELECT id FROM orders WHERE status = 'payment_claimed' ORDER BY id")
+            .fetch_all(&pool)
+            .await?;
 
-    Ok(Json(OrdersSummaryResponse { counts, today, recent, claimed_ids }))
+    Ok(Json(OrdersSummaryResponse {
+        counts,
+        today,
+        recent,
+        claimed_ids,
+    }))
 }

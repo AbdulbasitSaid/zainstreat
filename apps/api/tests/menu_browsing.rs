@@ -10,12 +10,10 @@ async fn categories_excludes_soft_deleted(pool: PgPool) {
         .execute(&pool)
         .await
         .unwrap();
-    sqlx::query!(
-        "INSERT INTO categories (id, name, deleted_at) VALUES (2, 'Archived', now())"
-    )
-    .execute(&pool)
-    .await
-    .unwrap();
+    sqlx::query!("INSERT INTO categories (id, name, deleted_at) VALUES (2, 'Archived', now())")
+        .execute(&pool)
+        .await
+        .unwrap();
 
     let (status, body) = get(pool, "/api/categories").await;
 
@@ -150,10 +148,12 @@ async fn menu_items_with_price_options_have_null_price_and_ordered_options(pool:
         .execute(&pool)
         .await
         .unwrap();
-    sqlx::query!("INSERT INTO menu_items (id, category_id, name, price) VALUES (1, 1, 'Egusi Soup', NULL)")
-        .execute(&pool)
-        .await
-        .unwrap();
+    sqlx::query!(
+        "INSERT INTO menu_items (id, category_id, name, price) VALUES (1, 1, 'Egusi Soup', NULL)"
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
     sqlx::query!(
         "INSERT INTO menu_item_price_options (menu_item_id, label, price, display_order) VALUES (1, '3 L', 95.00, 2), (1, '2 L', 75.00, 1)"
     )
@@ -181,10 +181,12 @@ async fn menu_items_excludes_soft_deleted_price_options(pool: PgPool) {
         .execute(&pool)
         .await
         .unwrap();
-    sqlx::query!("INSERT INTO menu_items (id, category_id, name, price) VALUES (1, 1, 'Egusi Soup', NULL)")
-        .execute(&pool)
-        .await
-        .unwrap();
+    sqlx::query!(
+        "INSERT INTO menu_items (id, category_id, name, price) VALUES (1, 1, 'Egusi Soup', NULL)"
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
     sqlx::query!(
         "INSERT INTO menu_item_price_options (menu_item_id, label, price, deleted_at) VALUES (1, 'Discontinued Size', 50.00, now())"
     )

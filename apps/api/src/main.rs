@@ -4,10 +4,15 @@ use tracing_subscriber::EnvFilter;
 
 fn init_tracing() {
     let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
-    let json = std::env::var("LOG_FORMAT").map(|f| f != "pretty").unwrap_or(true);
+    let json = std::env::var("LOG_FORMAT")
+        .map(|f| f != "pretty")
+        .unwrap_or(true);
 
     if json {
-        tracing_subscriber::fmt().json().with_env_filter(filter).init();
+        tracing_subscriber::fmt()
+            .json()
+            .with_env_filter(filter)
+            .init();
     } else {
         tracing_subscriber::fmt().with_env_filter(filter).init();
     }
@@ -80,9 +85,9 @@ async fn main() {
     match client.create_bucket().bucket(&bucket).send().await {
         Ok(_) => tracing::info!(%bucket, "created media bucket"),
         Err(err)
-            if err
-                .as_service_error()
-                .is_some_and(|e| e.is_bucket_already_owned_by_you() || e.is_bucket_already_exists()) =>
+            if err.as_service_error().is_some_and(|e| {
+                e.is_bucket_already_owned_by_you() || e.is_bucket_already_exists()
+            }) =>
         {
             tracing::info!(%bucket, "media bucket already exists");
         }
@@ -92,7 +97,11 @@ async fn main() {
         }
     }
 
-    let media = api::MediaConfig { client, bucket, public_base_url };
+    let media = api::MediaConfig {
+        client,
+        bucket,
+        public_base_url,
+    };
     let email = api::email::EmailConfig::from_env();
     let payment = api::payment::PaymentConfig::from_env();
 

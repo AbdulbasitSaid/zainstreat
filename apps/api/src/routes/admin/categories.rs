@@ -1,8 +1,8 @@
 use crate::chrono_to_offset;
 use crate::error::{AppError, BlockingMenuItem, FieldError};
 use axum::{
-    extract::{Path, State},
     Json,
+    extract::{Path, State},
 };
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};

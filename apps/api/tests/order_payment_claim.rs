@@ -68,8 +68,12 @@ async fn unknown_and_malformed_tokens_both_404(pool: PgPool) {
     let (status, _body) = get(pool.clone(), "/api/orders/by-token/not-a-uuid").await;
     assert_eq!(status, StatusCode::NOT_FOUND);
 
-    let (status, _body) =
-        post(pool, "/api/orders/by-token/not-a-uuid/payment-claim", json!({})).await;
+    let (status, _body) = post(
+        pool,
+        "/api/orders/by-token/not-a-uuid/payment-claim",
+        json!({}),
+    )
+    .await;
     assert_eq!(status, StatusCode::NOT_FOUND);
 }
 
@@ -77,8 +81,12 @@ async fn unknown_and_malformed_tokens_both_404(pool: PgPool) {
 async fn claim_moves_an_awaiting_order_to_payment_claimed(pool: PgPool) {
     let (id, token) = insert_order(&pool, "awaiting_payment").await;
 
-    let (status, body) =
-        post(pool.clone(), &format!("/api/orders/by-token/{token}/payment-claim"), json!({})).await;
+    let (status, body) = post(
+        pool.clone(),
+        &format!("/api/orders/by-token/{token}/payment-claim"),
+        json!({}),
+    )
+    .await;
     assert_eq!(status, StatusCode::OK);
     assert_eq!(body["status"], "payment_claimed");
     assert!(claimed_at(&pool, id).await.is_some());
@@ -103,8 +111,12 @@ async fn second_claim_is_a_no_op(pool: PgPool) {
 async fn claim_leaves_a_confirmed_order_alone(pool: PgPool) {
     let (id, token) = insert_order(&pool, "processing").await;
 
-    let (status, body) =
-        post(pool.clone(), &format!("/api/orders/by-token/{token}/payment-claim"), json!({})).await;
+    let (status, body) = post(
+        pool.clone(),
+        &format!("/api/orders/by-token/{token}/payment-claim"),
+        json!({}),
+    )
+    .await;
     assert_eq!(status, StatusCode::OK);
     assert_eq!(body["status"], "processing");
     assert!(claimed_at(&pool, id).await.is_none());
@@ -114,8 +126,12 @@ async fn claim_leaves_a_confirmed_order_alone(pool: PgPool) {
 async fn claim_on_a_cancelled_order_conflicts(pool: PgPool) {
     let (_id, token) = insert_order(&pool, "cancelled").await;
 
-    let (status, body) =
-        post(pool, &format!("/api/orders/by-token/{token}/payment-claim"), json!({})).await;
+    let (status, body) = post(
+        pool,
+        &format!("/api/orders/by-token/{token}/payment-claim"),
+        json!({}),
+    )
+    .await;
     assert_eq!(status, StatusCode::CONFLICT);
     assert_eq!(body["error"], "invalid_status_transition");
 }
