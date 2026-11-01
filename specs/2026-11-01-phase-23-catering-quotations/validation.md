@@ -9,8 +9,10 @@ Checked on 2026-11-01 unless noted. Where the implementation deviated from
 
 - [x] Phase 22 is on `master`, and this branch is based on it: `ls
       apps/api/migrations/*order_tracking*` exists.
-- [ ] Staging's API logs show no `email sending disabled` warning.
-      *(Staging check, after merge.)*
+- [x] Staging's API logs show no `email sending disabled` warning.
+      *(2026-11-01: staging's quote send returned `email_queued: true`,
+      which is `EmailConfig::is_enabled()`, true only when every SES
+      variable is set, so that warning can't have fired.)*
 - [x] The client approved `copy.md` (the date is noted at its top)
       before any customer strings were written. *(The project owner
       approved all copy, Dutch included, on 2026-11-01, after
@@ -104,8 +106,10 @@ Checked on 2026-11-01 unless noted. Where the implementation deviated from
       `messages/{en,nl}.json` matches `copy.md` §2–3.
 - [x] `cargo test --test catering_enquiries` passes: `nl` stored, missing
       → `en`, `de` → `400` with `field: "locale"`.
-- [ ] With SES configured, on staging: *(Staging check; locally SES is
-      off and `send` returned `email_queued: false`.)*
+- [x] With SES configured, on staging: *(2026-11-01: staging queued
+      every send (`email_queued: true`), and the user confirmed the emails
+      arrived in the `techsihir@gmail.com` inbox, the SES sandbox's verified
+      address.)*
       - send → one customer email in the enquiry's language, linking to
         `/{locale}/quote/{token}`
       - accept → the customer's invoice email plus the owner's "Quote
@@ -187,7 +191,21 @@ Checked on 2026-11-01 unless noted. Where the implementation deviated from
       passed, 0 failed, up from 159. Clippy clean. Web lint/build pass.
       Live smoke test on the dev stack passed; the smoke data was deleted
       afterwards.)*
-- [ ] Staging walk-through from plan 10.2 is done. *(Yours to confirm.)*
+- [x] Staging walk-through from plan 10.2 is done. *(2026-11-01, over
+      HTTP through the staging web proxies with the staging admin login.
+      Everything passed:
+      - `nl` and `en` enquiries were submitted.
+      - Quote saved on-site, with the link on the staging domain.
+      - Send returned `email_queued: true`. Quote pages `nl`/`en` were
+        `200`, and a stale accept returned `409 quote_changed`.
+      - Accept and a repeat accept returned the same order.
+      - The order went I've paid → Confirm payment → Catering in progress
+        → customer "catered" → `completed`/`customer`.
+      - Second quote: delivery → revise (draft page, accept `409`) →
+        resend → decline with a reason, shown in admin.
+      - The share panel showed `wa.me/31612345678`.
+      Test data on staging: enquiries #3/#4, quotes #1/#2, order ZTM-4.
+      They go away with "staging down".)*
 - [x] The client has reviewed the quote email, the quote page and the
       on-site tracking page and status email in `en` and `nl`, and their
       wording changes are applied. *(Covered by the owner's approval of
