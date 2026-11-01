@@ -246,7 +246,11 @@ async fn payment_can_be_confirmed_without_a_customer_claim(pool: PgPool) {
 async fn pickup_and_delivery_follow_their_own_branch(pool: PgPool) {
     let cookie = login(&pool).await;
 
-    for (delivery_type, handover) in [("pickup", "ready_for_collection"), ("delivery", "out_for_delivery")] {
+    for (delivery_type, handover) in [
+        ("pickup", "ready_for_collection"),
+        ("delivery", "out_for_delivery"),
+        ("on_site", "serving_on_site"),
+    ] {
         let id = insert_order_of_type(&pool, "Ada", "awaiting_payment", "10.00", delivery_type).await;
         for next in ["processing", handover, "completed"] {
             // The detail's `next_statuses` is what the admin UI renders as
@@ -355,12 +359,13 @@ async fn summary_counts_every_status_and_recent_orders(pool: PgPool) {
     assert_eq!(status, StatusCode::OK);
 
     let counts = body["counts"].as_object().unwrap();
-    assert_eq!(counts.len(), 7);
+    assert_eq!(counts.len(), 8);
     assert_eq!(counts["awaiting_payment"], 2);
     assert_eq!(counts["ready_for_collection"], 1);
     assert_eq!(counts["payment_claimed"], 0);
     assert_eq!(counts["processing"], 0);
     assert_eq!(counts["out_for_delivery"], 0);
+    assert_eq!(counts["serving_on_site"], 0);
     assert_eq!(counts["completed"], 0);
     assert_eq!(counts["cancelled"], 0);
 
@@ -383,7 +388,11 @@ async fn patch_status(pool: &PgPool, cookie: &str, id: i64, status: &str) -> (St
 async fn status_steps_stamp_their_timestamps(pool: PgPool) {
     let cookie = login(&pool).await;
 
-    for (delivery_type, handover) in [("pickup", "ready_for_collection"), ("delivery", "out_for_delivery")] {
+    for (delivery_type, handover) in [
+        ("pickup", "ready_for_collection"),
+        ("delivery", "out_for_delivery"),
+        ("on_site", "serving_on_site"),
+    ] {
         let id = insert_order_of_type(&pool, "Ada", "awaiting_payment", "10.00", delivery_type).await;
         for next in ["processing", handover, "completed"] {
             assert_eq!(patch_status(&pool, &cookie, id, next).await.0, StatusCode::OK);

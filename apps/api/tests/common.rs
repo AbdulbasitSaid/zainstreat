@@ -229,6 +229,25 @@ pub async fn patch_with_cookie(
     (status, resp_body)
 }
 
+#[allow(dead_code)]
+pub async fn put_with_cookie(
+    pool: PgPool,
+    uri: &str,
+    body: Value,
+    cookie: Option<&str>,
+) -> (StatusCode, Value) {
+    let mut builder = Request::builder()
+        .method("PUT")
+        .uri(uri)
+        .header("content-type", "application/json");
+    if let Some(cookie) = cookie {
+        builder = builder.header("cookie", cookie);
+    }
+    let (status, _headers, resp_body) =
+        send(pool, builder.body(Body::from(body.to_string())).unwrap()).await;
+    (status, resp_body)
+}
+
 /// A `Set-Cookie` value looks like `id=...; HttpOnly; SameSite=Lax; ...` —
 /// only the `id=...` part before the first `;` is sent back as `Cookie`.
 #[allow(dead_code)]

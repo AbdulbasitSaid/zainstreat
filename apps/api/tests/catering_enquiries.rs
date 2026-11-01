@@ -140,3 +140,34 @@ async fn catering_enquiry_create_honeypot_filled_reports_success_but_persists_no
         .unwrap();
     assert_eq!(count, 0);
 }
+
+async fn stored_locale(pool: &PgPool, id: &Value) -> String {
+    sqlx::query_scalar!("SELECT locale FROM catering_enquiries WHERE id = $1", id.as_i64().unwrap())
+        .fetch_one(pool)
+        .await
+        .unwrap()
+}
+
+/// Phase 23 Decision 5: the enquiry remembers the site language for the
+/// quote email.
+#[sqlx::test]
+async fn catering_enquiry_stores_its_locale_and_defaults_to_english(pool: PgPool) {
+    let mut payload = valid_payload();
+    payload["locale"] = json!("nl");
+    let (status, body) = post(pool.clone(), "/api/catering-enquiries", payload).await;
+    assert_eq!(status, StatusCode::CREATED);
+    assert_eq!(stored_locale(&pool, &body["id"]).await, "nl");
+
+    let (status, body) = post(pool.clone(), "/api/catering-enquiries", valid_payload()).await;
+    assert_eq!(status, StatusCode::CREATED);
+    assert_eq!(stored_locale(&pool, &body["id"]).await, "en");
+}
+
+#[sqlx::test]
+async fn catering_enquiry_create_rejects_an_unsupported_locale(pool: PgPool) {
+    let mut payload = valid_payload();
+    payload["locale"] = json!("de");
+    let (status, body) = post(pool, "/api/catering-enquiries", payload).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert!(body["fields"].as_array().unwrap().iter().any(|f| f["field"] == "locale"));
+}
