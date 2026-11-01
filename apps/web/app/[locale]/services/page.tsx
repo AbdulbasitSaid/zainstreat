@@ -9,6 +9,7 @@ import categoryMeals from "@/assets/images/category-meals.jpg";
 import categorySnacks from "@/assets/images/category-snacks.jpg";
 import categoryCatering from "@/assets/images/category-catering.jpg";
 import categoryEventRentals from "@/assets/images/category-event-rentals.jpg";
+import { localeAlternates } from "@/lib/seo";
 
 function SplitRowIndex({ children }: { children: string }) {
   return (
@@ -32,6 +33,7 @@ export async function generateMetadata({
   return {
     title: t("metaTitle"),
     description: t("metaDescription"),
+    alternates: localeAlternates(locale, "/services"),
   };
 }
 

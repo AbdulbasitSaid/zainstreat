@@ -1,4 +1,5 @@
 use lettre::message::Mailbox;
+use lettre::Address;
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::{AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor};
 use std::sync::Arc;
@@ -12,6 +13,12 @@ pub struct EmailConfig {
 
 const DEFAULT_SITE_URL: &str = "http://localhost:3000";
 const DEFAULT_ADMIN_URL: &str = "http://cms.localhost:3000";
+
+/// The sender's display name. The subject no longer has room for the brand
+/// once it carries three languages (Phase 24 Decision 11), and the deploy
+/// workflow rejects a `'` in env values, so the name lives here and
+/// `EMAIL_FROM_ADDRESS` stays a bare address.
+const SENDER_NAME: &str = "Zain's Treat n More";
 
 struct SesSettings {
     smtp_host: String,
@@ -105,7 +112,7 @@ impl EmailConfig {
 
 async fn send(settings: &SesSettings, to: &str, subject: &str, body: String) -> Result<(), String> {
     let email = Message::builder()
-        .from(settings.from_address.parse::<Mailbox>().map_err(|e| e.to_string())?)
+        .from(sender(&settings.from_address)?)
         .to(to.parse::<Mailbox>().map_err(|e| e.to_string())?)
         .subject(subject)
         .body(body)
@@ -118,4 +125,28 @@ async fn send(settings: &SesSettings, to: &str, subject: &str, body: String) -> 
 
     mailer.send(email).await.map_err(|e| e.to_string())?;
     Ok(())
+}
+
+/// `Zain's Treat n More <{EMAIL_FROM_ADDRESS}>`.
+fn sender(from_address: &str) -> Result<Mailbox, String> {
+    let address = from_address.parse::<Address>().map_err(|e| e.to_string())?;
+    Ok(Mailbox::new(Some(SENDER_NAME.to_string()), address))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sender_carries_the_brand_name() {
+        let mailbox = sender("no-reply@zainstreat.com").unwrap();
+        assert_eq!(mailbox.name.as_deref(), Some("Zain's Treat n More"));
+        assert_eq!(mailbox.email.to_string(), "no-reply@zainstreat.com");
+        assert!(mailbox.to_string().contains("<no-reply@zainstreat.com>"));
+    }
+
+    #[test]
+    fn sender_rejects_a_malformed_address() {
+        assert!(sender("not an address").is_err());
+    }
 }

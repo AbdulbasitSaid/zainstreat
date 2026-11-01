@@ -7,6 +7,7 @@ import { SplitRow } from "@/components/split-row";
 import { CheckList } from "@/components/check-list";
 import aboutHero from "@/assets/images/about-hero.jpg";
 import aboutMission from "@/assets/images/about-mission.jpg";
+import { localeAlternates } from "@/lib/seo";
 
 export async function generateMetadata({
   params,
@@ -19,6 +20,7 @@ export async function generateMetadata({
   return {
     title: t("metaTitle"),
     description: t("metaDescription"),
+    alternates: localeAlternates(locale, "/about"),
   };
 }
 

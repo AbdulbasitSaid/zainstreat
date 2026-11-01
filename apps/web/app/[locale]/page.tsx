@@ -15,6 +15,7 @@ import categorySnacks from "@/assets/images/category-snacks.jpg";
 import categoryCatering from "@/assets/images/category-catering.jpg";
 import categoryEventRentals from "@/assets/images/category-event-rentals.jpg";
 import aboutHero from "@/assets/images/about-hero.jpg";
+import { localeAlternates } from "@/lib/seo";
 
 const MAX_FEATURED_ITEMS = 6;
 
@@ -77,6 +78,7 @@ export async function generateMetadata({
   return {
     title: t("metaTitle"),
     description: t("metaDescription"),
+    alternates: localeAlternates(locale, ""),
   };
 }
 

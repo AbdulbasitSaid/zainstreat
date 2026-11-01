@@ -12,6 +12,7 @@ use chrono::{DateTime, NaiveDate, Utc};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
+use uuid::Uuid;
 
 // Phase 23 Decision 16: generous, but enough to catch a stray extra zero.
 const MAX_LINES: usize = 50;
@@ -67,6 +68,10 @@ pub struct AdminQuoteResponse {
     /// The customer's link, in the enquiry's language, for the share panel
     /// (Phase 23 Decision 14).
     pub quote_url: String,
+    /// For the quote email, which links every language's page (Phase 24
+    /// Decision 11). The admin gets `quote_url` instead.
+    #[serde(skip)]
+    pub public_token: Uuid,
     pub delivery_type: String,
     pub delivery_address: Option<String>,
     pub notes: Option<String>,
@@ -118,6 +123,7 @@ pub(crate) async fn load_admin_quote(
         status: quote.status,
         version: quote.version,
         quote_url: quote_url(site_url, locale, quote.public_token),
+        public_token: quote.public_token,
         delivery_type: quote.delivery_type,
         delivery_address: quote.delivery_address,
         notes: quote.notes,
@@ -386,8 +392,9 @@ pub async fn send_quote(
             total: quote.total,
             notes: quote.notes.as_deref(),
             valid_until: quote.valid_until,
-            url: &quote.quote_url,
         },
+        email.site_url(),
+        quote.public_token,
     );
     email.spawn_send(enquiry.email, subject, body);
 
