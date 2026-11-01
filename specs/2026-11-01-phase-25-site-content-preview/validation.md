@@ -12,23 +12,23 @@ plan.md's "Implementation notes".
 
 ### Email, forwarding and SES (Groups 1, 1b)
 
-- [ ] `dig +short MX zainstreat.com` returns `10 mx1.improvmx.com.` and
+- [x] `dig +short MX zainstreat.com` returns `10 mx1.improvmx.com.` and
       `20 mx2.improvmx.com.`.
 - [ ] `dig +short TXT zainstreat.com` shows
       `v=spf1 include:spf.improvmx.com include:amazonses.com ~all`, any
       other apex TXT values are unchanged, and the Namecheap `efwd`
       include is gone.
-- [ ] The SES DKIM CNAMEs still resolve, and SES `GetEmailIdentity
+- [x] The SES DKIM CNAMEs still resolve, and SES `GetEmailIdentity
       zainstreat.com` still shows `VerificationStatus: SUCCESS`.
 - [ ] ImprovMX's dashboard shows `zainstreat.com` verified. A mail from
       an outside address to `contact@zainstreat.com` arrives at
       `abdulbasitsaeed619@gmail.com`.
-- [ ] `gh variable list --env staging` shows `EMAIL_FROM_ADDRESS` and
+- [x] `gh variable list --env staging` shows `EMAIL_FROM_ADDRESS` and
       `EMAIL_BUSINESS_NOTIFY_ADDRESS` = `contact@zainstreat.com` and
       `EMAIL_SUBJECT_PREFIX` = `[STAGING] `.
-- [ ] `--env production` shows both addresses = `contact@zainstreat.com`
+- [x] `--env production` shows both addresses = `contact@zainstreat.com`
       and no `EMAIL_SUBJECT_PREFIX`.
-- [ ] `techsihir@gmail.com` appears in neither environment.
+- [x] `techsihir@gmail.com` appears in neither environment.
 - [x] `grep -rn "techsihir" --exclude-dir=specs .` returns nothing.
       (Earlier specs keep their history.)
 - [x] `grep -rn "zainstreat@gmail" apps/web` returns nothing. The contact
@@ -43,6 +43,11 @@ plan.md's "Implementation notes".
 - [ ] SES `GetAccount` shows `AdditionalContactEmailAddresses` =
       `["contact@zainstreat.com"]` and a new review case. Record its
       ID and status here.
+      *2026-11-01: `PutAccountDetails` returns `ConflictException` (both
+      with and without `ProductionAccessEnabled`) while case
+      179346172100474 is `DENIED`. The re-request has to be a reply to
+      that case in AWS Support Center (text in the session notes).
+      Pending the user.*
 - [ ] On staging, after a redeploy, place a test order with a verified
       customer address:
       - The owner notification arrives in the forwarded inbox, not in

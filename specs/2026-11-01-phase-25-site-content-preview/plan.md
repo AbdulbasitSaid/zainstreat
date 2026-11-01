@@ -834,3 +834,9 @@ groups above, these win.
   doesn't reload the frame.
 - **Confirmations** use a native `<dialog>` (`AdminConfirmDialog`), not
   `window.confirm`.
+- **DNS is a Lightsail zone, not Route 53** (Groups 0–1): `zainstreat.com`
+  is a Lightsail DNS zone in the same account (`686194638565`). The
+  `awsdns` nameservers made it look like Route 53. No cross-account access
+  was needed. On 2026-11-01 the user added the two MX records and replaced
+  the SPF record in the Lightsail console, and Claude checked them with
+  `GetDomain` and `dig`. SES identity and DKIM still show `SUCCESS`.
