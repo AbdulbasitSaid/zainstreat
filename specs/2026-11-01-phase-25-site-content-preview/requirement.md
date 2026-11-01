@@ -205,9 +205,9 @@ The user added these requirements when planning started (2026-11-01):
 
    | Size | Span (from `sm`) | When |
    |---|---|---|
-   | `feature` | 2 cols × 2 rows | score ≥ 5 |
-   | `wide` | 2 cols × 1 row | score ≥ 3 |
-   | `tall` | 1 col × 2 rows | 3 or more price options and score < 3 |
+   | `feature` | 2 cols × 2 rows | score ≥ 4 |
+   | `wide` | 2 cols × 1 row | score ≥ 2.5 |
+   | `tall` | 1 col × 2 rows | 3 or more price options and score < 2.5 |
    | `regular` | 1 × 1 | otherwise |
 
    `score = descriptionLength / 60 + max(0, priceOptions − 1) + (is_featured ? 2 : 0)`.

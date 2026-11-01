@@ -1,7 +1,12 @@
 # Phase 25 — Admin-Editable Site Content, Live Preview & Bento Menu: Validation
 
-Not yet checked. Where the implementation deviates from `plan.md`, record
-it in an "Implementation notes" section there.
+Partly checked on 2026-11-01, against a local stack: the API on a
+throwaway Postgres and MinIO, plus `next start`, on the `cms.localhost`
+and `localhost` hosts. Ticked items were verified there or by
+`cargo test`, `clippy`, `pnpm lint`, `pnpm build` and
+`pnpm check:messages`. Unticked items need the ops steps (DNS, ImprovMX,
+GitHub variables, SES), staging, or a human eye. Deviations are in
+plan.md's "Implementation notes".
 
 ## Pass/fail checklist
 
@@ -24,11 +29,11 @@ it in an "Implementation notes" section there.
 - [ ] `--env production` shows both addresses = `contact@zainstreat.com`
       and no `EMAIL_SUBJECT_PREFIX`.
 - [ ] `techsihir@gmail.com` appears in neither environment.
-- [ ] `grep -rn "techsihir" --exclude-dir=specs .` returns nothing.
+- [x] `grep -rn "techsihir" --exclude-dir=specs .` returns nothing.
       (Earlier specs keep their history.)
-- [ ] `grep -rn "zainstreat@gmail" apps/web` returns nothing. The contact
+- [x] `grep -rn "zainstreat@gmail" apps/web` returns nothing. The contact
       page in en, nl and fr shows and links `contact@zainstreat.com`.
-- [ ] `cargo test email` passes, covering:
+- [x] `cargo test email` passes, covering:
       - the default Reply-To is the From address
       - an explicit Reply-To is used
       - the `[STAGING] ` prefix is applied when set, absent when unset,
@@ -58,9 +63,9 @@ it in an "Implementation notes" section there.
         notice next to the WhatsApp and copy-link buttons.
       - A verified address records `sent` and shows no notice.
       - The quote email works the same way on the enquiry detail.
-- [ ] `cargo test --test order_submission --test admin_orders` passes,
+- [x] `cargo test --test order_submission --test admin_orders` passes,
       including the delivery cases.
-- [ ] `.env.example` and `docs/deployment.md` show `contact@`, the
+- [x] `.env.example` and `docs/deployment.md` show `contact@`, the
       ImprovMX setup and the staging prefix, and no longer say staging
       notifies the developer.
 - [ ] **Pre-launch, not a blocker for this phase:** before production
@@ -69,7 +74,7 @@ it in an "Implementation notes" section there.
 
 ### Bento grid (Group 2)
 
-- [ ] `lib/menu-bento.ts` is the only place sizes are worked out, and
+- [x] `lib/menu-bento.ts` is the only place sizes are worked out, and
       `bentoSize` returns all four sizes for suitable inputs. Check with a
       quick `node`/`tsx` script or from the seed data.
 - [ ] `/en/menu` at 320 and 375px is one column, with every card full
@@ -82,16 +87,16 @@ it in an "Implementation notes" section there.
       row at `xl` (the `COLUMNS_FOR_SPAN` lookup).
 - [ ] Dense packing leaves no holes at `lg` and `xl` with the seed menu.
       Keyboard tab order still follows `display_order`.
-- [ ] The homepage featured section uses the same grid.
+- [x] The homepage featured section uses the same grid.
 - [ ] Add-to-cart works from every card size, and the cart count updates.
 
 ### Migration and draft-safe public reads (Groups 3–4)
 
-- [ ] `sqlx migrate run`, `revert` and `run` succeed on the dev DB.
+- [x] `sqlx migrate run`, `revert` and `run` succeed on the dev DB.
       Existing items and categories have `published_at` set, and
       `site_content` has one row.
-- [ ] `SQLX_OFFLINE=true cargo build --release` succeeds.
-- [ ] `cargo test --test menu_browsing --test order_submission`:
+- [x] `SQLX_OFFLINE=true cargo build --release` succeeds.
+- [x] `cargo test --test menu_browsing --test order_submission`:
       - an unpublished item isn't listed
       - ordering an unpublished item gives `400`
       - a published item with a pending draft is listed and ordered at
@@ -99,18 +104,18 @@ it in an "Implementation notes" section there.
 
 ### Draft, preview and publish API (Group 5)
 
-- [ ] `cargo test --test admin_drafts --test site_content` passes, with
+- [x] `cargo test --test admin_drafts --test site_content` passes, with
       every case in plan 5.8.
-- [ ] Every new admin route returns `401` without a session:
+- [x] Every new admin route returns `401` without a session:
       ```sh
       for p in site-content changes preview/menu-items preview/categories preview/site-content; do
         curl -s -o /dev/null -w "%{http_code} $p\n" http://localhost:8080/api/admin/$p; done
       ```
-- [ ] `curl -s localhost:8080/api/site-content` returns `{}` (or the
+- [x] `curl -s localhost:8080/api/site-content` returns `{}` (or the
       published document). It never contains draft-only values.
-- [ ] The old `PATCH /api/admin/menu-items/{id}` and
+- [x] The old `PATCH /api/admin/menu-items/{id}` and
       `PATCH /api/admin/categories/{id}` are gone (`405`/`404`).
-- [ ] `cargo clippy --all-targets -- -D warnings` passes.
+- [x] `cargo clippy --all-targets -- -D warnings` passes.
 
 ### Site content on the public site (Group 7)
 
@@ -121,25 +126,27 @@ it in an "Implementation notes" section there.
       show on `/fr`, while `/en` and `/nl` keep their defaults for that
       key. The logo also changes in the footer and in `og:image`.
 - [ ] `pnpm build`'s route table still shows about, services and contact
-      as static (○), not dynamic (ƒ).
-- [ ] After **Publish**, the public homepage shows the new content on the
+      as static (○), not dynamic (ƒ). *Not applicable: they are already
+      dynamic (ƒ) on `master` (next-intl reads request headers), and this
+      phase doesn't change that. See plan.md Implementation notes.*
+- [x] After **Publish**, the public homepage shows the new content on the
       next load, without waiting for the 300 s revalidation.
-- [ ] `pnpm check:messages` passes, and fails if a `HomeTextKey` is
+- [x] `pnpm check:messages` passes, and fails if a `HomeTextKey` is
       removed from `HomePage` or from the Rust key list.
 
 ### Preview isolation (Groups 7–8)
 
-- [ ] `curl -s -o /dev/null -w "%{http_code}" https://<public-host>/preview/en`
+- [x] `curl -s -o /dev/null -w "%{http_code}" https://<public-host>/preview/en`
       returns `404`.
-- [ ] `curl -s -o /dev/null -w "%{http_code}" https://<public-host>/api/preview/enable?locale=en&path=/`
+- [x] `curl -s -o /dev/null -w "%{http_code}" https://<public-host>/api/preview/enable?locale=en&path=/`
       returns `404`.
-- [ ] `curl` of `https://cms.<host>/api/preview/enable?...` without a
+- [x] `curl` of `https://cms.<host>/api/preview/enable?...` without a
       session returns `401`.
-- [ ] `https://cms.<host>/preview/en` without draft mode shows published
+- [x] `https://cms.<host>/preview/en` without draft mode shows published
       content only.
-- [ ] `/api/preview/enable?locale=en&path=//evil.example` and
+- [x] `/api/preview/enable?locale=en&path=//evil.example` and
       `path=/cart` are rejected (`400`), so there's no open redirect.
-- [ ] The public HTML of `/en` doesn't contain `zt:refresh` or the
+- [x] The public HTML of `/en` doesn't contain `zt:refresh` or the
       preview ribbon.
 - [ ] In preview, add-to-cart and the contact and catering forms are
       disabled. Clicking header and footer links stays inside
@@ -180,7 +187,7 @@ it in an "Implementation notes" section there.
 
 ### Device simulator (Group 10)
 
-- [ ] All nine presets are offered (Mobile S 320 through Desktop XL
+- [x] All nine presets are offered (Mobile S 320 through Desktop XL
       1920). Each frame's label shows the real CSS width.
 - [ ] Inside each frame, `window.innerWidth` matches the preset (check
       with devtools on the iframe). Tailwind breakpoints switch where

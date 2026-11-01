@@ -778,3 +778,59 @@ Depends on: Groups 1–10.
 11.3. `docs/deployment.md`: add a short "Editing the site" section
       covering Site content, drafts, the Changes page and the simulator.
 11.4. Run `/validate` and work through `validation.md`.
+
+## Implementation notes
+
+Recorded while implementing (2026-11-01). Where these differ from the
+groups above, these win.
+
+- **Bento thresholds** (2.5): the seed menu came out almost all `regular`
+  at `feature: 5, wide: 3`, so they're now `feature: 4, wide: 2.5`
+  (requirement.md Decision 7 updated). With seed data, `/en/menu` gets
+  wide and feature cards; `tall` needs 3+ price options, which no seed
+  item has.
+- **`published_at` defaults to `now()`** (Group 3). Hand-inserted rows
+  (`seed.sql`, the production menu seed, the API tests) are live, and the
+  admin create endpoints insert `NULL` explicitly so admin-created rows
+  start unpublished. So `seed.sql` needs no change (3.2). The default is
+  its own migration (`20261101184755_published_at_default`), because
+  `site_content_drafts` was already committed.
+- **Concurrency token.** `draft_updated_at` is the token for every content
+  save. An unpublished row's draft save writes the live columns and also
+  stamps `draft_updated_at`. Publish and discard clear it to `NULL`, so a
+  stale tab's next save or publish gets `409`.
+- **Unpublished items when ordering** (4.2/4.3): they get the same
+  response as an archived item, which is `409 items_unavailable` with
+  `reason: "not_found"`, not `400`.
+- **Delivery status field** (1b.3): `GET /api/admin/orders/{id}` already
+  has `customer_email` (the address), so the new field is
+  `customer_email_delivery: {status, kind, error, at, needs_follow_up}`.
+  The enquiry detail uses the same name. The API works out
+  `needs_follow_up` (failed, or queued over 5 minutes), because React's
+  purity lint rejects `Date.now()` in a server component. The order page
+  has no copy-link button, so its notice offers WhatsApp only. The
+  enquiry notice points to the quote editor's existing buttons.
+- **Routes** (5.4): `GET /api/admin/categories/{id}` was added, so the
+  category edit page loads one row. With the PATCH routes gone,
+  `/menu-items/{id}` and `/categories/{id}` answer PATCH with `405`.
+  Discard of site content is `DELETE /api/admin/drafts/site_content`.
+- **Preview locale** (7.6): the `/preview/` rewrite bypasses next-intl's
+  middleware, so `proxy.ts` sets next-intl's `X-NEXT-INTL-LOCALE` request
+  header from the path. Without it, every preview rendered in English.
+  The public host returns a direct `404` for `/preview/…` and
+  `/api/preview/…`.
+- **Static rendering** (validation, Group 7): on `master` every
+  `[locale]` page, about, services and contact included, already builds
+  as dynamic (ƒ), because next-intl reads the locale from request headers
+  (no `setRequestLocale`). This phase doesn't change that. The tagged
+  `getSiteContent()` fetch still avoids a per-request API call, and
+  `revalidateTag("site-content", { expire: 0 })` on publish makes the next
+  load fresh.
+- **Home text overrides** (7.8): `lib/home-text.ts` builds a next-intl
+  `createTranslator` over the merged messages. Braces in an override are
+  ICU-escaped, and a malformed override falls back to the default string.
+- **Simulator extras**: a "Reload" button (also retries failed frames).
+  The page picker shows the frame's current path, but in-frame navigation
+  doesn't reload the frame.
+- **Confirmations** use a native `<dialog>` (`AdminConfirmDialog`), not
+  `window.confirm`.
