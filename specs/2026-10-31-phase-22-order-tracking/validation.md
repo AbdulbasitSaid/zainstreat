@@ -10,11 +10,10 @@ Checked on 2026-10-31 unless noted. Where the implementation deviated from
 - [x] Phase 20 is merged into `master` (PR #35), and this branch is
       moved onto it: `ls apps/api/migrations/*order_payment_lifecycle*`
       exists *(2026-10-31)*.
-- [ ] Phase 21 Group 13 is done:
+- [x] Phase 21 Group 13 is done:
       `grep -rn '/admin/' apps/api/src | grep -v '/api/admin'` returns
-      nothing, and `PUBLIC_ADMIN_URL` is set in both compose files.
-      *(True in this branch's working tree, where the Group 13 diff was
-      applied; still open until `2026-10-31-phase-21-group-13` merges.)*
+      nothing, and `PUBLIC_ADMIN_URL` is set in both compose files
+      *(checked on `origin/master`, 2026-11-01)*.
 - [x] SES identity `zainstreat.com` exists in eu-central-1, and its 3
       DKIM CNAMEs and `_dmarc` TXT are in Lightsail DNS *(done
       2026-10-31, during planning)*.
@@ -23,8 +22,13 @@ Checked on 2026-10-31 unless noted. Where the implementation deviated from
       `VerifiedForSendingStatus: true` *(2026-10-31)*.
 - [ ] `aws sesv2 get-account --region eu-central-1` shows
       `"ProductionAccessEnabled": true`. *(Requested 2026-10-31 via `aws
-      sesv2 put-account-details`, mail type `TRANSACTIONAL`; review
-      `PENDING`.)*
+      sesv2 put-account-details`, mail type `TRANSACTIONAL`. As of
+      2026-11-01 the API still shows review `DENIED` (case
+      179346172100474) and `ProductionAccessEnabled: false`. Until this
+      passes, SES only delivers to verified addresses: on staging,
+      `techsihir@gmail.com` and `abdulbasitsaeed619@gmail.com` are
+      verified for testing. An order placed for an unverified address
+      logs `554 Message rejected: Email address is not verified`.)*
 - [x] Staging `BANK_ACCOUNT_NAME`/`BANK_IBAN` are `STAGING – do not pay`
       / `NL91ABNA0417164300` *(2026-10-31)*. Production's are still
       waiting on the client.
@@ -36,7 +40,8 @@ Checked on 2026-10-31 unless noted. Where the implementation deviated from
       notify address is missing; until it's set, all production email
       stays off.)*
 - [ ] After a deploy, the API logs no `email sending disabled` warning on
-      staging or production.
+      staging or production. *(Staging passes: it sends, 2026-11-01.
+      Production is still waiting on its notify address.)*
 
 ### Migration (Group 1)
 
@@ -66,10 +71,10 @@ Checked on 2026-10-31 unless noted. Where the implementation deviated from
 - [x] `cargo test order_emails` passes: every emailing status in `en` and
       `nl`, `None` for non-emailing statuses, and the `en` invoice text
       unchanged.
-- [ ] With SES configured locally or on staging, confirming payment,
+- [x] With SES configured locally or on staging, confirming payment,
       marking ready/on the way, completing and cancelling each produce one
       customer email in the order's language, linking to
-      `/{locale}/order/{token}`. *(Yours to confirm.)*
+      `/{locale}/order/{token}` *(staging, 2026-11-01)*.
 - [x] A customer completing the order themselves produces **no** email.
 - [x] With SES unset, status changes still return `200`. Only a debug
       "email disabled" log appears.
@@ -88,27 +93,28 @@ Checked on 2026-10-31 unless noted. Where the implementation deviated from
       `noindex`, and the stepper HTML (`aria-current="step"`).
 - [x] `curl -s -o /dev/null -w '%{http_code}' localhost:3000/en/order/not-a-token`
       returns `404`.
-- [ ] A pickup order shows "Ready for collection"; a delivery order shows
+- [x] A pickup order shows "Ready for collection"; a delivery order shows
       "On the way". Reached steps show times. A cancelled order shows
       only the cancelled state.
-- [ ] Changing the status in admin updates an open tracking tab within
+- [x] Changing the status in admin updates an open tracking tab within
       about 60s without a reload. A completed or cancelled order's page
-      makes no further requests (DevTools Network). *(Yours to confirm.)*
-- [ ] The received button appears only in the two ready statuses. Its
+      makes no further requests (DevTools Network) *(staging,
+      2026-11-01)*.
+- [x] The received button appears only in the two ready statuses. Its
       label matches the delivery type, it needs two clicks, and
-      afterwards the page shows Completed. *(Yours to confirm.)*
+      afterwards the page shows Completed *(staging, 2026-11-01)*.
 - [x] The `/nl/order/<token>` page is fully Dutch.
 
 ### Admin auto-refresh (Group 7)
 
-- [ ] With the dashboard open in a background tab, a new order placed in
+- [x] With the dashboard open in a background tab, a new order placed in
       another browser shows up as `(1) …` in the tab title within about
-      30s. Focusing the tab clears it, and the new row is highlighted.
-      *(Yours to confirm.)*
+      30s. Focusing the tab clears it, and the new row is highlighted
+      *(staging, 2026-11-01)*.
 - [ ] Pressing "I've paid" on an order increments the badge the same way.
 - [ ] Reloading a background admin tab that shows `(1)` still shows
       `(1)` (the `sessionStorage` baseline).
-- [ ] Order detail shows the ready/completed/cancelled times and
+- [x] Order detail shows the ready/completed/cancelled times and
       "Completed by customer" / "Completed by admin". A customer-completed
       order shows "Reopen (customer marked it received)", which needs two
       clicks.
@@ -122,9 +128,10 @@ Checked on 2026-10-31 unless noted. Where the implementation deviated from
       `en`/`nl` tracking pages, got `409` from `received` before it was
       ready and `200` (`completed`, `customer`, then an idempotent `200`)
       after; the test order was then deleted.
-- [ ] After merge, on staging (`<ip>.sslip.io` and `cms.<ip>.sslip.io`):
+- [x] After merge, on staging (`<ip>.sslip.io` and `cms.<ip>.sslip.io`):
       the full flow works: order → I've paid → confirm → ready → customer
-      confirms receipt, with emails and badge. *(Yours to confirm.)*
+      confirms receipt, with emails and badge *(2026-11-01; also reopen
+      and cancel)*.
 - [ ] The client has reviewed the staging emails and tracking page in
       `en` and `nl`, and their wording changes are applied before the
       production promote. *(Yours to confirm.)*
