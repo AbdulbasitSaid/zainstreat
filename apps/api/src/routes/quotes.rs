@@ -245,7 +245,7 @@ pub async fn accept_quote(
     // After the commit, like `create_order`: the customer gets the usual
     // invoice, and the owner a heads-up.
     let response = load_order_by_token(&pool, &payment, order.public_token).await?;
-    send_invoice(&email, &pool, locale, &response, &order.placed_at);
+    send_invoice(&email, &pool, &response, &order.placed_at);
 
     if let Some(business_address) = email.business_notify_address() {
         email.spawn_send(OutgoingEmail {

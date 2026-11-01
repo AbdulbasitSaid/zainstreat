@@ -16,7 +16,6 @@ use axum::{
     Router,
     middleware::from_fn,
     routing::{delete, get, patch, post, put},
-    Router,
 };
 
 pub fn admin_router() -> Router<AppState> {

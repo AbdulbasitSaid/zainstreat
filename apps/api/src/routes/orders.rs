@@ -406,7 +406,7 @@ pub async fn create_order(
         completed_by: None,
     };
 
-    send_invoice(&email, &pool, locale, &response, &order.placed_at);
+    send_invoice(&email, &pool, &response, &order.placed_at);
 
     if let Some(business_address) = email.business_notify_address() {
         email.spawn_send(OutgoingEmail {
@@ -423,14 +423,8 @@ pub async fn create_order(
 
 /// The customer's invoice email, for a cart order or an accepted catering
 /// quote (Phase 23 Decision 4).
-pub(crate) fn send_invoice(
-    email: &EmailConfig,
-    pool: &PgPool,
-    locale: Locale,
-    order: &OrderResponse,
-    placed_at: &str,
-) {
-    let (subject, body) = invoice_email(locale, order, placed_at, email.site_url(), order.public_token);
+pub(crate) fn send_invoice(email: &EmailConfig, pool: &PgPool, order: &OrderResponse, placed_at: &str) {
+    let (subject, body) = invoice_email(order, placed_at, email.site_url(), order.public_token);
     email.spawn_send(OutgoingEmail {
         to: order.customer_email.clone(),
         subject,
