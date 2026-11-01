@@ -211,11 +211,14 @@ SES SMTP; without credentials the API logs every send as a no-op.
   `contact@`. Owner notifications (new order, payment claimed, quote
   accepted/declined, catering enquiry, contact message) reply to the
   customer, so the owner can answer straight from the notification.
-- **Receiving.** The domain's DNS is in **Route 53** (Namecheap is only
-  the registrar), in a different AWS account from the one that runs SES
-  and Lightsail. Inbound mail is forwarded by **ImprovMX** (free plan):
-  - Route 53 apex records: `MX 10 mx1.improvmx.com.`,
-    `MX 20 mx2.improvmx.com.`, and the SPF TXT
+- **Receiving.** The domain's DNS is a **Lightsail DNS zone**
+  (Lightsail → Domains & DNS) in the same AWS account as SES and the
+  servers. Namecheap is only the registrar. Its `awsdns` nameservers look
+  like Route 53, but there's no Route 53 hosted zone. Inbound mail is
+  forwarded by **ImprovMX** (free plan):
+  - Apex records: `MX 10 mx1.improvmx.com`, `MX 20 mx2.improvmx.com`
+    (in the Lightsail console the priority is its own field), and the
+    only SPF TXT record
     `v=spf1 include:spf.improvmx.com include:amazonses.com ~all`.
     DMARC stays `p=none`. SES's DKIM signature survives forwarding, so
     forwarded notifications pass DMARC.
