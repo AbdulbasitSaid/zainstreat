@@ -6,19 +6,33 @@ export interface OrderItemRequest {
 
 export type DeliveryType = "pickup" | "delivery";
 
+// What an order can come back as: the cart's two, plus on-site for an
+// accepted catering quote (Phase 23 Decision 12). The cart keeps sending
+// DeliveryType only.
+export type FulfilmentType = DeliveryType | "on_site";
+
 // Mirrors ORDER_STATUSES in apps/api/src/order_status.rs and the CHECK on
-// orders.status (Phase 20 Decision 1).
+// orders.status (Phase 20 Decision 1; serving_on_site from Phase 23).
 export const ORDER_STATUSES = [
   "awaiting_payment",
   "payment_claimed",
   "processing",
   "ready_for_collection",
   "out_for_delivery",
+  "serving_on_site",
   "completed",
   "cancelled",
 ] as const;
 
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
+
+// Mirrors CUSTOMER_COMPLETABLE in apps/api/src/order_status.rs: the
+// statuses from which the customer can confirm receipt (Phase 22 Decision 8).
+export const CUSTOMER_COMPLETABLE: readonly OrderStatus[] = [
+  "ready_for_collection",
+  "out_for_delivery",
+  "serving_on_site",
+];
 
 export function isOrderStatus(value: string): value is OrderStatus {
   return (ORDER_STATUSES as readonly string[]).includes(value);
@@ -65,7 +79,7 @@ export interface OrderResponse {
   customer_name: string;
   customer_email: string;
   customer_phone: string;
-  delivery_type: DeliveryType;
+  delivery_type: FulfilmentType;
   delivery_address: string | null;
   notes: string | null;
   subtotal: string;
