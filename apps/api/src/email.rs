@@ -2,6 +2,8 @@ use lettre::message::Mailbox;
 use lettre::Address;
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::{AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor};
+use chrono::{DateTime, Utc};
+use serde::Serialize;
 use sqlx::PgPool;
 use std::sync::Arc;
 
@@ -54,6 +56,42 @@ pub struct DeliveryRef {
 }
 
 const DELIVERY_ERROR_MAX_CHARS: usize = 500;
+
+/// The latest customer email for an order or quote, for admin's
+/// "may not have been delivered" notice (Phase 25 Decision 6a).
+#[derive(Debug, Serialize)]
+pub struct EmailDeliveryStatus {
+    pub status: String,
+    pub kind: String,
+    pub error: Option<String>,
+    pub at: DateTime<Utc>,
+    /// Failed, or still `queued` five minutes on (a send normally takes
+    /// seconds): admin shows the follow-up notice.
+    pub needs_follow_up: bool,
+}
+
+pub async fn latest_delivery(
+    pool: &PgPool,
+    order_id: Option<i64>,
+    quote_id: Option<i64>,
+) -> Result<Option<EmailDeliveryStatus>, sqlx::Error> {
+    sqlx::query_as!(
+        EmailDeliveryStatus,
+        r#"
+        SELECT status, kind, error, created_at as "at: DateTime<Utc>",
+               (status = 'failed' OR (status = 'queued' AND created_at < now() - interval '5 minutes'))
+                   as "needs_follow_up!"
+        FROM email_deliveries
+        WHERE ($1::BIGINT IS NOT NULL AND order_id = $1) OR ($2::BIGINT IS NOT NULL AND quote_id = $2)
+        ORDER BY created_at DESC, id DESC
+        LIMIT 1
+        "#,
+        order_id,
+        quote_id,
+    )
+    .fetch_optional(pool)
+    .await
+}
 
 impl EmailConfig {
     pub fn from_env() -> Self {

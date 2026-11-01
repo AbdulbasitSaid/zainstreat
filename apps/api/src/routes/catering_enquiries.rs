@@ -1,4 +1,4 @@
-use crate::email::EmailConfig;
+use crate::email::{EmailConfig, OutgoingEmail};
 use crate::error::{AppError, FieldError};
 use crate::order_emails::Locale;
 use crate::validation::{is_valid_email, is_valid_phone};
@@ -148,10 +148,10 @@ pub async fn create_catering_enquiry(
     .await?;
 
     if let Some(to) = email.business_notify_address() {
-        email.spawn_send(
+        email.spawn_send(OutgoingEmail {
             to,
-            format!("New catering enquiry from {}", payload.name.trim()),
-            format!(
+            subject: format!("New catering enquiry from {}", payload.name.trim()),
+            body: format!(
                 "Name: {}\nPhone: {}\nEmail: {}\nEvent type: {}\nEvent date: {}\nGuests: {}\nLocation: {}\nServices: {}\n\n{}",
                 payload.name.trim(),
                 payload.phone.trim(),
@@ -163,7 +163,9 @@ pub async fn create_catering_enquiry(
                 payload.services_required.join(", "),
                 payload.message.as_deref().map(str::trim).unwrap_or(""),
             ),
-        );
+            reply_to: Some(payload.email.trim().to_string()),
+            track: None,
+        });
     }
 
     Ok((StatusCode::CREATED, Json(CateringEnquiryResponse { id: row.id, created_at: row.created_at })))

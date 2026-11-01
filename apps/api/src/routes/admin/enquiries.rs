@@ -1,4 +1,4 @@
-use crate::email::EmailConfig;
+use crate::email::{latest_delivery, EmailConfig, EmailDeliveryStatus};
 use crate::error::AppError;
 use crate::routes::admin::quotes::{load_admin_quote, AdminQuoteResponse};
 use axum::{
@@ -67,6 +67,8 @@ pub struct CateringEnquiryDetail {
     pub locale: String,
     pub created_at: DateTime<Utc>,
     pub quote: Option<AdminQuoteResponse>,
+    /// The quote email's outcome (Phase 25 Decision 6a).
+    pub customer_email_delivery: Option<EmailDeliveryStatus>,
 }
 
 #[derive(Debug, Serialize)]
@@ -124,6 +126,10 @@ pub async fn get_catering_enquiry(
     .ok_or(AppError::NotFound)?;
 
     let quote = load_admin_quote(&pool, email.site_url(), id).await?;
+    let customer_email_delivery = match &quote {
+        Some(quote) => latest_delivery(&pool, None, Some(quote.id)).await?,
+        None => None,
+    };
 
     Ok(Json(CateringEnquiryDetail {
         id: row.id,
@@ -139,6 +145,7 @@ pub async fn get_catering_enquiry(
         locale: row.locale,
         created_at: row.created_at,
         quote,
+        customer_email_delivery,
     }))
 }
 

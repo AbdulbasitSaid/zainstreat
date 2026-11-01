@@ -3,7 +3,7 @@ mod common;
 use axum::http::StatusCode;
 use common::{
     get_with_cookie, insert_admin, insert_category, patch_with_cookie, post_multipart_with_cookie,
-    post_with_cookie, session_cookie,
+    post_with_cookie, put_with_cookie, session_cookie,
 };
 use serde_json::{json, Value};
 use sqlx::PgPool;
@@ -61,6 +61,26 @@ async fn create_item(pool: &PgPool, cookie: &str, payload: Value) -> Value {
         post_with_cookie(pool.clone(), "/api/admin/menu-items", payload, Some(cookie)).await;
     assert_eq!(status, StatusCode::OK, "create failed: {body:?}");
     body
+}
+
+/// Phase 25: every content edit is a draft save. On an unpublished item
+/// (every freshly created one) it writes the live columns directly.
+async fn save_draft(pool: &PgPool, cookie: &str, id: i64, mut payload: Value, draft_updated_at: Value) -> (StatusCode, Value) {
+    payload["draft_updated_at"] = draft_updated_at;
+    put_with_cookie(pool.clone(), &format!("/api/admin/menu-items/{id}/draft"), payload, Some(cookie)).await
+}
+
+async fn publish_item(pool: &PgPool, cookie: &str, id: i64, draft_updated_at: &Value) -> Value {
+    let (status, body, _set) = post_with_cookie(
+        pool.clone(),
+        "/api/admin/publish",
+        json!({ "entries": [{ "kind": "menu_item", "id": id, "draft_updated_at": draft_updated_at }] }),
+        Some(cookie),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "publish failed: {body:?}");
+    let (_status, item) = get_with_cookie(pool.clone(), &format!("/api/admin/menu-items/{id}"), Some(cookie)).await;
+    item
 }
 
 #[sqlx::test]
@@ -243,7 +263,7 @@ async fn menu_item_create_accepts_an_image_url_from_this_apis_own_upload(pool: P
 /// those rows must still succeed — only a *new* or *changed* image_url has
 /// to come from this API's own upload endpoint.
 #[sqlx::test]
-async fn menu_item_update_grandfathers_a_preexisting_non_api_image_url(pool: PgPool) {
+async fn menu_item_draft_grandfathers_a_preexisting_non_api_image_url(pool: PgPool) {
     let cookie = login(&pool).await;
     let category_id = insert_category(&pool, "Rice").await;
     let legacy_url = "/images/menu/jollof-rice-plantain.jpg";
@@ -261,21 +281,16 @@ async fn menu_item_update_grandfathers_a_preexisting_non_api_image_url(pool: PgP
 
     let mut update_payload = flat_price_payload(category_id, "Jollof Renamed", "10.00");
     update_payload["image_url"] = json!(legacy_url);
-    update_payload["updated_at"] = item["updated_at"].clone();
-    let (status, body) = patch_with_cookie(
-        pool,
-        &format!("/api/admin/menu-items/{id}"),
-        update_payload,
-        Some(&cookie),
-    )
-    .await;
+    let (status, body) = save_draft(&pool, &cookie, id, update_payload, item["draft_updated_at"].clone()).await;
     assert_eq!(status, StatusCode::OK, "update failed: {body:?}");
+    assert_eq!(body["draft"]["name"], "Jollof Renamed");
+    let body = publish_item(&pool, &cookie, id, &body["draft_updated_at"]).await;
     assert_eq!(body["name"], "Jollof Renamed");
     assert_eq!(body["image_url"], legacy_url);
 }
 
 #[sqlx::test]
-async fn menu_item_update_replaces_price_options(pool: PgPool) {
+async fn menu_item_draft_replaces_price_options(pool: PgPool) {
     let cookie = login(&pool).await;
     let category_id = insert_category(&pool, "Rice").await;
     let url = upload_image(&pool, &cookie).await;
@@ -303,15 +318,8 @@ async fn menu_item_update_replaces_price_options(pool: PgPool) {
         "price_options": [{ "label": "Medium", "price": "10.00" }],
         "image_url": url,
         "is_featured": false,
-        "updated_at": created["updated_at"],
     });
-    let (status, body) = patch_with_cookie(
-        pool.clone(),
-        &format!("/api/admin/menu-items/{id}"),
-        update_payload,
-        Some(&cookie),
-    )
-    .await;
+    let (status, body) = save_draft(&pool, &cookie, id, update_payload, created["draft_updated_at"].clone()).await;
     assert_eq!(status, StatusCode::OK, "update failed: {body:?}");
     assert_eq!(body["price_options"].as_array().unwrap().len(), 1);
     assert_eq!(body["price_options"][0]["label"], "Medium");
@@ -338,24 +346,18 @@ async fn menu_item_update_replaces_price_options(pool: PgPool) {
 }
 
 #[sqlx::test]
-async fn menu_item_update_404s_for_an_unknown_id(pool: PgPool) {
+async fn menu_item_draft_404s_for_an_unknown_id(pool: PgPool) {
     let cookie = login(&pool).await;
     let category_id = insert_category(&pool, "Rice").await;
     let url = upload_image(&pool, &cookie).await;
     let mut payload = flat_price_payload(category_id, "Jollof", "10.00");
     payload["image_url"] = json!(url);
-    let (status, _body) = patch_with_cookie(
-        pool,
-        "/api/admin/menu-items/999999",
-        payload,
-        Some(&cookie),
-    )
-    .await;
+    let (status, _body) = save_draft(&pool, &cookie, 999999, payload, Value::Null).await;
     assert_eq!(status, StatusCode::NOT_FOUND);
 }
 
 #[sqlx::test]
-async fn menu_item_update_rejects_a_stale_updated_at(pool: PgPool) {
+async fn menu_item_draft_rejects_a_stale_updated_at(pool: PgPool) {
     let cookie = login(&pool).await;
     let category_id = insert_category(&pool, "Rice").await;
     let url = upload_image(&pool, &cookie).await;
@@ -363,30 +365,15 @@ async fn menu_item_update_rejects_a_stale_updated_at(pool: PgPool) {
     create_payload["image_url"] = json!(url);
     let created = create_item(&pool, &cookie, create_payload).await;
     let id = created["id"].as_i64().unwrap();
-    let original_updated_at = created["updated_at"].clone();
 
     let mut first_update = flat_price_payload(category_id, "Jollof Updated", "11.00");
     first_update["image_url"] = json!(url);
-    first_update["updated_at"] = original_updated_at.clone();
-    let (status, first_body) = patch_with_cookie(
-        pool.clone(),
-        &format!("/api/admin/menu-items/{id}"),
-        first_update,
-        Some(&cookie),
-    )
-    .await;
+    let (status, first_body) = save_draft(&pool, &cookie, id, first_update, Value::Null).await;
     assert_eq!(status, StatusCode::OK);
 
     let mut second_update = flat_price_payload(category_id, "Jollof Second", "12.00");
     second_update["image_url"] = json!(url);
-    second_update["updated_at"] = original_updated_at;
-    let (status, conflict_body) = patch_with_cookie(
-        pool,
-        &format!("/api/admin/menu-items/{id}"),
-        second_update,
-        Some(&cookie),
-    )
-    .await;
+    let (status, conflict_body) = save_draft(&pool, &cookie, id, second_update, Value::Null).await;
     assert_eq!(status, StatusCode::CONFLICT);
     assert_eq!(conflict_body["error"], "conflict");
     assert_eq!(conflict_body["current"]["name"], first_body["name"]);
@@ -437,14 +424,7 @@ async fn menu_item_archive_rejects_a_stale_updated_at(pool: PgPool) {
 
     let mut rename = flat_price_payload(category_id, "Jollof Renamed", "10.00");
     rename["image_url"] = json!(url);
-    rename["updated_at"] = original_updated_at.clone();
-    let (status, _body) = patch_with_cookie(
-        pool.clone(),
-        &format!("/api/admin/menu-items/{id}"),
-        rename,
-        Some(&cookie),
-    )
-    .await;
+    let (status, _body) = save_draft(&pool, &cookie, id, rename, Value::Null).await;
     assert_eq!(status, StatusCode::OK);
 
     let (status, conflict_body, _set) = post_with_cookie(
@@ -468,7 +448,7 @@ async fn menu_item_archive_rejects_a_stale_updated_at(pool: PgPool) {
 }
 
 #[sqlx::test]
-async fn menu_item_update_deletes_the_superseded_image_from_minio(pool: PgPool) {
+async fn menu_item_draft_deletes_the_superseded_image_from_minio(pool: PgPool) {
     let cookie = login(&pool).await;
     let category_id = insert_category(&pool, "Rice").await;
     let first_url = upload_image(&pool, &cookie).await;
@@ -477,19 +457,14 @@ async fn menu_item_update_deletes_the_superseded_image_from_minio(pool: PgPool) 
     payload["image_url"] = json!(first_url);
     let created = create_item(&pool, &cookie, payload).await;
     let id = created["id"].as_i64().unwrap();
+    publish_item(&pool, &cookie, id, &Value::Null).await;
 
     let second_url = upload_image(&pool, &cookie).await;
     let mut update_payload = flat_price_payload(category_id, "Jollof", "10.00");
     update_payload["image_url"] = json!(second_url);
-    update_payload["updated_at"] = created["updated_at"].clone();
-    let (status, body) = patch_with_cookie(
-        pool.clone(),
-        &format!("/api/admin/menu-items/{id}"),
-        update_payload,
-        Some(&cookie),
-    )
-    .await;
+    let (status, body) = save_draft(&pool, &cookie, id, update_payload, Value::Null).await;
     assert_eq!(status, StatusCode::OK, "update failed: {body:?}");
+    let body = publish_item(&pool, &cookie, id, &body["draft_updated_at"]).await;
     assert_eq!(body["image_url"], second_url);
 
     let first_path = first_url.rsplit_once("/api/media/").unwrap().1;
@@ -505,7 +480,7 @@ async fn menu_item_update_deletes_the_superseded_image_from_minio(pool: PgPool) 
 }
 
 #[sqlx::test]
-async fn menu_item_update_with_unchanged_image_url_does_not_delete_it(pool: PgPool) {
+async fn menu_item_draft_with_unchanged_image_url_does_not_delete_it(pool: PgPool) {
     let cookie = login(&pool).await;
     let category_id = insert_category(&pool, "Rice").await;
     let url = upload_image(&pool, &cookie).await;
@@ -514,18 +489,13 @@ async fn menu_item_update_with_unchanged_image_url_does_not_delete_it(pool: PgPo
     payload["image_url"] = json!(url);
     let created = create_item(&pool, &cookie, payload).await;
     let id = created["id"].as_i64().unwrap();
+    publish_item(&pool, &cookie, id, &Value::Null).await;
 
     let mut update_payload = flat_price_payload(category_id, "Jollof Renamed", "10.00");
     update_payload["image_url"] = json!(url);
-    update_payload["updated_at"] = created["updated_at"].clone();
-    let (status, _body) = patch_with_cookie(
-        pool.clone(),
-        &format!("/api/admin/menu-items/{id}"),
-        update_payload,
-        Some(&cookie),
-    )
-    .await;
+    let (status, body) = save_draft(&pool, &cookie, id, update_payload, Value::Null).await;
     assert_eq!(status, StatusCode::OK);
+    publish_item(&pool, &cookie, id, &body["draft_updated_at"]).await;
 
     let path = url.rsplit_once("/api/media/").unwrap().1;
     let (status, _headers, _bytes) =

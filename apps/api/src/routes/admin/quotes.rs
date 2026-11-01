@@ -1,4 +1,4 @@
-use crate::email::EmailConfig;
+use crate::email::{DeliveryRef, EmailConfig, OutgoingEmail};
 use crate::error::{AppError, FieldError};
 use crate::order_emails::{quote_email, quote_url, Locale, QuoteEmail, QuoteEmailLine};
 use crate::payment::payment_reference;
@@ -396,7 +396,13 @@ pub async fn send_quote(
         email.site_url(),
         quote.public_token,
     );
-    email.spawn_send(enquiry.email, subject, body);
+    email.spawn_send(OutgoingEmail {
+        to: enquiry.email,
+        subject,
+        body,
+        reply_to: None,
+        track: Some(DeliveryRef { pool: pool.clone(), order_id: None, quote_id: Some(quote.id), kind: "quote" }),
+    });
 
     Ok(Json(SendQuoteResponse { quote, email_queued: email.is_enabled() }))
 }

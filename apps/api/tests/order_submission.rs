@@ -567,3 +567,55 @@ async fn cart_orders_cannot_be_on_site(pool: PgPool) {
     let count = sqlx::query_scalar!("SELECT COUNT(*) FROM orders").fetch_one(&pool).await.unwrap();
     assert_eq!(count, Some(0));
 }
+
+/// Phase 25 Decision 17: an unpublished item can't be ordered.
+#[sqlx::test]
+async fn unpublished_item_is_rejected(pool: PgPool) {
+    sqlx::query!("INSERT INTO categories (id, name) VALUES (1, 'Rice Dishes')")
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query!(
+        "INSERT INTO menu_items (id, category_id, name, price, published_at) VALUES (1, 1, 'Secret Special', 9.00, NULL)"
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let payload = valid_payload(json!([{ "menu_item_id": 1, "price_option_id": null, "quantity": 1 }]));
+    let (status, body) = post(pool, "/api/orders", payload).await;
+    assert_eq!(status, StatusCode::CONFLICT);
+    assert_eq!(body["error"], "items_unavailable");
+    assert_eq!(body["items"][0]["reason"], "not_found");
+}
+
+/// A pending draft price never reaches an order: it's priced from the
+/// published row (Phase 25 Decision 17).
+#[sqlx::test]
+async fn pending_draft_price_is_ignored_when_ordering(pool: PgPool) {
+    sqlx::query!("INSERT INTO categories (id, name) VALUES (1, 'Rice Dishes')")
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query!(
+        r#"
+        INSERT INTO menu_items (id, category_id, name, price, draft, draft_updated_at)
+        VALUES (1, 1, 'Jollof Rice', 13.00,
+            '{"category_id":1,"name":"Jollof Deluxe","description":null,"price":"99.00","price_options":[],"image_url":null,"is_featured":false}',
+            now())
+        "#
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let payload = valid_payload(json!([{ "menu_item_id": 1, "price_option_id": null, "quantity": 2 }]));
+    let (status, body) = post(pool.clone(), "/api/orders", payload).await;
+    assert_eq!(status, StatusCode::CREATED);
+    assert_eq!(body["items"][0]["item_name"], "Jollof Rice");
+    assert_eq!(body["total"], "26.00");
+
+    let unit_price: rust_decimal::Decimal =
+        sqlx::query_scalar!("SELECT unit_price FROM order_items").fetch_one(&pool).await.unwrap();
+    assert_eq!(unit_price.to_string(), "13.00");
+}

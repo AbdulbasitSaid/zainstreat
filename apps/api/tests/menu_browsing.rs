@@ -198,3 +198,61 @@ async fn menu_items_excludes_soft_deleted_price_options(pool: PgPool) {
     let items = body.as_array().unwrap();
     assert_eq!(items[0]["price_options"], serde_json::json!([]));
 }
+
+/// Phase 25 Decision 17: unpublished items, and items in unpublished
+/// categories, are never listed.
+#[sqlx::test]
+async fn menu_items_excludes_unpublished_items_and_categories(pool: PgPool) {
+    sqlx::query!("INSERT INTO categories (id, name) VALUES (1, 'Rice Dishes')")
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query!("INSERT INTO categories (id, name, published_at) VALUES (2, 'New Category', NULL)")
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query!(
+        r#"
+        INSERT INTO menu_items (id, category_id, name, price, published_at) VALUES
+            (1, 1, 'Jollof Rice', 13.00, now()),
+            (2, 1, 'Secret Special', 9.00, NULL),
+            (3, 2, 'Item In New Category', 5.00, now())
+        "#
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let (status, body) = get(pool.clone(), "/api/menu-items").await;
+    assert_eq!(status, StatusCode::OK);
+    let names: Vec<&str> = body.as_array().unwrap().iter().map(|i| i["name"].as_str().unwrap()).collect();
+    assert_eq!(names, ["Jollof Rice"]);
+
+    let (_status, body) = get(pool, "/api/categories").await;
+    let names: Vec<&str> = body.as_array().unwrap().iter().map(|c| c["name"].as_str().unwrap()).collect();
+    assert_eq!(names, ["Rice Dishes"]);
+}
+
+#[sqlx::test]
+async fn menu_items_ignores_pending_drafts(pool: PgPool) {
+    sqlx::query!("INSERT INTO categories (id, name) VALUES (1, 'Rice Dishes')")
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query!(
+        r#"
+        INSERT INTO menu_items (id, category_id, name, price, draft, draft_updated_at)
+        VALUES (1, 1, 'Jollof Rice', 13.00,
+            '{"category_id":1,"name":"Draft Name","description":null,"price":"99.00","price_options":[],"image_url":null,"is_featured":true}',
+            now())
+        "#
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let (_status, body) = get(pool, "/api/menu-items").await;
+    assert_eq!(body[0]["name"], "Jollof Rice");
+    assert_eq!(body[0]["price"], "13.00");
+    assert_eq!(body[0]["is_featured"], false);
+}

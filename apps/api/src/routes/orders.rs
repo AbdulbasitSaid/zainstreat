@@ -1,4 +1,4 @@
-use crate::email::EmailConfig;
+use crate::email::{DeliveryRef, EmailConfig, OutgoingEmail};
 use crate::error::{AppError, FieldError, UnavailableItem};
 use crate::order_emails::{invoice_email, Locale};
 use crate::order_status::CUSTOMER_COMPLETABLE;
@@ -188,9 +188,12 @@ pub async fn create_order(
     let mut priced_lines: Vec<PricedLine> = Vec::new();
 
     for item in &payload.items {
+        // An unpublished item can't be ordered, and a pending draft never
+        // changes the price (Phase 25 Decision 17).
         let menu_item = sqlx::query_as!(
             MenuItemRow,
-            "SELECT name, price, is_available FROM menu_items WHERE id = $1 AND deleted_at IS NULL",
+            "SELECT name, price, is_available FROM menu_items \
+             WHERE id = $1 AND deleted_at IS NULL AND published_at IS NOT NULL",
             item.menu_item_id
         )
         .fetch_optional(&mut *tx)
@@ -364,14 +367,16 @@ pub async fn create_order(
         completed_by: None,
     };
 
-    send_invoice(&email, locale, &response, &order.placed_at);
+    send_invoice(&email, &pool, locale, &response, &order.placed_at);
 
     if let Some(business_address) = email.business_notify_address() {
-        email.spawn_send(
-            business_address,
-            format!("New order {} — €{}", response.payment_reference, response.total),
-            new_order_owner_email_body(&response, email.admin_url()),
-        );
+        email.spawn_send(OutgoingEmail {
+            to: business_address,
+            subject: format!("New order {} — €{}", response.payment_reference, response.total),
+            body: new_order_owner_email_body(&response, email.admin_url()),
+            reply_to: Some(response.customer_email.clone()),
+            track: None,
+        });
     }
 
     Ok((StatusCode::CREATED, Json(response)))
@@ -379,9 +384,21 @@ pub async fn create_order(
 
 /// The customer's invoice email, for a cart order or an accepted catering
 /// quote (Phase 23 Decision 4).
-pub(crate) fn send_invoice(email: &EmailConfig, locale: Locale, order: &OrderResponse, placed_at: &str) {
+pub(crate) fn send_invoice(
+    email: &EmailConfig,
+    pool: &PgPool,
+    locale: Locale,
+    order: &OrderResponse,
+    placed_at: &str,
+) {
     let (subject, body) = invoice_email(locale, order, placed_at, email.site_url(), order.public_token);
-    email.spawn_send(order.customer_email.clone(), subject, body);
+    email.spawn_send(OutgoingEmail {
+        to: order.customer_email.clone(),
+        subject,
+        body,
+        reply_to: None,
+        track: Some(DeliveryRef { pool: pool.clone(), order_id: Some(order.id), quote_id: None, kind: "invoice" }),
+    });
 }
 
 fn delivery_line(order: &OrderResponse) -> String {
@@ -518,10 +535,10 @@ pub async fn claim_payment(
     tracing::info!(order_id, "customer claimed payment");
 
     if let Some(business_address) = email.business_notify_address() {
-        email.spawn_send(
-            business_address,
-            format!("Payment claimed for order {} — €{}", order.payment_reference, order.total),
-            format!(
+        email.spawn_send(OutgoingEmail {
+            to: business_address,
+            subject: format!("Payment claimed for order {} — €{}", order.payment_reference, order.total),
+            body: format!(
                 "{} says they've paid order {} (€{}).\n\nCheck the bank for a transfer with reference {}, then confirm the payment in admin:\n{}/orders/{}",
                 order.customer_name,
                 order.payment_reference,
@@ -530,7 +547,9 @@ pub async fn claim_payment(
                 email.admin_url(),
                 order_id,
             ),
-        );
+            reply_to: Some(order.customer_email.clone()),
+            track: None,
+        });
     }
 
     Ok(Json(order))

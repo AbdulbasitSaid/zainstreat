@@ -2,7 +2,7 @@ mod common;
 
 use axum::http::StatusCode;
 use common::{
-    get_with_cookie, insert_admin, insert_category, patch_with_cookie, post_with_cookie,
+    get, get_with_cookie, insert_admin, insert_category, post_with_cookie, put_with_cookie,
     session_cookie,
 };
 use serde_json::json;
@@ -83,39 +83,57 @@ async fn category_create_appends_after_the_current_max_display_order(pool: PgPoo
     assert_eq!(display_order, 2);
 }
 
+async fn publish_category(pool: &PgPool, cookie: &str, id: i64, draft_updated_at: &serde_json::Value) {
+    let (status, _body, _set) = post_with_cookie(
+        pool.clone(),
+        "/api/admin/publish",
+        json!({ "entries": [{ "kind": "category", "id": id, "draft_updated_at": draft_updated_at }] }),
+        Some(cookie),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+}
+
+/// Phase 25: a published category's rename is a draft until it's published.
 #[sqlx::test]
-async fn category_rename_updates_name_and_description(pool: PgPool) {
+async fn category_rename_is_a_draft_until_published(pool: PgPool) {
     let cookie = login(&pool).await;
     let id = insert_category(&pool, "Rice").await;
-    let (_status, list_body) = get_with_cookie(pool.clone(), "/api/admin/categories", Some(&cookie)).await;
-    let updated_at = list_body
-        .as_array()
-        .unwrap()
-        .iter()
-        .find(|c| c["id"] == id)
-        .unwrap()["updated_at"]
-        .clone();
+    let (_status, before) = get_with_cookie(pool.clone(), &format!("/api/admin/categories/{id}"), Some(&cookie)).await;
 
-    let (status, body) = patch_with_cookie(
-        pool,
-        &format!("/api/admin/categories/{id}"),
-        json!({ "name": "New", "description": "d", "updated_at": updated_at }),
+    let (status, body) = put_with_cookie(
+        pool.clone(),
+        &format!("/api/admin/categories/{id}/draft"),
+        json!({ "name": "New", "description": "d", "draft_updated_at": null }),
         Some(&cookie),
     )
     .await;
     assert_eq!(status, StatusCode::OK);
-    assert_eq!(body["name"], "New");
-    assert_eq!(body["description"], "d");
-    assert_ne!(body["updated_at"], updated_at);
+    assert_eq!(body["name"], "Rice");
+    assert_eq!(body["has_draft"], true);
+    assert_eq!(body["draft"]["name"], "New");
+
+    let (_status, public) = get(pool.clone(), "/api/categories").await;
+    assert_eq!(public[0]["name"], "Rice");
+
+    publish_category(&pool, &cookie, id, &body["draft_updated_at"]).await;
+
+    let (_status, after) = get_with_cookie(pool.clone(), &format!("/api/admin/categories/{id}"), Some(&cookie)).await;
+    assert_eq!(after["name"], "New");
+    assert_eq!(after["description"], "d");
+    assert_eq!(after["has_draft"], false);
+    assert_ne!(after["updated_at"], before["updated_at"]);
+    let (_status, public) = get(pool, "/api/categories").await;
+    assert_eq!(public[0]["name"], "New");
 }
 
 #[sqlx::test]
-async fn category_rename_404s_for_an_unknown_id(pool: PgPool) {
+async fn category_draft_404s_for_an_unknown_id(pool: PgPool) {
     let cookie = login(&pool).await;
-    let (status, _body) = patch_with_cookie(
+    let (status, _body) = put_with_cookie(
         pool,
-        "/api/admin/categories/999999",
-        json!({ "name": "New", "description": null, "updated_at": "2026-01-01T00:00:00Z" }),
+        "/api/admin/categories/999999/draft",
+        json!({ "name": "New", "description": null, "draft_updated_at": null }),
         Some(&cookie),
     )
     .await;
@@ -123,38 +141,30 @@ async fn category_rename_404s_for_an_unknown_id(pool: PgPool) {
 }
 
 #[sqlx::test]
-async fn category_rename_rejects_a_stale_updated_at(pool: PgPool) {
+async fn category_draft_rejects_a_stale_draft_updated_at(pool: PgPool) {
     let cookie = login(&pool).await;
     let id = insert_category(&pool, "Rice").await;
-    let (_status, list_body) = get_with_cookie(pool.clone(), "/api/admin/categories", Some(&cookie)).await;
-    let original_updated_at = list_body
-        .as_array()
-        .unwrap()
-        .iter()
-        .find(|c| c["id"] == id)
-        .unwrap()["updated_at"]
-        .clone();
 
-    let (status, body) = patch_with_cookie(
+    let (status, body) = put_with_cookie(
         pool.clone(),
-        &format!("/api/admin/categories/{id}"),
-        json!({ "name": "First Rename", "description": null, "updated_at": original_updated_at }),
+        &format!("/api/admin/categories/{id}/draft"),
+        json!({ "name": "First Rename", "description": null, "draft_updated_at": null }),
         Some(&cookie),
     )
     .await;
     assert_eq!(status, StatusCode::OK);
-    assert_eq!(body["name"], "First Rename");
+    assert_eq!(body["draft"]["name"], "First Rename");
 
-    let (status, conflict_body) = patch_with_cookie(
+    let (status, conflict_body) = put_with_cookie(
         pool,
-        &format!("/api/admin/categories/{id}"),
-        json!({ "name": "Second Rename", "description": null, "updated_at": original_updated_at }),
+        &format!("/api/admin/categories/{id}/draft"),
+        json!({ "name": "Second Rename", "description": null, "draft_updated_at": null }),
         Some(&cookie),
     )
     .await;
     assert_eq!(status, StatusCode::CONFLICT);
     assert_eq!(conflict_body["error"], "conflict");
-    assert_eq!(conflict_body["current"]["name"], "First Rename");
+    assert_eq!(conflict_body["current"]["draft"]["name"], "First Rename");
 }
 
 #[sqlx::test]
@@ -258,14 +268,15 @@ async fn category_archive_rejects_a_stale_updated_at(pool: PgPool) {
         .unwrap()["updated_at"]
         .clone();
 
-    let (status, _body) = patch_with_cookie(
+    let (status, draft) = put_with_cookie(
         pool.clone(),
-        &format!("/api/admin/categories/{id}"),
-        json!({ "name": "Renamed", "description": null, "updated_at": original_updated_at }),
+        &format!("/api/admin/categories/{id}/draft"),
+        json!({ "name": "Renamed", "description": null, "draft_updated_at": null }),
         Some(&cookie),
     )
     .await;
     assert_eq!(status, StatusCode::OK);
+    publish_category(&pool, &cookie, id, &draft["draft_updated_at"]).await;
 
     let (status, body, _set) = post_with_cookie(
         pool.clone(),

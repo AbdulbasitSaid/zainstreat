@@ -15,7 +15,11 @@ pub async fn list_categories(
 ) -> Result<Json<Vec<CategoryResponse>>, AppError> {
     let categories = sqlx::query_as!(
         CategoryResponse,
-        r#"SELECT id, name, description FROM categories WHERE deleted_at IS NULL ORDER BY display_order, id"#
+        r#"
+        SELECT id, name, description FROM categories
+        WHERE deleted_at IS NULL AND published_at IS NOT NULL
+        ORDER BY display_order, id
+        "#
     )
     .fetch_all(&pool)
     .await?;
