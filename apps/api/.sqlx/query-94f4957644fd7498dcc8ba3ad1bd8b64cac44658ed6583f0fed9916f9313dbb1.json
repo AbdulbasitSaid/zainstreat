@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO order_items (order_id, item_name, unit_price, quantity, subtotal)\n        SELECT $1, description, unit_price, quantity, subtotal\n        FROM catering_quote_items\n        WHERE quote_id = $2\n        ORDER BY position\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "94f4957644fd7498dcc8ba3ad1bd8b64cac44658ed6583f0fed9916f9313dbb1"
+}

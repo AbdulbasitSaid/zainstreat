@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT id, customer_name, delivery_type, total, status,\n               created_at as \"created_at: DateTime<Utc>\"\n        FROM orders\n        WHERE ($1::TEXT IS NULL OR status = $1)\n        ORDER BY created_at DESC, id DESC\n        LIMIT $2 OFFSET $3\n        ",
+  "query": "\n        SELECT id, customer_name, delivery_type, total, status,\n               created_at as \"created_at: DateTime<Utc>\",\n               (SELECT q.enquiry_id FROM catering_quotes q WHERE q.order_id = orders.id) as \"catering_enquiry_id?\"\n        FROM orders\n        WHERE ($1::TEXT IS NULL OR status = $1)\n        ORDER BY created_at DESC, id DESC\n        LIMIT $2 OFFSET $3\n        ",
   "describe": {
     "columns": [
       {
@@ -32,6 +32,11 @@
         "ordinal": 5,
         "name": "created_at: DateTime<Utc>",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "catering_enquiry_id?",
+        "type_info": "Int8"
       }
     ],
     "parameters": {
@@ -47,8 +52,9 @@
       false,
       false,
       false,
-      false
+      false,
+      null
     ]
   },
-  "hash": "c77b4eb0499aac355bd3e44ce423d1ad354e805abe018ae857db3e8c69302b76"
+  "hash": "3048a338a538d80fe0479c5e53ed886c64e0a10193d0a09f25cb7d9b3b5ee6c0"
 }

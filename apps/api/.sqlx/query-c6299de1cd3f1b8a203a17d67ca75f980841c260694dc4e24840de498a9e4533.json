@@ -1,0 +1,38 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT o.locale, q.status, q.order_id,\n               (SELECT COUNT(*) FROM order_items i WHERE i.order_id = o.id AND i.menu_item_id IS NULL) as \"lines!\"\n        FROM catering_quotes q JOIN orders o ON o.id = q.order_id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "locale",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "order_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "lines!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      null
+    ]
+  },
+  "hash": "c6299de1cd3f1b8a203a17d67ca75f980841c260694dc4e24840de498a9e4533"
+}

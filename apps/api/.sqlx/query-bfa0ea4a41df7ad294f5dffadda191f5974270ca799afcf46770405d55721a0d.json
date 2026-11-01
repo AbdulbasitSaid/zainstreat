@@ -1,0 +1,46 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT name, email, guest_count, locale, event_date as \"event_date: NaiveDate\"\n        FROM catering_enquiries\n        WHERE id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "guest_count",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "locale",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "event_date: NaiveDate",
+        "type_info": "Date"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "bfa0ea4a41df7ad294f5dffadda191f5974270ca799afcf46770405d55721a0d"
+}

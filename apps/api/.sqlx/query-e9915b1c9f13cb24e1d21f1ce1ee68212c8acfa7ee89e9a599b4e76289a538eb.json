@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE catering_quotes\n        SET status = 'accepted', accepted_at = now(), order_id = $2, updated_at = now()\n        WHERE id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e9915b1c9f13cb24e1d21f1ce1ee68212c8acfa7ee89e9a599b4e76289a538eb"
+}

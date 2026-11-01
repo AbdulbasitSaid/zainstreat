@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT id, customer_name, customer_email, customer_phone, delivery_type,\n               delivery_address, notes, subtotal, delivery_fee, total, status,\n               payment_claimed_at as \"payment_claimed_at: DateTime<Utc>\",\n               payment_confirmed_at as \"payment_confirmed_at: DateTime<Utc>\",\n               ready_at as \"ready_at: DateTime<Utc>\",\n               completed_at as \"completed_at: DateTime<Utc>\",\n               cancelled_at as \"cancelled_at: DateTime<Utc>\",\n               completed_by,\n               created_at as \"created_at: DateTime<Utc>\",\n               updated_at as \"updated_at: DateTime<Utc>\"\n        FROM orders\n        WHERE id = $1\n        ",
+  "query": "\n        SELECT id, customer_name, customer_email, customer_phone, delivery_type,\n               delivery_address, notes, subtotal, delivery_fee, total, status,\n               payment_claimed_at as \"payment_claimed_at: DateTime<Utc>\",\n               payment_confirmed_at as \"payment_confirmed_at: DateTime<Utc>\",\n               ready_at as \"ready_at: DateTime<Utc>\",\n               completed_at as \"completed_at: DateTime<Utc>\",\n               cancelled_at as \"cancelled_at: DateTime<Utc>\",\n               completed_by,\n               created_at as \"created_at: DateTime<Utc>\",\n               updated_at as \"updated_at: DateTime<Utc>\",\n               (SELECT q.enquiry_id FROM catering_quotes q WHERE q.order_id = orders.id) as \"catering_enquiry_id?\"\n        FROM orders\n        WHERE id = $1\n        ",
   "describe": {
     "columns": [
       {
@@ -97,6 +97,11 @@
         "ordinal": 18,
         "name": "updated_at: DateTime<Utc>",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 19,
+        "name": "catering_enquiry_id?",
+        "type_info": "Int8"
       }
     ],
     "parameters": {
@@ -123,8 +128,9 @@
       true,
       true,
       false,
-      false
+      false,
+      null
     ]
   },
-  "hash": "def2146a1e6cadd6debd7c38525c819ce8f8999872c0341cae69fdcb3055fe89"
+  "hash": "4c358a56e5689739f75695eef4982d7171fbd5466c334fa84da3a7e3f810998a"
 }

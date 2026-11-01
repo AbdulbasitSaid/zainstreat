@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT pg_get_constraintdef(oid) as \"definition!\"\n        FROM pg_constraint\n        WHERE conname = 'catering_quotes_status_check'\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "definition!",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "8e5072c2c923335e83986d1e0004ca949fef917ae835b7d2f4f872327967ba4c"
+}
