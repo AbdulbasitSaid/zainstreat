@@ -5,10 +5,11 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/button";
 import { Notice } from "@/components/notice";
-import type { DeliveryType, OrderStatus } from "@/lib/orders";
+import { CUSTOMER_COMPLETABLE, type FulfilmentType, type OrderStatus } from "@/lib/orders";
 
 // The customer's "I've collected / received it" (Phase 22 Decision 8). Two
 // clicks, like the admin's cancel, since it can only be undone by the owner.
+// On-site catering confirms the event was catered (Phase 23 Decision 12).
 export function OrderReceivedButton({
   token,
   status,
@@ -16,7 +17,7 @@ export function OrderReceivedButton({
 }: {
   token: string;
   status: OrderStatus;
-  deliveryType: DeliveryType;
+  deliveryType: FulfilmentType;
 }) {
   const t = useTranslations("Order.tracking");
   const router = useRouter();
@@ -24,9 +25,15 @@ export function OrderReceivedButton({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (status !== "ready_for_collection" && status !== "out_for_delivery") {
+  if (!CUSTOMER_COMPLETABLE.includes(status)) {
     return null;
   }
+
+  const label = {
+    pickup: t("receivedPickup"),
+    delivery: t("receivedDelivery"),
+    on_site: t("receivedOnSite"),
+  }[deliveryType];
 
   async function handleConfirm() {
     setSubmitting(true);
@@ -54,7 +61,7 @@ export function OrderReceivedButton({
       {confirming ? (
         <div className="flex flex-wrap items-center justify-center gap-3">
           <Button type="button" onClick={handleConfirm} disabled={submitting}>
-            {submitting ? t("receiving") : t("receivedConfirm")}
+            {submitting ? t("receiving") : deliveryType === "on_site" ? t("receivedOnSiteConfirm") : t("receivedConfirm")}
           </Button>
           <button
             type="button"
@@ -67,7 +74,7 @@ export function OrderReceivedButton({
         </div>
       ) : (
         <Button type="button" variant="secondary" onClick={() => setConfirming(true)}>
-          {deliveryType === "pickup" ? t("receivedPickup") : t("receivedDelivery")}
+          {label}
         </Button>
       )}
       {error && <Notice>{error}</Notice>}

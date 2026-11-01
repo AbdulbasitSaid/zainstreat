@@ -10,6 +10,7 @@ const ACTION_LABELS: Partial<Record<OrderStatus, string>> = {
   processing: "Confirm payment",
   ready_for_collection: "Ready for collection",
   out_for_delivery: "Mark on the way",
+  serving_on_site: "Mark catering started",
   completed: "Mark completed",
 };
 

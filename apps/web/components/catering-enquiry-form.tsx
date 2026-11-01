@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/button";
 import { Notice } from "@/components/notice";
 import { submitCateringEnquiry, type CreateCateringEnquiryRequest } from "@/lib/catering";
@@ -123,6 +123,7 @@ const FIELD_ERROR_CLASS = "mt-1 text-sm text-primary";
 
 export function CateringEnquiryForm() {
   const t = useTranslations("ContactPage");
+  const locale = useLocale();
   const [values, setValues] = useState<Values>(EMPTY_VALUES);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitting, setSubmitting] = useState(false);
@@ -186,6 +187,7 @@ export function CateringEnquiryForm() {
       location: values.location.trim(),
       services_required: values.services,
       message: values.message.trim() ? values.message.trim() : null,
+      locale,
       website: values.website,
     };
 
