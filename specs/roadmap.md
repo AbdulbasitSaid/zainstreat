@@ -12,7 +12,8 @@ were added from the 2026-10-18 client call
 (`specs/client-notes/2026-10-18-client-call.md`), which pulled
 bank-transfer payments, order tracking, owner notifications and analytics
 forward from "Beyond MVP" ahead of the public launch. Phase 21 (pipeline
-refactor) was inserted on 2026-10-31.
+refactor) was inserted on 2026-10-31. Phase 25 gained the contact-email,
+bento-grid and live-preview requirements on 2026-11-01.
 
 ## Phase 1 — Scaffolding
 
@@ -440,15 +441,36 @@ Phase 23's customer emails and quote page.
   and the sitemap.
 - A message-key parity check so the three message files can't drift.
 
-## Phase 25 — Admin-Editable Site Content
+## Phase 25 — Admin-Editable Site Content, Live Preview & Bento Menu
+
+Planned 2026-11-01 (see
+`specs/2026-11-01-phase-25-site-content-preview/requirement.md`). The
+user added the email, bento grid and preview bullets when planning
+started.
 
 - Admin can replace site imagery that is currently hardcoded: homepage
   images, the kitchen photo, the contact-page photo, and the **logo**,
   all uploaded to MinIO like menu photos (Phase 14).
-- Admin can edit the homepage text, per locale.
+- Admin can edit the homepage text, per locale (en/nl/fr).
 - Swap all remaining stock/placeholder homepage imagery for the client's
   real food photos (some supplied already; the client is sending the
   rest).
+- `contact@zainstreat.com` replaces `techsihir@gmail.com` and
+  `no-reply@` on staging and production. It becomes the sender, the
+  Reply-To, the owner-notification address and the contact-page
+  address (owner notifications reply to the customer, and staging
+  subjects get `[STAGING] `). Mail to it is forwarded by ImprovMX. SES's
+  account contact is updated and production access re-requested, and
+  failed customer emails are flagged in admin.
+- The menu page and homepage featured items use a responsive **bento
+  grid**. Items with more content (long description, several price
+  options, featured) get bigger cards.
+- **Draft → preview → publish** for site content, menu items and
+  categories. Edits autosave as drafts, the public site and ordering
+  only read published data, and a Changes page offers Publish all.
+- A **live preview** of the real public pages with draft data, in a
+  device simulator from Mobile S (320px) to Desktop XL (1920px), one
+  device or all at once.
 
 ## Phase 26 — Analytics & Search Presence
 

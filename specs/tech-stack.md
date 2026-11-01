@@ -124,6 +124,10 @@ cases, keeping the CSS/JS split deliberate rather than all-or-nothing.
   is for static-page decoration only — the DB-driven `ImageSlot` fallback
   on menu items/cart line items (used when a real `image_url` is absent)
   still uses `placehold.co`, a separate concern.
+  **Phase 25:** these static files become the *defaults*. The admin can
+  replace each one, and the logo, with a MinIO upload stored in the
+  `site_content` document. A slot with no upload falls back to the static
+  import. See "Content preview" below.
 
 ## Internationalization (i18n)
 
@@ -262,6 +266,32 @@ rationale) — the `minio` container ran unused since Phase 1 until then:
   crate was added to `apps/api` for this (see that phase's requirement.md
   Decision 14 addendum for why cropping stays off the Rust side).
 
+## Content preview (Phase 25)
+
+- **Draft → publish in Postgres.** Site content (`site_content`, one
+  row), menu items and categories each keep a `draft JSONB` next to the
+  live data. New rows start unpublished (`published_at NULL`). The public
+  API and ordering only ever read published data. A Publish endpoint
+  applies drafts in one transaction, using optimistic concurrency on
+  `draft_updated_at`.
+- **Next.js built-in Draft Mode** (`draftMode()` from `next/headers`)
+  renders the real public pages with draft data. It's only enabled on the
+  `cms.` host, after the admin session is checked, and `proxy.ts` serves
+  it under `cms.<host>/preview/{locale}/…`. Draft fetches still need the
+  admin session cookie, so no preview token or extra secret is needed.
+  Static pages stay static for visitors, because draft mode only bypasses
+  prerendering for that request.
+- **Device simulator: plain React and CSS, no library.** Each frame is an
+  iframe at the device's real CSS width, so media queries fire, scaled
+  down with `transform: scale()`. The presets run from Mobile S (320px)
+  to Desktop XL (1920px). "Realtime" means a 700 ms debounced draft
+  autosave followed by a `postMessage` that triggers `router.refresh()`
+  in each frame.
+- _Why not a headless CMS (Payload, Sanity) or a preview SaaS:_ the
+  editable surface is small (homepage text, nine images and the existing
+  menu tables). A CMS would add a second data store and admin next to the
+  Rust API and the `cms.` admin from Phases 14 and 21.
+
 ## Email (wired in Phase 17 — order confirmations, contact/catering notifications)
 
 - **`lettre`** crate, using its SMTP transport against **Amazon SES**'s
@@ -296,6 +326,15 @@ rationale) — the `minio` container ran unused since Phase 1 until then:
   domain and requesting SES production access is a manual, pre-launch
   operations step (same "configured once by hand, never committed"
   posture as Phase 2's GHCR PAT), not something this phase's code does.
+
+- **Phase 25:** sender and owner-notification address
+  `contact@zainstreat.com`. Inbound mail to it is forwarded by
+  **ImprovMX** (free; MX and SPF records in the Route 53 zone), chosen
+  over Namecheap forwarding because the domain's DNS isn't on Namecheap.
+  Customer emails get `Reply-To: contact@`, and owner notifications get
+  the customer's address. An optional `EMAIL_SUBJECT_PREFIX` tags
+  staging mail. Customer email outcomes are recorded in
+  `email_deliveries` so admin can flag failures.
 
 This was P1 (README §33/§46 priority) before Phase 17 existed as a
 roadmap phase; the dependency was named here early so the `orders` and
@@ -480,14 +519,14 @@ or recreated repo can't match.
 |---|---|
 | Frontend | Next.js (App Router) + React + TypeScript + Tailwind CSS v4 |
 | Animation | GSAP + ScrollTrigger + CustomEase (scroll/transitions/cursor/float) + Lenis (smooth scroll) + plain CSS (hover/focus) |
-| Site imagery | Static imports from `apps/web/assets/images/` (decoration); `placehold.co` (DB `image_url` fallback only) |
+| Site imagery | Admin-uploaded MinIO images in `site_content` (Phase 25), falling back to static imports from `apps/web/assets/images/`; `placehold.co` (DB `image_url` fallback only) |
 | i18n | next-intl (locale-prefixed `/en`, `/nl`, `/fr` routing) |
 | Backend API | Rust + Axum + sqlx + serde |
 | Database | PostgreSQL |
 | Admin auth | argon2 + tower-sessions (Postgres-backed sessions) |
 | Image/object storage | MinIO (S3-compatible, self-hosted) via `aws-sdk-s3`, server-side upload/serve proxy (Phase 14) |
 | Image cropping | `react-easy-crop` — client-side fixed 1:1 crop before upload (Phase 14) |
-| Email | lettre (SMTP transport) + Amazon SES, fire-and-forget (Phase 17) |
+| Email | lettre (SMTP transport) + Amazon SES, fire-and-forget (Phase 17); inbound `contact@` via ImprovMX forwarding (Phase 25) |
 | Spam/abuse mitigation | `tower_governor` (per-IP rate limit, custom `X-Forwarded-For` key extractor) + honeypot field (Phase 15) |
 | WhatsApp | `wa.me` deep links |
 | Hosting | AWS Lightsail VPS, 4 GB (`eu-central-1`, Frankfurt), Docker Compose with per-container memory/CPU limits |
@@ -496,5 +535,6 @@ or recreated repo can't match.
 | Staging | Ephemeral Lightsail instance on `<ip>.sslip.io`, created/deleted by workflow (Phase 21) |
 | Provisioning / AWS access | `infra/bootstrap.sh` Lightsail launch script; GitHub OIDC → IAM role (Phase 21) |
 | Admin host | `cms.${DOMAIN}`, same Next.js app, host-based rewrite in `proxy.ts` (Phase 21) |
+| Content preview | Postgres drafts + publish; Next.js Draft Mode under `cms.<host>/preview/…`; custom iframe device simulator, no library (Phase 25) |
 | Backups | Lightsail automatic daily snapshots + nightly `pg_dump`/MinIO archive to S3 (Phase 21) |
 | Reverse proxy / TLS | Caddy (automatic HTTPS) |
