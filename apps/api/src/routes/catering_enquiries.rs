@@ -3,13 +3,19 @@ use crate::error::{AppError, FieldError};
 use crate::order_emails::Locale;
 use crate::validation::{is_valid_email, is_valid_phone};
 use axum::extract::State;
-use axum::{http::StatusCode, Json};
+use axum::{Json, http::StatusCode};
 use chrono::{DateTime, NaiveDate, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 
-const EVENT_TYPES: [&str; 6] =
-    ["wedding", "birthday", "corporate", "family_gathering", "outdoor_event", "other"];
+const EVENT_TYPES: [&str; 6] = [
+    "wedding",
+    "birthday",
+    "corporate",
+    "family_gathering",
+    "outdoor_event",
+    "other",
+];
 const SERVICES: [&str; 4] = ["catering", "meal_delivery", "event_rental", "other"];
 const LOCATION_MIN_LENGTH: usize = 5;
 const MESSAGE_MAX_LENGTH: usize = 1000;
@@ -46,59 +52,105 @@ fn validate(payload: &CreateCateringEnquiryRequest) -> Vec<FieldError> {
 
     let trimmed_name = payload.name.trim();
     if trimmed_name.is_empty() {
-        errors.push(FieldError { field: "name".into(), message: "required".into() });
+        errors.push(FieldError {
+            field: "name".into(),
+            message: "required".into(),
+        });
     }
 
     let trimmed_phone = payload.phone.trim();
     if trimmed_phone.is_empty() {
-        errors.push(FieldError { field: "phone".into(), message: "required".into() });
+        errors.push(FieldError {
+            field: "phone".into(),
+            message: "required".into(),
+        });
     } else if !is_valid_phone(trimmed_phone) {
-        errors.push(FieldError { field: "phone".into(), message: "invalid".into() });
+        errors.push(FieldError {
+            field: "phone".into(),
+            message: "invalid".into(),
+        });
     }
 
     if payload.email.trim().is_empty() {
-        errors.push(FieldError { field: "email".into(), message: "required".into() });
+        errors.push(FieldError {
+            field: "email".into(),
+            message: "required".into(),
+        });
     } else if !is_valid_email(&payload.email) {
-        errors.push(FieldError { field: "email".into(), message: "invalid".into() });
+        errors.push(FieldError {
+            field: "email".into(),
+            message: "invalid".into(),
+        });
     }
 
     if !EVENT_TYPES.contains(&payload.event_type.as_str()) {
-        errors.push(FieldError { field: "event_type".into(), message: "invalid".into() });
+        errors.push(FieldError {
+            field: "event_type".into(),
+            message: "invalid".into(),
+        });
     }
 
     // requirement.md Decision 7 — must not be in the past.
     if payload.event_date < Utc::now().date_naive() {
-        errors.push(FieldError { field: "event_date".into(), message: "must_be_future".into() });
+        errors.push(FieldError {
+            field: "event_date".into(),
+            message: "must_be_future".into(),
+        });
     }
 
     if payload.guest_count <= 0 {
-        errors.push(FieldError { field: "guest_count".into(), message: "must_be_positive".into() });
+        errors.push(FieldError {
+            field: "guest_count".into(),
+            message: "must_be_positive".into(),
+        });
     }
 
     let trimmed_location = payload.location.trim();
     if trimmed_location.is_empty() {
-        errors.push(FieldError { field: "location".into(), message: "required".into() });
+        errors.push(FieldError {
+            field: "location".into(),
+            message: "required".into(),
+        });
     } else if trimmed_location.chars().count() < LOCATION_MIN_LENGTH {
-        errors.push(FieldError { field: "location".into(), message: "too_short".into() });
+        errors.push(FieldError {
+            field: "location".into(),
+            message: "too_short".into(),
+        });
     }
 
     // requirement.md Decision 5 — non-empty, every element a known value.
     if payload.services_required.is_empty() {
-        errors.push(FieldError { field: "services_required".into(), message: "required".into() });
-    } else if payload.services_required.iter().any(|s| !SERVICES.contains(&s.as_str())) {
-        errors.push(FieldError { field: "services_required".into(), message: "invalid".into() });
+        errors.push(FieldError {
+            field: "services_required".into(),
+            message: "required".into(),
+        });
+    } else if payload
+        .services_required
+        .iter()
+        .any(|s| !SERVICES.contains(&s.as_str()))
+    {
+        errors.push(FieldError {
+            field: "services_required".into(),
+            message: "invalid".into(),
+        });
     }
 
     if let Some(message) = &payload.message
         && message.chars().count() > MESSAGE_MAX_LENGTH
     {
-        errors.push(FieldError { field: "message".into(), message: "too_long".into() });
+        errors.push(FieldError {
+            field: "message".into(),
+            message: "too_long".into(),
+        });
     }
 
     if let Some(locale) = &payload.locale
         && Locale::parse(locale).is_none()
     {
-        errors.push(FieldError { field: "locale".into(), message: "invalid".into() });
+        errors.push(FieldError {
+            field: "locale".into(),
+            message: "invalid".into(),
+        });
     }
 
     errors
@@ -115,7 +167,10 @@ pub async fn create_catering_enquiry(
     if !payload.website.trim().is_empty() {
         return Ok((
             StatusCode::CREATED,
-            Json(CateringEnquiryResponse { id: 0, created_at: Utc::now() }),
+            Json(CateringEnquiryResponse {
+                id: 0,
+                created_at: Utc::now(),
+            }),
         ));
     }
 
@@ -124,7 +179,11 @@ pub async fn create_catering_enquiry(
         return Err(AppError::Validation(errors));
     }
 
-    let locale = payload.locale.as_deref().and_then(Locale::parse).unwrap_or(Locale::En);
+    let locale = payload
+        .locale
+        .as_deref()
+        .and_then(Locale::parse)
+        .unwrap_or(Locale::En);
 
     let row = sqlx::query!(
         r#"
@@ -166,5 +225,11 @@ pub async fn create_catering_enquiry(
         );
     }
 
-    Ok((StatusCode::CREATED, Json(CateringEnquiryResponse { id: row.id, created_at: row.created_at })))
+    Ok((
+        StatusCode::CREATED,
+        Json(CateringEnquiryResponse {
+            id: row.id,
+            created_at: row.created_at,
+        }),
+    ))
 }

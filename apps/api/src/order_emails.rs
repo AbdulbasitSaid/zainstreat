@@ -24,8 +24,8 @@ pub enum Locale {
 }
 
 impl Locale {
-    /// Every customer locale, in the order the email sections follow after
-    /// the customer's own. Tests loop over it so a new locale can't miss copy.
+    /// Every customer locale, in the order the email sections follow. Tests
+    /// loop over it so a new locale can't miss copy.
     pub const ALL: [Self; 3] = [Self::En, Self::Nl, Self::Fr];
 
     /// Mirrors the CHECKs on `orders.locale` and `catering_enquiries.locale`.
@@ -64,22 +64,24 @@ impl Locale {
     }
 }
 
-/// The customer's language first, then the rest in `Locale::ALL` order.
-fn ordered(primary: Locale) -> impl Iterator<Item = Locale> {
-    std::iter::once(primary).chain(Locale::ALL.into_iter().filter(move |l| *l != primary))
-}
-
 /// One email from per-language `(locale, short subject, section)` parts, in
 /// order: a `--- {name} ---` header per section, one sign-off at the end,
 /// and the short subjects joined with " / ", then ` — {suffix}`.
 fn multilingual(parts: &[(Locale, &str, String)], suffix: &str) -> (String, String) {
-    let subject = parts.iter().map(|(_, subject, _)| *subject).collect::<Vec<_>>().join(" / ");
+    let subject = parts
+        .iter()
+        .map(|(_, subject, _)| *subject)
+        .collect::<Vec<_>>()
+        .join(" / ");
     let body = parts
         .iter()
         .map(|(locale, _, section)| format!("--- {} ---\n\n{section}", locale.name()))
         .collect::<Vec<_>>()
         .join("\n\n");
-    (format!("{subject} — {suffix}"), format!("{body}\n\n{SIGN_OFF}"))
+    (
+        format!("{subject} — {suffix}"),
+        format!("{body}\n\n{SIGN_OFF}"),
+    )
 }
 
 /// The customer's tracking page, in their language.
@@ -108,17 +110,23 @@ fn status_text(
     Some(match (locale, status) {
         (Locale::En, "processing") => (
             "Payment confirmed",
-            format!("Good news: we've received your payment for order {reference}, and we're now preparing your food."),
+            format!(
+                "Good news: we've received your payment for order {reference}, and we're now preparing your food."
+            ),
             "Follow your order here:",
         ),
         (Locale::Nl, "processing") => (
             "Betaling bevestigd",
-            format!("Goed nieuws: we hebben je betaling voor bestelling {reference} ontvangen en we zijn nu je eten aan het bereiden."),
+            format!(
+                "Goed nieuws: we hebben je betaling voor bestelling {reference} ontvangen en we zijn nu je eten aan het bereiden."
+            ),
             "Volg je bestelling hier:",
         ),
         (Locale::Fr, "processing") => (
             "Paiement confirmé",
-            format!("Bonne nouvelle : nous avons bien reçu votre paiement pour la commande {reference}, et nous préparons maintenant votre repas."),
+            format!(
+                "Bonne nouvelle : nous avons bien reçu votre paiement pour la commande {reference}, et nous préparons maintenant votre repas."
+            ),
             "Suivez votre commande ici :",
         ),
         (Locale::En, "ready_for_collection") => (
@@ -153,47 +161,65 @@ fn status_text(
         ),
         (Locale::En, "serving_on_site") => (
             "Catering started",
-            format!("Our team is at your event and your catering for order {reference} has started. Enjoy your event!"),
+            format!(
+                "Our team is at your event and your catering for order {reference} has started. Enjoy your event!"
+            ),
             "Afterwards, you can let us know everything went well on your order page:",
         ),
         (Locale::Nl, "serving_on_site") => (
             "Catering begonnen",
-            format!("Ons team is bij je evenement en de catering voor bestelling {reference} is begonnen. Veel plezier!"),
+            format!(
+                "Ons team is bij je evenement en de catering voor bestelling {reference} is begonnen. Veel plezier!"
+            ),
             "Is alles goed verlopen? Laat het ons weten op je bestelpagina:",
         ),
         (Locale::Fr, "serving_on_site") => (
             "Service traiteur commencé",
-            format!("Notre équipe est à votre événement et le service traiteur de la commande {reference} a commencé. Profitez bien de votre événement !"),
+            format!(
+                "Notre équipe est à votre événement et le service traiteur de la commande {reference} a commencé. Profitez bien de votre événement !"
+            ),
             "Ensuite, vous pouvez nous confirmer que tout s'est bien passé sur la page de votre commande :",
         ),
         (Locale::En, "completed") => (
             "Thank you",
-            format!("Your order {reference} is complete. Thank you for ordering from Zain's Treat n More, and enjoy your meal!"),
+            format!(
+                "Your order {reference} is complete. Thank you for ordering from Zain's Treat n More, and enjoy your meal!"
+            ),
             "Your order page:",
         ),
         (Locale::Nl, "completed") => (
             "Bedankt",
-            format!("Je bestelling {reference} is afgerond. Bedankt dat je bij Zain's Treat n More hebt besteld, en eet smakelijk!"),
+            format!(
+                "Je bestelling {reference} is afgerond. Bedankt dat je bij Zain's Treat n More hebt besteld, en eet smakelijk!"
+            ),
             "Je bestelpagina:",
         ),
         (Locale::Fr, "completed") => (
             "Merci",
-            format!("Votre commande {reference} est terminée. Merci d'avoir commandé chez Zain's Treat n More, et bon appétit !"),
+            format!(
+                "Votre commande {reference} est terminée. Merci d'avoir commandé chez Zain's Treat n More, et bon appétit !"
+            ),
             "La page de votre commande :",
         ),
         (Locale::En, "cancelled") => (
             "Order cancelled",
-            format!("Your order {reference} has been cancelled.\n\nIf you have any questions, or if you already paid, please contact us:\n{contact_url}"),
+            format!(
+                "Your order {reference} has been cancelled.\n\nIf you have any questions, or if you already paid, please contact us:\n{contact_url}"
+            ),
             "Your order page:",
         ),
         (Locale::Nl, "cancelled") => (
             "Bestelling geannuleerd",
-            format!("Je bestelling {reference} is geannuleerd.\n\nHeb je vragen, of heb je al betaald? Neem dan contact met ons op:\n{contact_url}"),
+            format!(
+                "Je bestelling {reference} is geannuleerd.\n\nHeb je vragen, of heb je al betaald? Neem dan contact met ons op:\n{contact_url}"
+            ),
             "Je bestelpagina:",
         ),
         (Locale::Fr, "cancelled") => (
             "Commande annulée",
-            format!("Votre commande {reference} a été annulée.\n\nSi vous avez des questions, ou si vous avez déjà payé, contactez-nous :\n{contact_url}"),
+            format!(
+                "Votre commande {reference} a été annulée.\n\nSi vous avez des questions, ou si vous avez déjà payé, contactez-nous :\n{contact_url}"
+            ),
             "La page de votre commande :",
         ),
         _ => return None,
@@ -209,24 +235,32 @@ fn status_section(
     site_url: &str,
     token: Uuid,
 ) -> Option<(&'static str, String)> {
-    let (subject, message, link_label) = status_text(locale, status, reference, &contact_url(site_url, locale))?;
+    let (subject, message, link_label) =
+        status_text(locale, status, reference, &contact_url(site_url, locale))?;
     let url = tracking_url(site_url, locale, token);
-    Some((subject, format!("{} {customer_name},\n\n{message}\n\n{link_label}\n{url}", locale.greeting())))
+    Some((
+        subject,
+        format!(
+            "{} {customer_name},\n\n{message}\n\n{link_label}\n{url}",
+            locale.greeting()
+        ),
+    ))
 }
 
 /// The email sent when the admin moves an order to `status`, or `None` for
 /// statuses that don't email the customer (Phase 22 Decision 6).
 pub fn status_email(
-    primary: Locale,
     customer_name: &str,
     reference: &str,
     status: &str,
     site_url: &str,
     token: Uuid,
 ) -> Option<(String, String)> {
-    let parts = ordered(primary)
+    let parts = Locale::ALL
+        .into_iter()
         .map(|locale| {
-            let (subject, section) = status_section(locale, customer_name, reference, status, site_url, token)?;
+            let (subject, section) =
+                status_section(locale, customer_name, reference, status, site_url, token)?;
             Some((locale, subject, section))
         })
         .collect::<Option<Vec<_>>>()?;
@@ -320,10 +354,19 @@ fn invoice_copy(locale: Locale) -> &'static InvoiceCopy {
 
 /// One language's invoice (Phase 20 Decision 8), without the sign-off.
 /// Plain text; no VAT line (KOR).
-fn invoice_section(locale: Locale, order: &OrderResponse, placed_at: &str, tracking_url: &str) -> String {
+fn invoice_section(
+    locale: Locale,
+    order: &OrderResponse,
+    placed_at: &str,
+    tracking_url: &str,
+) -> String {
     let copy = invoice_copy(locale);
 
-    let delivery_line = fulfilment_line(copy, &order.delivery_type, order.delivery_address.as_deref());
+    let delivery_line = fulfilment_line(
+        copy,
+        &order.delivery_type,
+        order.delivery_address.as_deref(),
+    );
 
     let mut body = format!(
         "{} {},\n\n{}\n\n{}: {}\n{}: {}\n{}\n\n",
@@ -342,7 +385,10 @@ fn invoice_section(locale: Locale, order: &OrderResponse, placed_at: &str, track
             Some(label) => format!("{} ({label})", item.item_name),
             None => item.item_name.clone(),
         };
-        body.push_str(&format!("{} x {name} — €{}\n", item.quantity, item.subtotal));
+        body.push_str(&format!(
+            "{} x {name} — €{}\n",
+            item.quantity, item.subtotal
+        ));
     }
     body.push_str(&format!("\n{}: €{}\n\n", copy.total, order.total));
 
@@ -355,7 +401,10 @@ fn invoice_section(locale: Locale, order: &OrderResponse, placed_at: &str, track
             if let Some(bic) = &payment.bic {
                 body.push_str(&format!("BIC: {bic}\n"));
             }
-            body.push_str(&format!("{}: {}\n\n{}\n\n", copy.reference, payment.reference, copy.use_reference));
+            body.push_str(&format!(
+                "{}: {}\n\n{}\n\n",
+                copy.reference, payment.reference, copy.use_reference
+            ));
             if let Some(kvk) = &payment.kvk {
                 body.push_str(&format!("KvK: {kvk}\n\n"));
             }
@@ -363,22 +412,29 @@ fn invoice_section(locale: Locale, order: &OrderResponse, placed_at: &str, track
         None => body.push_str(&format!("{}\n\n", copy.whatsapp_fallback)),
     }
 
-    body.push_str(&format!("{}\n\n{}\n{tracking_url}", copy.verified_only, copy.after_paying));
+    body.push_str(&format!(
+        "{}\n\n{}\n{tracking_url}",
+        copy.verified_only, copy.after_paying
+    ));
     body
 }
 
 /// The customer's invoice email, in every language (Phase 24 Decision 11).
 pub fn invoice_email(
-    primary: Locale,
     order: &OrderResponse,
     placed_at: &str,
     site_url: &str,
     token: Uuid,
 ) -> (String, String) {
-    let parts: Vec<_> = ordered(primary)
+    let parts: Vec<_> = Locale::ALL
+        .into_iter()
         .map(|locale| {
             let url = tracking_url(site_url, locale, token);
-            (locale, invoice_copy(locale).subject, invoice_section(locale, order, placed_at, &url))
+            (
+                locale,
+                invoice_copy(locale).subject,
+                invoice_section(locale, order, placed_at, &url),
+            )
         })
         .collect();
     multilingual(&parts, &order.payment_reference)
@@ -491,7 +547,10 @@ fn quote_section(locale: Locale, quote: &QuoteEmail, url: &str) -> String {
     );
 
     for line in quote.lines {
-        body.push_str(&format!("{} x {} — €{}\n", line.quantity, line.description, line.subtotal));
+        body.push_str(&format!(
+            "{} x {} — €{}\n",
+            line.quantity, line.description, line.subtotal
+        ));
     }
     body.push_str(&format!("\n{}: €{}\n\n", invoice.total, quote.total));
 
@@ -511,11 +570,16 @@ fn quote_section(locale: Locale, quote: &QuoteEmail, url: &str) -> String {
 
 /// The quote sent to the customer when the owner presses "Send", in every
 /// language (Phase 24 Decision 11).
-pub fn quote_email(primary: Locale, quote: &QuoteEmail, site_url: &str, token: Uuid) -> (String, String) {
-    let parts: Vec<_> = ordered(primary)
+pub fn quote_email(quote: &QuoteEmail, site_url: &str, token: Uuid) -> (String, String) {
+    let parts: Vec<_> = Locale::ALL
+        .into_iter()
         .map(|locale| {
             let url = quote_url(site_url, locale, token);
-            (locale, quote_copy(locale).subject, quote_section(locale, quote, &url))
+            (
+                locale,
+                quote_copy(locale).subject,
+                quote_section(locale, quote, &url),
+            )
         })
         .collect();
     multilingual(&parts, &format!("#{}", quote.quote_id))
@@ -531,8 +595,14 @@ mod tests {
     const SITE: &str = "https://zainstreat.com";
     const TOKEN: Uuid = Uuid::nil();
     const ORDER_URL: &str = "https://zainstreat.com/nl/order/00000000-0000-0000-0000-000000000000";
-    const EMAILING: [&str; 6] =
-        ["processing", "ready_for_collection", "out_for_delivery", "serving_on_site", "completed", "cancelled"];
+    const EMAILING: [&str; 6] = [
+        "processing",
+        "ready_for_collection",
+        "out_for_delivery",
+        "serving_on_site",
+        "completed",
+        "cancelled",
+    ];
 
     fn order(payment: Option<PaymentInstructions>) -> OrderResponse {
         OrderResponse {
@@ -586,13 +656,15 @@ mod tests {
         }
     }
 
-    fn status(locale: Locale, status: &str) -> Option<(String, String)> {
-        status_email(locale, "Amina", "ZTM-1042", status, SITE, TOKEN)
+    fn status(status: &str) -> Option<(String, String)> {
+        status_email("Amina", "ZTM-1042", status, SITE, TOKEN)
     }
 
     /// The headers of an email body, in order.
     fn headers(body: &str) -> Vec<&str> {
-        body.lines().filter(|l| l.starts_with("--- ") && l.ends_with(" ---")).collect()
+        body.lines()
+            .filter(|l| l.starts_with("--- ") && l.ends_with(" ---"))
+            .collect()
     }
 
     #[test]
@@ -608,11 +680,16 @@ mod tests {
     fn every_emailing_status_has_copy_in_every_language() {
         for locale in Locale::ALL {
             for s in EMAILING {
-                let (subject, section) = status_section(locale, "Amina", "ZTM-1042", s, SITE, TOKEN)
-                    .unwrap_or_else(|| panic!("{s} {locale:?}"));
+                let (subject, section) =
+                    status_section(locale, "Amina", "ZTM-1042", s, SITE, TOKEN)
+                        .unwrap_or_else(|| panic!("{s} {locale:?}"));
                 assert!(!subject.is_empty(), "{s} {locale:?}");
                 let url = tracking_url(SITE, locale, TOKEN);
-                assert!(section.contains("ZTM-1042") && section.contains(&url) && section.contains("Amina"));
+                assert!(
+                    section.contains("ZTM-1042")
+                        && section.contains(&url)
+                        && section.contains("Amina")
+                );
             }
         }
     }
@@ -620,83 +697,92 @@ mod tests {
     #[test]
     fn statuses_before_payment_confirmation_send_nothing() {
         for s in ["awaiting_payment", "payment_claimed"] {
-            for locale in Locale::ALL {
-                assert!(status(locale, s).is_none());
-            }
+            assert!(status(s).is_none());
         }
     }
 
     #[test]
-    fn multilingual_email_puts_the_customers_language_first() {
-        for primary in Locale::ALL {
-            let (_, body) = status(primary, "processing").unwrap();
-            let found = headers(&body);
-            assert_eq!(found.len(), 3, "{primary:?}");
-            assert_eq!(found[0], format!("--- {} ---", primary.name()));
-            for locale in Locale::ALL {
-                assert_eq!(body.matches(&format!("--- {} ---", locale.name())).count(), 1);
-            }
-            assert!(body.starts_with(&format!("--- {} ---\n\n{} Amina,", primary.name(), primary.greeting())));
-        }
-    }
-
-    #[test]
-    fn the_rest_follow_in_fixed_order() {
-        let (_, body) = status(Locale::Nl, "processing").unwrap();
-        assert_eq!(headers(&body), ["--- Nederlands ---", "--- English ---", "--- Français ---"]);
+    fn sections_are_always_english_dutch_french() {
+        let (_, body) = status("processing").unwrap();
+        assert_eq!(
+            headers(&body),
+            ["--- English ---", "--- Nederlands ---", "--- Français ---"]
+        );
+        assert!(body.starts_with("--- English ---\n\nHi Amina,"));
     }
 
     #[test]
     fn each_section_links_to_its_own_language() {
-        let (_, body) = status(Locale::Fr, "cancelled").unwrap();
+        let (_, body) = status("cancelled").unwrap();
         let sections: Vec<&str> = body.split("\n--- ").collect();
         assert_eq!(sections.len(), 3);
-        for (section, locale) in sections.iter().zip([Locale::Fr, Locale::En, Locale::Nl]) {
-            assert!(section.contains(&tracking_url(SITE, locale, TOKEN)), "{locale:?}");
+        for (section, locale) in sections.iter().zip(Locale::ALL) {
+            assert!(
+                section.contains(&tracking_url(SITE, locale, TOKEN)),
+                "{locale:?}"
+            );
             assert!(section.contains(&contact_url(SITE, locale)), "{locale:?}");
             for other in Locale::ALL.into_iter().filter(|l| *l != locale) {
-                assert!(!section.contains(&format!("/{}/", other.as_str())), "{locale:?} links to {other:?}");
+                assert!(
+                    !section.contains(&format!("/{}/", other.as_str())),
+                    "{locale:?} links to {other:?}"
+                );
             }
         }
     }
 
     #[test]
     fn sign_off_appears_once_at_the_end() {
-        let (_, body) = status(Locale::En, "completed").unwrap();
+        let (_, body) = status("completed").unwrap();
         assert_eq!(body.matches(SIGN_OFF).count(), 1);
         assert!(body.ends_with(&format!("\n\n{SIGN_OFF}")));
-        let (_, invoice) = invoice_email(Locale::En, &order(None), "31-10-2026 14:05", SITE, TOKEN);
+        let (_, invoice) = invoice_email(&order(None), "31-10-2026 14:05", SITE, TOKEN);
         assert_eq!(invoice.matches(SIGN_OFF).count(), 1);
     }
 
     #[test]
     fn subject_joins_all_three_in_body_order() {
-        let (subject, _) = status(Locale::Fr, "processing").unwrap();
-        assert_eq!(subject, "Paiement confirmé / Payment confirmed / Betaling bevestigd — ZTM-1042");
-        let (subject, _) = invoice_email(Locale::Nl, &order(None), "31-10-2026 14:05", SITE, TOKEN);
-        assert_eq!(subject, "Factuur / Invoice / Facture — ZTM-1042");
+        let (subject, _) = status("processing").unwrap();
+        assert_eq!(
+            subject,
+            "Payment confirmed / Betaling bevestigd / Paiement confirmé — ZTM-1042"
+        );
+        let (subject, _) = invoice_email(&order(None), "31-10-2026 14:05", SITE, TOKEN);
+        assert_eq!(subject, "Invoice / Factuur / Facture — ZTM-1042");
     }
 
     #[test]
     fn cancellation_points_to_the_contact_page() {
-        let (_, section) = status_section(Locale::Nl, "Amina", "ZTM-1042", "cancelled", SITE, TOKEN).unwrap();
+        let (_, section) =
+            status_section(Locale::Nl, "Amina", "ZTM-1042", "cancelled", SITE, TOKEN).unwrap();
         assert!(section.contains("https://zainstreat.com/nl/contact"));
     }
 
     #[test]
     fn dutch_status_section_is_dutch() {
-        let (subject, section) = status_section(Locale::Nl, "Amina", "ZTM-1042", "out_for_delivery", SITE, TOKEN).unwrap();
+        let (subject, section) = status_section(
+            Locale::Nl,
+            "Amina",
+            "ZTM-1042",
+            "out_for_delivery",
+            SITE,
+            TOKEN,
+        )
+        .unwrap();
         assert_eq!(subject, "Onderweg");
         assert_eq!(
             section,
-            format!("Hoi Amina,\n\nJe bestelling ZTM-1042 is onderweg naar je toe.\n\nIs hij aangekomen? Laat het ons weten op je bestelpagina:\n{ORDER_URL}")
+            format!(
+                "Hoi Amina,\n\nJe bestelling ZTM-1042 is onderweg naar je toe.\n\nIs hij aangekomen? Laat het ons weten op je bestelpagina:\n{ORDER_URL}"
+            )
         );
     }
 
     /// Pinned to the Phase 24 copy.md §2.
     #[test]
     fn french_status_section_matches_the_copy() {
-        let (subject, section) = status_section(Locale::Fr, "Amina", "ZTM-1042", "processing", SITE, TOKEN).unwrap();
+        let (subject, section) =
+            status_section(Locale::Fr, "Amina", "ZTM-1042", "processing", SITE, TOKEN).unwrap();
         assert_eq!(subject, "Paiement confirmé");
         assert_eq!(
             section,
@@ -709,7 +795,12 @@ mod tests {
     /// which `multilingual` adds once.
     #[test]
     fn english_invoice_keeps_the_phase_20_text() {
-        let body = invoice_section(Locale::En, &order(Some(bank())), "31-10-2026 14:05", "https://zainstreat.com/en/order/x");
+        let body = invoice_section(
+            Locale::En,
+            &order(Some(bank())),
+            "31-10-2026 14:05",
+            "https://zainstreat.com/en/order/x",
+        );
         assert_eq!(
             body,
             "Hi Amina,\n\nThanks for your order! Here is your invoice.\n\nOrder: ZTM-1042\nDate: 31-10-2026 14:05\nPickup\n\n\
@@ -732,7 +823,12 @@ mod tests {
     /// Pinned to the Phase 24 copy.md §3.
     #[test]
     fn french_invoice_matches_the_copy() {
-        let body = invoice_section(Locale::Fr, &order(Some(bank())), "31-10-2026 14:05", "https://zainstreat.com/fr/order/x");
+        let body = invoice_section(
+            Locale::Fr,
+            &order(Some(bank())),
+            "31-10-2026 14:05",
+            "https://zainstreat.com/fr/order/x",
+        );
         assert_eq!(
             body,
             "Bonjour Amina,\n\nMerci pour votre commande ! Voici votre facture.\n\nCommande: ZTM-1042\nDate: 31-10-2026 14:05\nÀ retirer\n\n\
@@ -746,8 +842,11 @@ mod tests {
 
     #[test]
     fn invoice_email_has_every_language_with_bank_details() {
-        let (_, body) = invoice_email(Locale::Fr, &order(Some(bank())), "31-10-2026 14:05", SITE, TOKEN);
-        assert_eq!(headers(&body), ["--- Français ---", "--- English ---", "--- Nederlands ---"]);
+        let (_, body) = invoice_email(&order(Some(bank())), "31-10-2026 14:05", SITE, TOKEN);
+        assert_eq!(
+            headers(&body),
+            ["--- English ---", "--- Nederlands ---", "--- Français ---"]
+        );
         assert_eq!(body.matches("IBAN: NL91ABNA0417164300").count(), 3);
     }
 
@@ -756,7 +855,7 @@ mod tests {
         let mut on_site = order(None);
         on_site.delivery_type = "on_site".into();
         on_site.delivery_address = Some("Zaal De Linde, Utrecht".into());
-        let (_, body) = invoice_email(Locale::En, &on_site, "31-10-2026 14:05", SITE, TOKEN);
+        let (_, body) = invoice_email(&on_site, "31-10-2026 14:05", SITE, TOKEN);
         assert!(body.contains("Served at: Zaal De Linde, Utrecht"));
         assert!(body.contains("Locatie: Zaal De Linde, Utrecht"));
         assert!(body.contains("Lieu: Zaal De Linde, Utrecht"));
@@ -764,8 +863,16 @@ mod tests {
 
     fn quote_lines() -> Vec<QuoteEmailLine<'static>> {
         vec![
-            QuoteEmailLine { description: "Jollof rice per guest", quantity: 80, subtotal: Decimal::new(96000, 2) },
-            QuoteEmailLine { description: "Serving staff", quantity: 2, subtotal: Decimal::new(25000, 2) },
+            QuoteEmailLine {
+                description: "Jollof rice per guest",
+                quantity: 80,
+                subtotal: Decimal::new(96000, 2),
+            },
+            QuoteEmailLine {
+                description: "Serving staff",
+                quantity: 2,
+                subtotal: Decimal::new(25000, 2),
+            },
         ]
     }
 
@@ -788,7 +895,11 @@ mod tests {
     #[test]
     fn english_quote_section_matches_the_approved_copy() {
         let lines = quote_lines();
-        let body = quote_section(Locale::En, &quote(&lines, Some("Halal, no pork.")), "https://zainstreat.com/en/quote/x");
+        let body = quote_section(
+            Locale::En,
+            &quote(&lines, Some("Halal, no pork.")),
+            "https://zainstreat.com/en/quote/x",
+        );
         assert_eq!(
             body,
             "Hi Amina,\n\nThank you for your enquiry. Here is our quote for your event on 05-12-2026 (80 guests).\n\n\
@@ -804,7 +915,11 @@ mod tests {
     #[test]
     fn dutch_quote_section_is_dutch_and_skips_empty_notes() {
         let lines = quote_lines();
-        let body = quote_section(Locale::Nl, &quote(&lines, Some("  ")), "https://zainstreat.com/nl/quote/x");
+        let body = quote_section(
+            Locale::Nl,
+            &quote(&lines, Some("  ")),
+            "https://zainstreat.com/nl/quote/x",
+        );
         assert!(body.starts_with("Hoi Amina,"));
         assert!(body.contains("(80 gasten)") && body.contains("Locatie: Zaal De Linde, Utrecht"));
         assert!(body.contains("Totaal: €1210.00") && body.contains("geldig tot en met 20-11-2026"));
@@ -815,7 +930,11 @@ mod tests {
     #[test]
     fn french_quote_section_matches_the_copy() {
         let lines = quote_lines();
-        let body = quote_section(Locale::Fr, &quote(&lines, Some("Halal, sans porc.")), "https://zainstreat.com/fr/quote/x");
+        let body = quote_section(
+            Locale::Fr,
+            &quote(&lines, Some("Halal, sans porc.")),
+            "https://zainstreat.com/fr/quote/x",
+        );
         assert_eq!(
             body,
             "Bonjour Amina,\n\nMerci pour votre demande. Voici notre devis pour votre événement du 05-12-2026 (80 invités).\n\n\
@@ -831,8 +950,11 @@ mod tests {
     #[test]
     fn quote_email_joins_subjects_and_links_each_language() {
         let lines = quote_lines();
-        let (subject, body) = quote_email(Locale::En, &quote(&lines, None), SITE, TOKEN);
-        assert_eq!(subject, "Catering quote / Cateringofferte / Devis traiteur — #12");
+        let (subject, body) = quote_email(&quote(&lines, None), SITE, TOKEN);
+        assert_eq!(
+            subject,
+            "Catering quote / Cateringofferte / Devis traiteur — #12"
+        );
         for locale in Locale::ALL {
             assert!(body.contains(&quote_url(SITE, locale, TOKEN)));
         }

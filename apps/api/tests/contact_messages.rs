@@ -2,7 +2,7 @@ mod common;
 
 use axum::http::StatusCode;
 use common::post;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use sqlx::PgPool;
 
 fn valid_payload() -> Value {
@@ -28,7 +28,13 @@ async fn contact_message_create_rejects_an_unknown_subject(pool: PgPool) {
     payload["subject"] = json!("refund");
     let (status, body) = post(pool, "/api/contact-messages", payload).await;
     assert_eq!(status, StatusCode::BAD_REQUEST);
-    assert!(body["fields"].as_array().unwrap().iter().any(|f| f["field"] == "subject"));
+    assert!(
+        body["fields"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|f| f["field"] == "subject")
+    );
 }
 
 #[sqlx::test]
@@ -38,7 +44,11 @@ async fn contact_message_create_rejects_an_empty_message(pool: PgPool) {
     let (status, body) = post(pool, "/api/contact-messages", payload).await;
     assert_eq!(status, StatusCode::BAD_REQUEST);
     let fields = body["fields"].as_array().unwrap();
-    assert!(fields.iter().any(|f| f["field"] == "message" && f["message"] == "required"));
+    assert!(
+        fields
+            .iter()
+            .any(|f| f["field"] == "message" && f["message"] == "required")
+    );
 }
 
 #[sqlx::test]
@@ -48,7 +58,11 @@ async fn contact_message_create_rejects_an_overlong_message(pool: PgPool) {
     let (status, body) = post(pool, "/api/contact-messages", payload).await;
     assert_eq!(status, StatusCode::BAD_REQUEST);
     let fields = body["fields"].as_array().unwrap();
-    assert!(fields.iter().any(|f| f["field"] == "message" && f["message"] == "too_long"));
+    assert!(
+        fields
+            .iter()
+            .any(|f| f["field"] == "message" && f["message"] == "too_long")
+    );
 }
 
 #[sqlx::test]

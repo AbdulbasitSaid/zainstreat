@@ -1,8 +1,8 @@
-use crate::error::{AppError, FieldError};
 use crate::MediaConfig;
+use crate::error::{AppError, FieldError};
 use axum::{
-    extract::{DefaultBodyLimit, Multipart, State},
     Json,
+    extract::{DefaultBodyLimit, Multipart, State},
 };
 use serde::Serialize;
 
@@ -28,7 +28,10 @@ pub async fn upload(
 ) -> Result<Json<UploadResponse>, AppError> {
     // Single "file" field is the only thing this form ever sends.
     let Some(field) = multipart.next_field().await.map_err(|_| {
-        AppError::Validation(vec![FieldError { field: "file".into(), message: "missing".into() }])
+        AppError::Validation(vec![FieldError {
+            field: "file".into(),
+            message: "missing".into(),
+        }])
     })?
     else {
         return Err(AppError::Validation(vec![FieldError {
@@ -46,7 +49,10 @@ pub async fn upload(
     };
 
     let bytes = field.bytes().await.map_err(|_| {
-        AppError::Validation(vec![FieldError { field: "file".into(), message: "unreadable".into() }])
+        AppError::Validation(vec![FieldError {
+            field: "file".into(),
+            message: "unreadable".into(),
+        }])
     })?;
     if bytes.len() > MAX_BYTES {
         return Err(AppError::Validation(vec![FieldError {

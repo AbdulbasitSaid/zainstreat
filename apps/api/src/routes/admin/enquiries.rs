@@ -1,9 +1,9 @@
 use crate::email::EmailConfig;
 use crate::error::AppError;
-use crate::routes::admin::quotes::{load_admin_quote, AdminQuoteResponse};
+use crate::routes::admin::quotes::{AdminQuoteResponse, load_admin_quote};
 use axum::{
-    extract::{Path, Query, State},
     Json,
+    extract::{Path, Query, State},
 };
 use chrono::{DateTime, NaiveDate, Utc};
 use serde::{Deserialize, Serialize};
@@ -103,7 +103,12 @@ pub async fn list_catering_enquiries(
         .await?
         .unwrap_or(0);
 
-    Ok(Json(CateringEnquiryListResponse { enquiries, total, limit, offset }))
+    Ok(Json(CateringEnquiryListResponse {
+        enquiries,
+        total,
+        limit,
+        offset,
+    }))
 }
 
 pub async fn get_catering_enquiry(
@@ -191,7 +196,12 @@ pub async fn list_contact_messages(
         .await?
         .unwrap_or(0);
 
-    Ok(Json(ContactMessageListResponse { messages, total, limit, offset }))
+    Ok(Json(ContactMessageListResponse {
+        messages,
+        total,
+        limit,
+        offset,
+    }))
 }
 
 pub async fn get_contact_message(

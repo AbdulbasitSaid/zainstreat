@@ -18,7 +18,12 @@ async fn login(pool: &PgPool) -> String {
     session_cookie(&set_cookie.expect("login should set a session cookie")).to_string()
 }
 
-async fn insert_catering_enquiry(pool: &PgPool, name: &str, event_type: &str, guest_count: i32) -> i64 {
+async fn insert_catering_enquiry(
+    pool: &PgPool,
+    name: &str,
+    event_type: &str,
+    guest_count: i32,
+) -> i64 {
     let event_date = (Utc::now() + Duration::days(30)).date_naive();
     sqlx::query_scalar!(
         r#"

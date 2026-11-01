@@ -1,13 +1,13 @@
 use crate::email::EmailConfig;
 use crate::error::{AppError, FieldError, UnavailableItem};
-use crate::order_emails::{invoice_email, Locale};
+use crate::order_emails::{Locale, invoice_email};
 use crate::order_status::CUSTOMER_COMPLETABLE;
-use crate::payment::{payment_reference, PaymentConfig, PaymentInstructions};
+use crate::payment::{PaymentConfig, PaymentInstructions, payment_reference};
 use crate::validation::{is_valid_email, is_valid_phone};
 use axum::{
+    Json,
     extract::{Path, State},
     http::StatusCode,
-    Json,
 };
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
@@ -97,47 +97,82 @@ fn validate(payload: &CreateOrderRequest) -> Vec<FieldError> {
 
     let trimmed_name = payload.customer_name.trim();
     if trimmed_name.is_empty() {
-        errors.push(FieldError { field: "customer_name".into(), message: "required".into() });
-    } else if trimmed_name.chars().count() < NAME_MIN_LENGTH || !trimmed_name.chars().any(char::is_alphabetic) {
-        errors.push(FieldError { field: "customer_name".into(), message: "invalid".into() });
+        errors.push(FieldError {
+            field: "customer_name".into(),
+            message: "required".into(),
+        });
+    } else if trimmed_name.chars().count() < NAME_MIN_LENGTH
+        || !trimmed_name.chars().any(char::is_alphabetic)
+    {
+        errors.push(FieldError {
+            field: "customer_name".into(),
+            message: "invalid".into(),
+        });
     }
 
     if payload.customer_email.trim().is_empty() {
-        errors.push(FieldError { field: "customer_email".into(), message: "required".into() });
+        errors.push(FieldError {
+            field: "customer_email".into(),
+            message: "required".into(),
+        });
     } else if !is_valid_email(&payload.customer_email) {
-        errors.push(FieldError { field: "customer_email".into(), message: "invalid".into() });
+        errors.push(FieldError {
+            field: "customer_email".into(),
+            message: "invalid".into(),
+        });
     }
 
     let trimmed_phone = payload.customer_phone.trim();
     if trimmed_phone.is_empty() {
-        errors.push(FieldError { field: "customer_phone".into(), message: "required".into() });
+        errors.push(FieldError {
+            field: "customer_phone".into(),
+            message: "required".into(),
+        });
     } else if !is_valid_phone(trimmed_phone) {
-        errors.push(FieldError { field: "customer_phone".into(), message: "invalid".into() });
+        errors.push(FieldError {
+            field: "customer_phone".into(),
+            message: "invalid".into(),
+        });
     }
 
     if matches!(payload.delivery_type, DeliveryType::Delivery) {
         let trimmed_address = payload.delivery_address.as_deref().unwrap_or("").trim();
         if trimmed_address.is_empty() {
-            errors.push(FieldError { field: "delivery_address".into(), message: "required".into() });
+            errors.push(FieldError {
+                field: "delivery_address".into(),
+                message: "required".into(),
+            });
         } else if trimmed_address.chars().count() < ADDRESS_MIN_LENGTH {
-            errors.push(FieldError { field: "delivery_address".into(), message: "too_short".into() });
+            errors.push(FieldError {
+                field: "delivery_address".into(),
+                message: "too_short".into(),
+            });
         }
     }
 
     if let Some(notes) = &payload.notes
         && notes.chars().count() > NOTES_MAX_LENGTH
     {
-        errors.push(FieldError { field: "notes".into(), message: "too_long".into() });
+        errors.push(FieldError {
+            field: "notes".into(),
+            message: "too_long".into(),
+        });
     }
 
     if payload.items.is_empty() {
-        errors.push(FieldError { field: "items".into(), message: "empty".into() });
+        errors.push(FieldError {
+            field: "items".into(),
+            message: "empty".into(),
+        });
     }
 
     if let Some(locale) = &payload.locale
         && Locale::parse(locale).is_none()
     {
-        errors.push(FieldError { field: "locale".into(), message: "invalid".into() });
+        errors.push(FieldError {
+            field: "locale".into(),
+            message: "invalid".into(),
+        });
     }
     for (index, item) in payload.items.iter().enumerate() {
         if item.quantity <= 0 {
@@ -270,9 +305,9 @@ pub async fn create_order(
         return Err(AppError::ItemsUnavailable(unavailable));
     }
 
-    let subtotal = priced_lines
-        .iter()
-        .fold(Decimal::ZERO, |acc, line| acc + line.unit_price * Decimal::from(line.quantity));
+    let subtotal = priced_lines.iter().fold(Decimal::ZERO, |acc, line| {
+        acc + line.unit_price * Decimal::from(line.quantity)
+    });
     let delivery_fee = Decimal::ZERO; // Decision 9 — Beyond MVP.
     let total = subtotal + delivery_fee;
 
@@ -280,7 +315,11 @@ pub async fn create_order(
         DeliveryType::Pickup => "pickup",
         DeliveryType::Delivery => "delivery",
     };
-    let locale = payload.locale.as_deref().and_then(Locale::parse).unwrap_or(Locale::En);
+    let locale = payload
+        .locale
+        .as_deref()
+        .and_then(Locale::parse)
+        .unwrap_or(Locale::En);
 
     let order = sqlx::query!(
         r#"
@@ -364,12 +403,15 @@ pub async fn create_order(
         completed_by: None,
     };
 
-    send_invoice(&email, locale, &response, &order.placed_at);
+    send_invoice(&email, &response, &order.placed_at);
 
     if let Some(business_address) = email.business_notify_address() {
         email.spawn_send(
             business_address,
-            format!("New order {} — €{}", response.payment_reference, response.total),
+            format!(
+                "New order {} — €{}",
+                response.payment_reference, response.total
+            ),
             new_order_owner_email_body(&response, email.admin_url()),
         );
     }
@@ -379,8 +421,8 @@ pub async fn create_order(
 
 /// The customer's invoice email, for a cart order or an accepted catering
 /// quote (Phase 23 Decision 4).
-pub(crate) fn send_invoice(email: &EmailConfig, locale: Locale, order: &OrderResponse, placed_at: &str) {
-    let (subject, body) = invoice_email(locale, order, placed_at, email.site_url(), order.public_token);
+pub(crate) fn send_invoice(email: &EmailConfig, order: &OrderResponse, placed_at: &str) {
+    let (subject, body) = invoice_email(order, placed_at, email.site_url(), order.public_token);
     email.spawn_send(order.customer_email.clone(), subject, body);
 }
 

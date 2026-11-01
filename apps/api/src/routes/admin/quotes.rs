@@ -1,12 +1,12 @@
 use crate::email::EmailConfig;
 use crate::error::{AppError, FieldError};
-use crate::order_emails::{quote_email, quote_url, Locale, QuoteEmail, QuoteEmailLine};
+use crate::order_emails::{Locale, QuoteEmail, QuoteEmailLine, quote_email, quote_url};
 use crate::payment::payment_reference;
 use crate::quote_status::{admin_can_edit, display_status};
-use crate::routes::quotes::{load_quote_items, QuoteItemResponse};
+use crate::routes::quotes::{QuoteItemResponse, load_quote_items};
 use axum::{
-    extract::{Path, State},
     Json,
+    extract::{Path, State},
 };
 use chrono::{DateTime, NaiveDate, Utc};
 use rust_decimal::Decimal;
@@ -140,14 +140,21 @@ pub(crate) async fn load_admin_quote(
 }
 
 async fn amsterdam_today(pool: &PgPool) -> Result<NaiveDate, AppError> {
-    Ok(sqlx::query_scalar!(r#"SELECT (now() AT TIME ZONE 'Europe/Amsterdam')::date as "today!: NaiveDate""#)
-        .fetch_one(pool)
-        .await?)
+    Ok(sqlx::query_scalar!(
+        r#"SELECT (now() AT TIME ZONE 'Europe/Amsterdam')::date as "today!: NaiveDate""#
+    )
+    .fetch_one(pool)
+    .await?)
 }
 
 fn validate(payload: &SaveQuoteRequest, today: NaiveDate) -> Vec<FieldError> {
     let mut errors = Vec::new();
-    let mut push = |field: String, message: &str| errors.push(FieldError { field, message: message.into() });
+    let mut push = |field: String, message: &str| {
+        errors.push(FieldError {
+            field,
+            message: message.into(),
+        })
+    };
 
     if payload.items.is_empty() {
         push("items".into(), "empty");
@@ -181,7 +188,11 @@ fn validate(payload: &SaveQuoteRequest, today: NaiveDate) -> Vec<FieldError> {
         }
     }
 
-    if payload.notes.as_deref().is_some_and(|n| n.chars().count() > NOTES_MAX_LENGTH) {
+    if payload
+        .notes
+        .as_deref()
+        .is_some_and(|n| n.chars().count() > NOTES_MAX_LENGTH)
+    {
         push("notes".into(), "too_long");
     }
 
@@ -215,15 +226,21 @@ pub async fn save_quote(
 ) -> Result<Json<AdminQuoteResponse>, AppError> {
     let mut tx = pool.begin().await?;
 
-    sqlx::query_scalar!("SELECT id FROM catering_enquiries WHERE id = $1", enquiry_id)
-        .fetch_optional(&mut *tx)
-        .await?
-        .ok_or(AppError::NotFound)?;
+    sqlx::query_scalar!(
+        "SELECT id FROM catering_enquiries WHERE id = $1",
+        enquiry_id
+    )
+    .fetch_optional(&mut *tx)
+    .await?
+    .ok_or(AppError::NotFound)?;
 
     // Locked so a customer's accept can't land between the check and the save.
-    let existing = sqlx::query_scalar!("SELECT status FROM catering_quotes WHERE enquiry_id = $1 FOR UPDATE", enquiry_id)
-        .fetch_optional(&mut *tx)
-        .await?;
+    let existing = sqlx::query_scalar!(
+        "SELECT status FROM catering_quotes WHERE enquiry_id = $1 FOR UPDATE",
+        enquiry_id
+    )
+    .fetch_optional(&mut *tx)
+    .await?;
     if existing.is_some_and(|status| !admin_can_edit(&status)) {
         return Err(AppError::InvalidStatusTransition);
     }
@@ -237,7 +254,11 @@ pub async fn save_quote(
         FulfilmentType::Pickup => None,
         _ => payload.delivery_address.as_deref().map(str::trim),
     };
-    let notes = payload.notes.as_deref().map(str::trim).filter(|n| !n.is_empty());
+    let notes = payload
+        .notes
+        .as_deref()
+        .map(str::trim)
+        .filter(|n| !n.is_empty());
 
     let quote_id = sqlx::query_scalar!(
         r#"
@@ -266,9 +287,12 @@ pub async fn save_quote(
     .fetch_one(&mut *tx)
     .await?;
 
-    sqlx::query!("DELETE FROM catering_quote_items WHERE quote_id = $1", quote_id)
-        .execute(&mut *tx)
-        .await?;
+    sqlx::query!(
+        "DELETE FROM catering_quote_items WHERE quote_id = $1",
+        quote_id
+    )
+    .execute(&mut *tx)
+    .await?;
 
     for (position, line) in payload.items.iter().enumerate() {
         sqlx::query!(
@@ -362,14 +386,17 @@ pub async fn send_quote(
 
     tx.commit().await?;
 
-    tracing::info!(enquiry_id, quote_id = current.id, "admin sent catering quote");
+    tracing::info!(
+        enquiry_id,
+        quote_id = current.id,
+        "admin sent catering quote"
+    );
 
     let quote = load_admin_quote(&pool, email.site_url(), enquiry_id)
         .await?
         .ok_or(AppError::Internal)?;
 
     // After the commit, like `create_order`: a failed send never undoes it.
-    let locale = Locale::parse(&enquiry.locale).unwrap_or(Locale::En);
     let lines: Vec<QuoteEmailLine> = quote
         .items
         .iter()
@@ -380,7 +407,6 @@ pub async fn send_quote(
         })
         .collect();
     let (subject, body) = quote_email(
-        locale,
         &QuoteEmail {
             customer_name: &enquiry.name,
             quote_id: quote.id,
@@ -398,5 +424,8 @@ pub async fn send_quote(
     );
     email.spawn_send(enquiry.email, subject, body);
 
-    Ok(Json(SendQuoteResponse { quote, email_queued: email.is_enabled() }))
+    Ok(Json(SendQuoteResponse {
+        quote,
+        email_queued: email.is_enabled(),
+    }))
 }

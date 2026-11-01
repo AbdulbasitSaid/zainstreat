@@ -6,7 +6,9 @@ pub fn is_valid_email(value: &str) -> bool {
         return false;
     }
 
-    let Some((local, domain)) = value.split_once('@') else { return false };
+    let Some((local, domain)) = value.split_once('@') else {
+        return false;
+    };
     if local.is_empty() || local.len() > 64 || domain.contains('@') {
         return false;
     }
@@ -34,7 +36,9 @@ fn is_valid_email_domain(domain: &str) -> bool {
     if labels.len() < 2 {
         return false;
     }
-    let Some(tld) = labels.last() else { return false };
+    let Some(tld) = labels.last() else {
+        return false;
+    };
     if tld.len() < 2 || !tld.chars().all(|c| c.is_ascii_alphabetic()) {
         return false;
     }
@@ -51,18 +55,26 @@ pub fn is_valid_phone(value: &str) -> bool {
     // country code, or a leading trunk "0", then only digits/spaces/
     // hyphens/parentheses — "+" may only appear as the very first character.
     let mut chars = value.chars();
-    let Some(first) = chars.next() else { return false };
+    let Some(first) = chars.next() else {
+        return false;
+    };
     let rest = chars.as_str();
 
     let starts_ok = match first {
-        '+' => rest.chars().next().is_some_and(|c| c.is_ascii_digit() && c != '0'),
+        '+' => rest
+            .chars()
+            .next()
+            .is_some_and(|c| c.is_ascii_digit() && c != '0'),
         '0' => true,
         _ => false,
     };
     if !starts_ok {
         return false;
     }
-    if !rest.chars().all(|c| c.is_ascii_digit() || matches!(c, '-' | '(' | ')' | ' ')) {
+    if !rest
+        .chars()
+        .all(|c| c.is_ascii_digit() || matches!(c, '-' | '(' | ')' | ' '))
+    {
         return false;
     }
 

@@ -3,7 +3,7 @@ use std::time::Duration;
 use axum::{body::Body, http::Request};
 use governor::middleware::NoOpMiddleware;
 use tower_governor::{
-    governor::GovernorConfigBuilder, key_extractor::KeyExtractor, GovernorError, GovernorLayer,
+    GovernorError, GovernorLayer, governor::GovernorConfigBuilder, key_extractor::KeyExtractor,
 };
 
 /// This app's browser traffic reaches `apps/api` only through `apps/web`'s

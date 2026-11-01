@@ -1,12 +1,12 @@
 use crate::email::EmailConfig;
 use crate::error::{AppError, FieldError};
 use crate::order_emails::Locale;
-use crate::payment::{payment_reference, PaymentConfig};
+use crate::payment::{PaymentConfig, payment_reference};
 use crate::quote_status::{customer_can_accept, display_status, is_expired};
 use crate::routes::orders::{load_order_by_token, parse_token, send_invoice};
 use axum::{
-    extract::{Path, State},
     Json,
+    extract::{Path, State},
 };
 use chrono::NaiveDate;
 use rust_decimal::Decimal;
@@ -26,7 +26,10 @@ pub struct QuoteItemResponse {
     pub subtotal: Decimal,
 }
 
-pub(crate) async fn load_quote_items(pool: &PgPool, quote_id: i64) -> Result<Vec<QuoteItemResponse>, AppError> {
+pub(crate) async fn load_quote_items(
+    pool: &PgPool,
+    quote_id: i64,
+) -> Result<Vec<QuoteItemResponse>, AppError> {
     Ok(sqlx::query_as!(
         QuoteItemResponse,
         r#"
@@ -158,9 +161,10 @@ pub async fn accept_quote(
     // sees the quote row as updated, but a joined `orders` row as it was
     // before (Postgres re-checks only the locked row).
     if let Some(order_id) = quote.order_id {
-        let order_token = sqlx::query_scalar!("SELECT public_token FROM orders WHERE id = $1", order_id)
-            .fetch_one(&mut *tx)
-            .await?;
+        let order_token =
+            sqlx::query_scalar!("SELECT public_token FROM orders WHERE id = $1", order_id)
+                .fetch_one(&mut *tx)
+                .await?;
         return Ok(Json(AcceptQuoteResponse { order_token }));
     }
     // Checked before the status, so a quote the owner pulled back to draft
@@ -232,12 +236,16 @@ pub async fn accept_quote(
 
     tx.commit().await?;
 
-    tracing::info!(quote_id = quote.id, order_id = order.id, "customer accepted catering quote");
+    tracing::info!(
+        quote_id = quote.id,
+        order_id = order.id,
+        "customer accepted catering quote"
+    );
 
     // After the commit, like `create_order`: the customer gets the usual
     // invoice, and the owner a heads-up.
     let response = load_order_by_token(&pool, &payment, order.public_token).await?;
-    send_invoice(&email, locale, &response, &order.placed_at);
+    send_invoice(&email, &response, &order.placed_at);
 
     if let Some(business_address) = email.business_notify_address() {
         email.spawn_send(
@@ -261,7 +269,9 @@ pub async fn accept_quote(
         );
     }
 
-    Ok(Json(AcceptQuoteResponse { order_token: order.public_token }))
+    Ok(Json(AcceptQuoteResponse {
+        order_token: order.public_token,
+    }))
 }
 
 #[derive(Debug, Deserialize)]
@@ -281,7 +291,11 @@ pub async fn decline_quote(
 ) -> Result<Json<PublicQuoteResponse>, AppError> {
     let token = parse_token(&token)?;
 
-    let reason = payload.reason.as_deref().map(str::trim).filter(|r| !r.is_empty());
+    let reason = payload
+        .reason
+        .as_deref()
+        .map(str::trim)
+        .filter(|r| !r.is_empty());
     if reason.is_some_and(|r| r.chars().count() > DECLINE_REASON_MAX_LENGTH) {
         return Err(AppError::Validation(vec![FieldError {
             field: "reason".into(),

@@ -3,10 +3,10 @@ mod common;
 use axum::http::StatusCode;
 use chrono::{Duration, Utc};
 use common::{
-    build_test_app, get, get_with_cookie, insert_admin, patch_with_cookie, post, post_on_with_header,
-    post_with_cookie, put_with_cookie, session_cookie,
+    build_test_app, get, get_with_cookie, insert_admin, patch_with_cookie, post,
+    post_on_with_header, post_with_cookie, put_with_cookie, session_cookie,
 };
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use sqlx::PgPool;
 
 async fn insert_enquiry(pool: &PgPool) -> i64 {
@@ -88,9 +88,19 @@ impl Seeded {
 async fn seed(pool: &PgPool, sent: bool) -> Seeded {
     let cookie = login(pool).await;
     let enquiry = insert_enquiry(pool).await;
-    let mut seeded = Seeded { cookie, enquiry, token: String::new() };
+    let mut seeded = Seeded {
+        cookie,
+        enquiry,
+        token: String::new(),
+    };
     let quote = seeded.save(pool).await;
-    seeded.token = quote["quote_url"].as_str().unwrap().rsplit('/').next().unwrap().to_string();
+    seeded.token = quote["quote_url"]
+        .as_str()
+        .unwrap()
+        .rsplit('/')
+        .next()
+        .unwrap()
+        .to_string();
     if sent {
         seeded.send(pool).await;
     }
@@ -98,14 +108,21 @@ async fn seed(pool: &PgPool, sent: bool) -> Seeded {
 }
 
 async fn order_count(pool: &PgPool) -> i64 {
-    sqlx::query_scalar("SELECT COUNT(*) FROM orders").fetch_one(pool).await.unwrap()
+    sqlx::query_scalar("SELECT COUNT(*) FROM orders")
+        .fetch_one(pool)
+        .await
+        .unwrap()
 }
 
 #[sqlx::test]
 async fn the_public_quote_never_exposes_contact_details(pool: PgPool) {
     let seeded = seed(&pool, true).await;
 
-    let (status, body) = get(pool.clone(), &format!("/api/quotes/by-token/{}", seeded.token)).await;
+    let (status, body) = get(
+        pool.clone(),
+        &format!("/api/quotes/by-token/{}", seeded.token),
+    )
+    .await;
 
     assert_eq!(status, StatusCode::OK);
     assert_eq!(body["display_status"], "sent");
@@ -121,8 +138,11 @@ async fn the_public_quote_never_exposes_contact_details(pool: PgPool) {
 async fn unknown_and_malformed_tokens_404(pool: PgPool) {
     let (status, _) = get(pool.clone(), "/api/quotes/by-token/not-a-uuid").await;
     assert_eq!(status, StatusCode::NOT_FOUND);
-    let (status, _) =
-        get(pool.clone(), "/api/quotes/by-token/00000000-0000-0000-0000-000000000000").await;
+    let (status, _) = get(
+        pool.clone(),
+        "/api/quotes/by-token/00000000-0000-0000-0000-000000000000",
+    )
+    .await;
     assert_eq!(status, StatusCode::NOT_FOUND);
     let (status, _) = post(
         pool.clone(),
@@ -137,12 +157,18 @@ async fn unknown_and_malformed_tokens_404(pool: PgPool) {
 #[sqlx::test]
 async fn accepting_a_french_quote_creates_a_french_order(pool: PgPool) {
     let seeded = seed(&pool, true).await;
-    sqlx::query("UPDATE catering_enquiries SET locale = 'fr'").execute(&pool).await.unwrap();
+    sqlx::query("UPDATE catering_enquiries SET locale = 'fr'")
+        .execute(&pool)
+        .await
+        .unwrap();
 
     let (status, _) = post(pool.clone(), &seeded.uri("accept"), json!({ "version": 1 })).await;
     assert_eq!(status, StatusCode::OK);
 
-    let locale: String = sqlx::query_scalar("SELECT locale FROM orders").fetch_one(&pool).await.unwrap();
+    let locale: String = sqlx::query_scalar("SELECT locale FROM orders")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
     assert_eq!(locale, "fr");
 }
 
@@ -171,8 +197,20 @@ async fn accepting_creates_one_awaiting_payment_order(pool: PgPool) {
     assert_eq!(order["delivery_address"], "Zaal De Linde, Utrecht");
     assert_eq!(order["customer_email"], "amina@example.com");
     assert_eq!(order["total"], "1210.00");
-    assert_eq!(order["delivery_fee"].as_str().unwrap().parse::<f64>().unwrap(), 0.0);
-    assert!(order["notes"].as_str().unwrap().starts_with("Catering quote #"));
+    assert_eq!(
+        order["delivery_fee"]
+            .as_str()
+            .unwrap()
+            .parse::<f64>()
+            .unwrap(),
+        0.0
+    );
+    assert!(
+        order["notes"]
+            .as_str()
+            .unwrap()
+            .starts_with("Catering quote #")
+    );
     assert_eq!(order["items"][0]["item_name"], "Jollof rice per guest");
     assert_eq!(order["items"][1]["item_name"], "Serving staff");
 
@@ -191,7 +229,11 @@ async fn accepting_creates_one_awaiting_payment_order(pool: PgPool) {
     assert_eq!(row.lines, 2);
 
     // The public quote now points at the order.
-    let (_, quote) = get(pool.clone(), &format!("/api/quotes/by-token/{}", seeded.token)).await;
+    let (_, quote) = get(
+        pool.clone(),
+        &format!("/api/quotes/by-token/{}", seeded.token),
+    )
+    .await;
     assert_eq!(quote["display_status"], "accepted");
     assert_eq!(quote["order_token"], order_token);
 }
@@ -227,7 +269,10 @@ async fn racing_accepts_create_one_order(pool: PgPool) {
 #[sqlx::test]
 async fn an_expired_quote_cannot_be_accepted(pool: PgPool) {
     let seeded = seed(&pool, true).await;
-    sqlx::query("UPDATE catering_quotes SET valid_until = CURRENT_DATE - 2").execute(&pool).await.unwrap();
+    sqlx::query("UPDATE catering_quotes SET valid_until = CURRENT_DATE - 2")
+        .execute(&pool)
+        .await
+        .unwrap();
 
     let (status, body) = post(pool.clone(), &seeded.uri("accept"), json!({ "version": 1 })).await;
 
@@ -259,12 +304,21 @@ async fn a_stale_page_cannot_accept_or_decline_a_revised_quote(pool: PgPool) {
 async fn declining_is_idempotent_and_blocks_accepting(pool: PgPool) {
     let seeded = seed(&pool, true).await;
 
-    let (status, body) =
-        post(pool.clone(), &seeded.uri("decline"), json!({ "version": 1, "reason": "Over budget" })).await;
+    let (status, body) = post(
+        pool.clone(),
+        &seeded.uri("decline"),
+        json!({ "version": 1, "reason": "Over budget" }),
+    )
+    .await;
     assert_eq!(status, StatusCode::OK);
     assert_eq!(body["display_status"], "declined");
 
-    let (status, _) = post(pool.clone(), &seeded.uri("decline"), json!({ "version": 1 })).await;
+    let (status, _) = post(
+        pool.clone(),
+        &seeded.uri("decline"),
+        json!({ "version": 1 }),
+    )
+    .await;
     assert_eq!(status, StatusCode::OK);
     let reason: Option<String> = sqlx::query_scalar("SELECT decline_reason FROM catering_quotes")
         .fetch_one(&pool)
@@ -285,8 +339,12 @@ async fn declining_is_idempotent_and_blocks_accepting(pool: PgPool) {
 async fn an_overlong_decline_reason_is_rejected(pool: PgPool) {
     let seeded = seed(&pool, true).await;
 
-    let (status, body) =
-        post(pool.clone(), &seeded.uri("decline"), json!({ "version": 1, "reason": "x".repeat(501) })).await;
+    let (status, body) = post(
+        pool.clone(),
+        &seeded.uri("decline"),
+        json!({ "version": 1, "reason": "x".repeat(501) }),
+    )
+    .await;
 
     assert_eq!(status, StatusCode::BAD_REQUEST);
     assert_eq!(body["fields"][0]["field"], "reason");
@@ -297,7 +355,12 @@ async fn an_accepted_quote_is_final(pool: PgPool) {
     let seeded = seed(&pool, true).await;
     post(pool.clone(), &seeded.uri("accept"), json!({ "version": 1 })).await;
 
-    let (status, _) = post(pool.clone(), &seeded.uri("decline"), json!({ "version": 1 })).await;
+    let (status, _) = post(
+        pool.clone(),
+        &seeded.uri("decline"),
+        json!({ "version": 1 }),
+    )
+    .await;
     assert_eq!(status, StatusCode::CONFLICT);
 
     let (status, _) = put_with_cookie(
@@ -311,7 +374,10 @@ async fn an_accepted_quote_is_final(pool: PgPool) {
 
     let (status, _, _) = post_with_cookie(
         pool.clone(),
-        &format!("/api/admin/catering-enquiries/{}/quote/send", seeded.enquiry),
+        &format!(
+            "/api/admin/catering-enquiries/{}/quote/send",
+            seeded.enquiry
+        ),
         json!({}),
         Some(&seeded.cookie),
     )
@@ -324,7 +390,10 @@ async fn an_accepted_quote_is_final(pool: PgPool) {
 async fn the_order_from_an_on_site_quote_follows_the_on_site_branch(pool: PgPool) {
     let seeded = seed(&pool, true).await;
     post(pool.clone(), &seeded.uri("accept"), json!({ "version": 1 })).await;
-    let order_id: i64 = sqlx::query_scalar("SELECT order_id FROM catering_quotes").fetch_one(&pool).await.unwrap();
+    let order_id: i64 = sqlx::query_scalar("SELECT order_id FROM catering_quotes")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
     let detail_uri = format!("/api/admin/orders/{order_id}");
 
     let (_, detail) = get_with_cookie(pool.clone(), &detail_uri, Some(&seeded.cookie)).await;
@@ -332,7 +401,11 @@ async fn the_order_from_an_on_site_quote_follows_the_on_site_branch(pool: PgPool
 
     for next in ["processing", "serving_on_site", "completed"] {
         let (_, detail) = get_with_cookie(pool.clone(), &detail_uri, Some(&seeded.cookie)).await;
-        assert_eq!(detail["next_statuses"], json!([next, "cancelled"]), "before {next}");
+        assert_eq!(
+            detail["next_statuses"],
+            json!([next, "cancelled"]),
+            "before {next}"
+        );
         let (status, _) = patch_with_cookie(
             pool.clone(),
             &format!("/api/admin/orders/{order_id}/status"),
@@ -351,10 +424,23 @@ async fn accepting_is_rate_limited(pool: PgPool) {
     let uri = seeded.uri("accept");
 
     for _ in 0..5 {
-        let (code, _) =
-            post_on_with_header(app.clone(), &uri, json!({ "version": 1 }), "x-forwarded-for", "198.51.100.7").await;
+        let (code, _) = post_on_with_header(
+            app.clone(),
+            &uri,
+            json!({ "version": 1 }),
+            "x-forwarded-for",
+            "198.51.100.7",
+        )
+        .await;
         assert_eq!(code, StatusCode::OK);
     }
-    let (code, _) = post_on_with_header(app, &uri, json!({ "version": 1 }), "x-forwarded-for", "198.51.100.7").await;
+    let (code, _) = post_on_with_header(
+        app,
+        &uri,
+        json!({ "version": 1 }),
+        "x-forwarded-for",
+        "198.51.100.7",
+    )
+    .await;
     assert_eq!(code, StatusCode::TOO_MANY_REQUESTS);
 }

@@ -1,5 +1,5 @@
 use crate::error::AppError;
-use axum::{extract::State, Json};
+use axum::{Json, extract::State};
 use serde::Serialize;
 use sqlx::PgPool;
 

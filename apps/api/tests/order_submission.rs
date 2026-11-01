@@ -2,7 +2,7 @@ mod common;
 
 use axum::http::StatusCode;
 use common::{build_test_app, post, post_on};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use sqlx::PgPool;
 
 fn valid_payload(items: Value) -> Value {
@@ -155,7 +155,11 @@ async fn invalid_phone_is_rejected(pool: PgPool) {
     assert_eq!(status, StatusCode::BAD_REQUEST);
     assert_eq!(body["error"], "validation_error");
     let fields = body["fields"].as_array().unwrap();
-    assert!(fields.iter().any(|f| f["field"] == "customer_phone" && f["message"] == "invalid"));
+    assert!(
+        fields
+            .iter()
+            .any(|f| f["field"] == "customer_phone" && f["message"] == "invalid")
+    );
 }
 
 #[sqlx::test]
@@ -181,7 +185,11 @@ async fn repeated_digit_phone_is_rejected(pool: PgPool) {
     assert_eq!(status, StatusCode::BAD_REQUEST);
     assert_eq!(body["error"], "validation_error");
     let fields = body["fields"].as_array().unwrap();
-    assert!(fields.iter().any(|f| f["field"] == "customer_phone" && f["message"] == "invalid"));
+    assert!(
+        fields
+            .iter()
+            .any(|f| f["field"] == "customer_phone" && f["message"] == "invalid")
+    );
 }
 
 #[sqlx::test]
@@ -207,7 +215,11 @@ async fn sequential_digit_phone_is_rejected(pool: PgPool) {
     assert_eq!(status, StatusCode::BAD_REQUEST);
     assert_eq!(body["error"], "validation_error");
     let fields = body["fields"].as_array().unwrap();
-    assert!(fields.iter().any(|f| f["field"] == "customer_phone" && f["message"] == "invalid"));
+    assert!(
+        fields
+            .iter()
+            .any(|f| f["field"] == "customer_phone" && f["message"] == "invalid")
+    );
 }
 
 #[sqlx::test]
@@ -233,7 +245,11 @@ async fn phone_without_leading_zero_or_plus_is_rejected(pool: PgPool) {
     assert_eq!(status, StatusCode::BAD_REQUEST);
     assert_eq!(body["error"], "validation_error");
     let fields = body["fields"].as_array().unwrap();
-    assert!(fields.iter().any(|f| f["field"] == "customer_phone" && f["message"] == "invalid"));
+    assert!(
+        fields
+            .iter()
+            .any(|f| f["field"] == "customer_phone" && f["message"] == "invalid")
+    );
 }
 
 #[sqlx::test]
@@ -282,7 +298,11 @@ async fn too_short_name_is_rejected(pool: PgPool) {
     assert_eq!(status, StatusCode::BAD_REQUEST);
     assert_eq!(body["error"], "validation_error");
     let fields = body["fields"].as_array().unwrap();
-    assert!(fields.iter().any(|f| f["field"] == "customer_name" && f["message"] == "invalid"));
+    assert!(
+        fields
+            .iter()
+            .any(|f| f["field"] == "customer_name" && f["message"] == "invalid")
+    );
 }
 
 #[sqlx::test]
@@ -308,7 +328,11 @@ async fn too_long_notes_is_rejected(pool: PgPool) {
     assert_eq!(status, StatusCode::BAD_REQUEST);
     assert_eq!(body["error"], "validation_error");
     let fields = body["fields"].as_array().unwrap();
-    assert!(fields.iter().any(|f| f["field"] == "notes" && f["message"] == "too_long"));
+    assert!(
+        fields
+            .iter()
+            .any(|f| f["field"] == "notes" && f["message"] == "too_long")
+    );
 }
 
 #[sqlx::test]
@@ -335,7 +359,11 @@ async fn too_short_delivery_address_is_rejected(pool: PgPool) {
     assert_eq!(status, StatusCode::BAD_REQUEST);
     assert_eq!(body["error"], "validation_error");
     let fields = body["fields"].as_array().unwrap();
-    assert!(fields.iter().any(|f| f["field"] == "delivery_address" && f["message"] == "too_short"));
+    assert!(
+        fields
+            .iter()
+            .any(|f| f["field"] == "delivery_address" && f["message"] == "too_short")
+    );
 }
 
 #[sqlx::test]
@@ -493,17 +521,22 @@ async fn seed_flat_item(pool: &PgPool) {
         .execute(pool)
         .await
         .unwrap();
-    sqlx::query!("INSERT INTO menu_items (id, category_id, name, price) VALUES (1, 1, 'Jollof Rice', 13.00)")
-        .execute(pool)
-        .await
-        .unwrap();
+    sqlx::query!(
+        "INSERT INTO menu_items (id, category_id, name, price) VALUES (1, 1, 'Jollof Rice', 13.00)"
+    )
+    .execute(pool)
+    .await
+    .unwrap();
 }
 
 async fn stored_locale(pool: &PgPool, id: &Value) -> String {
-    sqlx::query_scalar!("SELECT locale FROM orders WHERE id = $1", id.as_i64().unwrap())
-        .fetch_one(pool)
-        .await
-        .unwrap()
+    sqlx::query_scalar!(
+        "SELECT locale FROM orders WHERE id = $1",
+        id.as_i64().unwrap()
+    )
+    .fetch_one(pool)
+    .await
+    .unwrap()
 }
 
 /// Phase 22 Decision 5: the order remembers the site language for emails.
@@ -527,7 +560,8 @@ async fn locale_is_stored_and_defaults_to_english(pool: PgPool) {
 #[sqlx::test]
 async fn french_locale_is_stored(pool: PgPool) {
     seed_flat_item(&pool).await;
-    let mut payload = valid_payload(json!([{ "menu_item_id": 1, "price_option_id": null, "quantity": 1 }]));
+    let mut payload =
+        valid_payload(json!([{ "menu_item_id": 1, "price_option_id": null, "quantity": 1 }]));
     payload["locale"] = json!("fr");
 
     let (status, body) = post(pool.clone(), "/api/orders", payload).await;
@@ -539,7 +573,8 @@ async fn french_locale_is_stored(pool: PgPool) {
 #[sqlx::test]
 async fn unsupported_locale_is_rejected(pool: PgPool) {
     seed_flat_item(&pool).await;
-    let mut payload = valid_payload(json!([{ "menu_item_id": 1, "price_option_id": null, "quantity": 1 }]));
+    let mut payload =
+        valid_payload(json!([{ "menu_item_id": 1, "price_option_id": null, "quantity": 1 }]));
     payload["locale"] = json!("de");
 
     let (status, body) = post(pool, "/api/orders", payload).await;
@@ -555,7 +590,8 @@ async fn unsupported_locale_is_rejected(pool: PgPool) {
 #[sqlx::test]
 async fn cart_orders_cannot_be_on_site(pool: PgPool) {
     seed_flat_item(&pool).await;
-    let mut payload = valid_payload(json!([{ "menu_item_id": 1, "price_option_id": null, "quantity": 1 }]));
+    let mut payload =
+        valid_payload(json!([{ "menu_item_id": 1, "price_option_id": null, "quantity": 1 }]));
     payload["delivery_type"] = json!("on_site");
     payload["delivery_address"] = json!("Zaal De Linde, Utrecht");
 
@@ -564,6 +600,9 @@ async fn cart_orders_cannot_be_on_site(pool: PgPool) {
     let (status, _) = post_on(build_test_app(pool.clone()).await, "/api/orders", payload).await;
 
     assert!(status.is_client_error(), "{status}");
-    let count = sqlx::query_scalar!("SELECT COUNT(*) FROM orders").fetch_one(&pool).await.unwrap();
+    let count = sqlx::query_scalar!("SELECT COUNT(*) FROM orders")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
     assert_eq!(count, Some(0));
 }

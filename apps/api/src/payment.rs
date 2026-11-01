@@ -36,7 +36,11 @@ pub fn payment_reference(order_id: i64) -> String {
 /// `.env` can never put a wrong account in front of a customer (Phase 20
 /// open risk 1).
 pub fn normalize_iban(raw: &str) -> Option<String> {
-    let iban: String = raw.chars().filter(|c| !c.is_whitespace()).collect::<String>().to_uppercase();
+    let iban: String = raw
+        .chars()
+        .filter(|c| !c.is_whitespace())
+        .collect::<String>()
+        .to_uppercase();
 
     let well_formed = (15..=34).contains(&iban.len())
         && iban.chars().all(|c| c.is_ascii_alphanumeric())
@@ -48,31 +52,43 @@ pub fn normalize_iban(raw: &str) -> Option<String> {
 
     // Move the country code and check digits to the end, read letters as
     // A=10..Z=35, and take the whole number mod 97 one digit at a time.
-    let remainder = iban[4..].chars().chain(iban[..4].chars()).fold(0u32, |acc, c| {
-        let value = c.to_digit(36).unwrap_or(0);
-        if value >= 10 { (acc * 100 + value) % 97 } else { (acc * 10 + value) % 97 }
-    });
+    let remainder = iban[4..]
+        .chars()
+        .chain(iban[..4].chars())
+        .fold(0u32, |acc, c| {
+            let value = c.to_digit(36).unwrap_or(0);
+            if value >= 10 {
+                (acc * 100 + value) % 97
+            } else {
+                (acc * 10 + value) % 97
+            }
+        });
 
     (remainder == 1).then_some(iban)
 }
 
 impl PaymentConfig {
     pub fn new(bank: Option<BankDetails>) -> Self {
-        Self { bank: bank.map(Arc::new) }
+        Self {
+            bank: bank.map(Arc::new),
+        }
     }
 
     pub fn from_env() -> Self {
         // Blank counts as unset, same as `EmailConfig::from_env`.
         let non_blank = |key: &str| std::env::var(key).ok().filter(|v| !v.trim().is_empty());
 
-        let (Some(account_name), Some(raw_iban)) = (non_blank("BANK_ACCOUNT_NAME"), non_blank("BANK_IBAN"))
+        let (Some(account_name), Some(raw_iban)) =
+            (non_blank("BANK_ACCOUNT_NAME"), non_blank("BANK_IBAN"))
         else {
             tracing::warn!("bank details not set: invoices will show the WhatsApp fallback");
             return Self::new(None);
         };
 
         let Some(iban) = normalize_iban(&raw_iban) else {
-            tracing::error!("BANK_IBAN is not a valid IBAN: invoices will show the WhatsApp fallback");
+            tracing::error!(
+                "BANK_IBAN is not a valid IBAN: invoices will show the WhatsApp fallback"
+            );
             return Self::new(None);
         };
 
@@ -103,9 +119,18 @@ mod tests {
 
     #[test]
     fn accepts_valid_ibans_with_or_without_spaces() {
-        assert_eq!(normalize_iban("NL91ABNA0417164300").as_deref(), Some("NL91ABNA0417164300"));
-        assert_eq!(normalize_iban(" nl91 abna 0417 1643 00 ").as_deref(), Some("NL91ABNA0417164300"));
-        assert_eq!(normalize_iban("DE89370400440532013000").as_deref(), Some("DE89370400440532013000"));
+        assert_eq!(
+            normalize_iban("NL91ABNA0417164300").as_deref(),
+            Some("NL91ABNA0417164300")
+        );
+        assert_eq!(
+            normalize_iban(" nl91 abna 0417 1643 00 ").as_deref(),
+            Some("NL91ABNA0417164300")
+        );
+        assert_eq!(
+            normalize_iban("DE89370400440532013000").as_deref(),
+            Some("DE89370400440532013000")
+        );
     }
 
     #[test]
@@ -116,7 +141,13 @@ mod tests {
 
     #[test]
     fn rejects_malformed_input() {
-        for raw in ["", "NL91", "91NLABNA0417164300", "NL91ABNA04171643!0", "<BANK_IBAN>"] {
+        for raw in [
+            "",
+            "NL91",
+            "91NLABNA0417164300",
+            "NL91ABNA04171643!0",
+            "<BANK_IBAN>",
+        ] {
             assert_eq!(normalize_iban(raw), None, "{raw}");
         }
     }

@@ -1,8 +1,8 @@
 use api::email::EmailConfig;
 use api::payment::PaymentConfig;
-use api::{build_app, MediaConfig};
-use argon2::password_hash::PasswordHasher;
+use api::{MediaConfig, build_app};
 use argon2::Argon2;
+use argon2::password_hash::PasswordHasher;
 use aws_sdk_s3::config::{BehaviorVersion, Builder as S3ConfigBuilder, Credentials, Region};
 use axum::{
     body::Body,
@@ -20,9 +20,12 @@ use tower::ServiceExt;
 /// database is, so this bucket is created idempotently (tolerating
 /// "already owned by you") on every call.
 async fn test_media_config() -> MediaConfig {
-    let endpoint = std::env::var("MINIO_ENDPOINT").unwrap_or_else(|_| "http://localhost:9000".into());
-    let access_key = std::env::var("MINIO_ACCESS_KEY").expect("MINIO_ACCESS_KEY must be set to run tests");
-    let secret_key = std::env::var("MINIO_SECRET_KEY").expect("MINIO_SECRET_KEY must be set to run tests");
+    let endpoint =
+        std::env::var("MINIO_ENDPOINT").unwrap_or_else(|_| "http://localhost:9000".into());
+    let access_key =
+        std::env::var("MINIO_ACCESS_KEY").expect("MINIO_ACCESS_KEY must be set to run tests");
+    let secret_key =
+        std::env::var("MINIO_SECRET_KEY").expect("MINIO_SECRET_KEY must be set to run tests");
     let bucket = std::env::var("MINIO_BUCKET").unwrap_or_else(|_| "test-menu-images".into());
     let public_base_url =
         std::env::var("PUBLIC_API_URL").unwrap_or_else(|_| "http://localhost:8080".into());
@@ -31,7 +34,13 @@ async fn test_media_config() -> MediaConfig {
         .behavior_version(BehaviorVersion::latest())
         .region(Region::new("us-east-1"))
         .endpoint_url(endpoint)
-        .credentials_provider(Credentials::new(access_key, secret_key, None, None, "minio-static"))
+        .credentials_provider(Credentials::new(
+            access_key,
+            secret_key,
+            None,
+            None,
+            "minio-static",
+        ))
         .force_path_style(true)
         .build();
     let client = aws_sdk_s3::Client::from_conf(s3_config);
@@ -39,19 +48,29 @@ async fn test_media_config() -> MediaConfig {
     match client.create_bucket().bucket(&bucket).send().await {
         Ok(_) => {}
         Err(err)
-            if err
-                .as_service_error()
-                .is_some_and(|e| e.is_bucket_already_owned_by_you() || e.is_bucket_already_exists()) => {}
+            if err.as_service_error().is_some_and(|e| {
+                e.is_bucket_already_owned_by_you() || e.is_bucket_already_exists()
+            }) => {}
         Err(err) => panic!("failed to create test media bucket: {err}"),
     }
 
-    MediaConfig { client, bucket, public_base_url }
+    MediaConfig {
+        client,
+        bucket,
+        public_base_url,
+    }
 }
 
 async fn send_raw(pool: PgPool, request: Request<Body>) -> (StatusCode, HeaderMap, Vec<u8>) {
-    let app = build_app(pool, false, test_media_config().await, EmailConfig::from_env(), PaymentConfig::from_env())
-        .await
-        .expect("failed to build app in test");
+    let app = build_app(
+        pool,
+        false,
+        test_media_config().await,
+        EmailConfig::from_env(),
+        PaymentConfig::from_env(),
+    )
+    .await
+    .expect("failed to build app in test");
     send_on_raw(app, request).await
 }
 
@@ -64,16 +83,31 @@ async fn send_raw(pool: PgPool, request: Request<Body>) -> (StatusCode, HeaderMa
 /// layered state) to actually exercise rate limiting across requests.
 #[allow(dead_code)]
 pub async fn build_test_app(pool: PgPool) -> axum::Router {
-    build_app(pool, false, test_media_config().await, EmailConfig::from_env(), PaymentConfig::from_env())
-        .await
-        .expect("failed to build app in test")
+    build_app(
+        pool,
+        false,
+        test_media_config().await,
+        EmailConfig::from_env(),
+        PaymentConfig::from_env(),
+    )
+    .await
+    .expect("failed to build app in test")
 }
 
-async fn send_on_raw(app: axum::Router, request: Request<Body>) -> (StatusCode, HeaderMap, Vec<u8>) {
+async fn send_on_raw(
+    app: axum::Router,
+    request: Request<Body>,
+) -> (StatusCode, HeaderMap, Vec<u8>) {
     let response = app.oneshot(request).await.unwrap();
     let status = response.status();
     let headers = response.headers().clone();
-    let bytes = response.into_body().collect().await.unwrap().to_bytes().to_vec();
+    let bytes = response
+        .into_body()
+        .collect()
+        .await
+        .unwrap()
+        .to_bytes()
+        .to_vec();
     (status, headers, bytes)
 }
 
@@ -156,8 +190,11 @@ pub async fn get_raw_with_cookie(
 
 #[allow(dead_code)]
 pub async fn get(pool: PgPool, uri: &str) -> (StatusCode, Value) {
-    let (status, _headers, body) =
-        send(pool, Request::builder().uri(uri).body(Body::empty()).unwrap()).await;
+    let (status, _headers, body) = send(
+        pool,
+        Request::builder().uri(uri).body(Body::empty()).unwrap(),
+    )
+    .await;
     (status, body)
 }
 
@@ -257,7 +294,10 @@ pub fn session_cookie(set_cookie: &str) -> &str {
 
 #[allow(dead_code)]
 pub async fn insert_admin(pool: &PgPool, email: &str, password: &str) {
-    let hash = Argon2::default().hash_password(password.as_bytes()).unwrap().to_string();
+    let hash = Argon2::default()
+        .hash_password(password.as_bytes())
+        .unwrap()
+        .to_string();
     sqlx::query!(
         "INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, 'admin')",
         "Test Admin",
@@ -271,10 +311,13 @@ pub async fn insert_admin(pool: &PgPool, email: &str, password: &str) {
 
 #[allow(dead_code)]
 pub async fn insert_category(pool: &PgPool, name: &str) -> i64 {
-    sqlx::query_scalar!("INSERT INTO categories (name) VALUES ($1) RETURNING id", name)
-        .fetch_one(pool)
-        .await
-        .unwrap()
+    sqlx::query_scalar!(
+        "INSERT INTO categories (name) VALUES ($1) RETURNING id",
+        name
+    )
+    .fetch_one(pool)
+    .await
+    .unwrap()
 }
 
 #[allow(dead_code)]
@@ -291,17 +334,19 @@ pub async fn post_multipart_with_cookie(
     let mut body = Vec::new();
     body.extend_from_slice(format!("--{boundary}\r\n").as_bytes());
     body.extend_from_slice(
-        format!("Content-Disposition: form-data; name=\"{field_name}\"; filename=\"{filename}\"\r\n")
-            .as_bytes(),
+        format!(
+            "Content-Disposition: form-data; name=\"{field_name}\"; filename=\"{filename}\"\r\n"
+        )
+        .as_bytes(),
     );
     body.extend_from_slice(format!("Content-Type: {content_type}\r\n\r\n").as_bytes());
     body.extend_from_slice(&bytes);
     body.extend_from_slice(format!("\r\n--{boundary}--\r\n").as_bytes());
 
-    let mut builder = Request::builder()
-        .method("POST")
-        .uri(uri)
-        .header("content-type", format!("multipart/form-data; boundary={boundary}"));
+    let mut builder = Request::builder().method("POST").uri(uri).header(
+        "content-type",
+        format!("multipart/form-data; boundary={boundary}"),
+    );
     if let Some(cookie) = cookie {
         builder = builder.header("cookie", cookie);
     }
