@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        UPDATE catering_quotes q\n        SET status = 'declined', declined_at = now(), decline_reason = $2, updated_at = now()\n        FROM catering_enquiries e\n        WHERE e.id = q.enquiry_id AND q.public_token = $1 AND q.status = 'sent' AND q.version = $3\n        RETURNING q.id, q.enquiry_id, e.name, e.event_type, e.event_date as \"event_date: NaiveDate\"\n        ",
+  "query": "\n        UPDATE catering_quotes q\n        SET status = 'declined', declined_at = now(), decline_reason = $2, updated_at = now()\n        FROM catering_enquiries e\n        WHERE e.id = q.enquiry_id AND q.public_token = $1 AND q.status = 'sent' AND q.version = $3\n        RETURNING q.id, q.enquiry_id, e.name, e.email, e.event_type, e.event_date as \"event_date: NaiveDate\"\n        ",
   "describe": {
     "columns": [
       {
@@ -20,11 +20,16 @@
       },
       {
         "ordinal": 3,
-        "name": "event_type",
+        "name": "email",
         "type_info": "Text"
       },
       {
         "ordinal": 4,
+        "name": "event_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
         "name": "event_date: NaiveDate",
         "type_info": "Date"
       }
@@ -41,8 +46,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "f943cddbb4ff75c91745b836106b8629bc3b04f0662ecb0298912dc5738317e0"
+  "hash": "f80e70381732d4a8d7ac222c0e820675036c95d69cded9fa5d27fb9d38767365"
 }

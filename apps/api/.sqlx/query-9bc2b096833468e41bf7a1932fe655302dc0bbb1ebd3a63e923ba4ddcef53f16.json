@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT mi.id, mi.category_id, c.name as category_name, mi.name, mi.description,\n               mi.price, mi.image_url, mi.is_available, mi.is_featured,\n               mi.deleted_at as \"deleted_at: DateTime<Utc>\",\n               mi.updated_at as \"updated_at: DateTime<Utc>\"\n        FROM menu_items mi\n        JOIN categories c ON c.id = mi.category_id\n        ORDER BY mi.display_order, mi.id\n        ",
+  "query": "\n        SELECT mi.id, mi.category_id, c.name as category_name, mi.name, mi.description,\n               mi.price, mi.image_url, mi.is_available, mi.is_featured,\n               mi.deleted_at as \"deleted_at: DateTime<Utc>\",\n               mi.updated_at as \"updated_at: DateTime<Utc>\",\n               mi.draft, mi.draft_updated_at as \"draft_updated_at: DateTime<Utc>\",\n               mi.published_at as \"published_at: DateTime<Utc>\"\n        FROM menu_items mi\n        JOIN categories c ON c.id = mi.category_id\n        WHERE mi.id = $1\n        ",
   "describe": {
     "columns": [
       {
@@ -57,10 +57,27 @@
         "ordinal": 10,
         "name": "updated_at: DateTime<Utc>",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "draft",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 12,
+        "name": "draft_updated_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 13,
+        "name": "published_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
       }
     ],
     "parameters": {
-      "Left": []
+      "Left": [
+        "Int8"
+      ]
     },
     "nullable": [
       false,
@@ -73,8 +90,11 @@
       false,
       false,
       true,
-      false
+      false,
+      true,
+      true,
+      true
     ]
   },
-  "hash": "6670c8768686ab05be0d1b36ccfe56768a6fbc302641c55c824c43c6638c5daf"
+  "hash": "9bc2b096833468e41bf7a1932fe655302dc0bbb1ebd3a63e923ba4ddcef53f16"
 }

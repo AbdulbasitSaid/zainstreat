@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                UPDATE categories\n                SET draft = NULL, draft_updated_at = NULL,\n                    deleted_at = CASE WHEN published_at IS NULL THEN now() ELSE deleted_at END,\n                    updated_at = CASE WHEN published_at IS NULL THEN now() ELSE updated_at END\n                WHERE id = $1\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "4a8eade469870f1601a8ca5772c488bce837a879bdf28c9826d81e5aa8f77321"
+}

@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                    UPDATE site_content\n                    SET published = $1, draft = NULL, draft_updated_at = NULL,\n                        published_at = now(), updated_at = now()\n                    ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "632b20c79846b15f01c3b70cf5254c38bbf8a6bcf0b0e3845c91c7fd8cfb0efc"
+}

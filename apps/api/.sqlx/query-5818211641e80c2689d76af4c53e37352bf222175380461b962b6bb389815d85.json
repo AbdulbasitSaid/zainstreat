@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, name, description FROM categories WHERE deleted_at IS NULL ORDER BY display_order, id",
+  "query": "\n        SELECT id, name, description FROM categories\n        WHERE deleted_at IS NULL AND published_at IS NOT NULL\n        ORDER BY display_order, id\n        ",
   "describe": {
     "columns": [
       {
@@ -28,5 +28,5 @@
       true
     ]
   },
-  "hash": "cfad5ad81a601550449b2d8074e72e19066b4828d06adca89f4c4a7af89169e2"
+  "hash": "5818211641e80c2689d76af4c53e37352bf222175380461b962b6bb389815d85"
 }

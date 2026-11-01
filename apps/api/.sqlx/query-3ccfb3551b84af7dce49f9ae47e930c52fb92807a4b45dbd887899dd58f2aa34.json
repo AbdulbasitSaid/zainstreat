@@ -1,0 +1,70 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                    SELECT category_id, name, description, price, image_url, is_featured, draft,\n                           draft_updated_at as \"draft_updated_at: DateTime<Utc>\",\n                           deleted_at as \"deleted_at: DateTime<Utc>\"\n                    FROM menu_items WHERE id = $1\n                    FOR UPDATE\n                    ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "category_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "price",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 4,
+        "name": "image_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "is_featured",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 6,
+        "name": "draft",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 7,
+        "name": "draft_updated_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "deleted_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "3ccfb3551b84af7dce49f9ae47e930c52fb92807a4b45dbd887899dd58f2aa34"
+}

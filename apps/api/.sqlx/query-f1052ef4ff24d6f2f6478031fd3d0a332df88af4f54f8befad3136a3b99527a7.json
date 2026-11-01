@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE site_content SET draft = $1, draft_updated_at = now(), updated_at = now()\n        RETURNING draft_updated_at as \"draft_updated_at!: DateTime<Utc>\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "draft_updated_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Jsonb"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "f1052ef4ff24d6f2f6478031fd3d0a332df88af4f54f8befad3136a3b99527a7"
+}

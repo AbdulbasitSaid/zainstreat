@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO email_deliveries (order_id, kind, recipient, status, created_at) VALUES ($1, 'invoice', 'c@example.com', 'sent', now() - interval '1 hour')",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "eddaefa3e957e71f736c6d153a5e42530bb48d5d881f6af4d9b3411dccd1345a"
+}

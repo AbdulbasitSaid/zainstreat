@@ -1,0 +1,46 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                    SELECT name, description, draft,\n                           draft_updated_at as \"draft_updated_at: DateTime<Utc>\",\n                           deleted_at as \"deleted_at: DateTime<Utc>\"\n                    FROM categories WHERE id = $1\n                    FOR UPDATE\n                    ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "draft",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 3,
+        "name": "draft_updated_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "deleted_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "0d50ccf197d7b935d5ff2feec672a0dc00f5b59e58c749f481bcd58aabc1710c"
+}

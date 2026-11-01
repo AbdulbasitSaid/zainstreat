@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT deleted_at as \"deleted_at: DateTime<Utc>\",\n               draft_updated_at as \"draft_updated_at: DateTime<Utc>\",\n               published_at as \"published_at: DateTime<Utc>\"\n        FROM categories WHERE id = $1\n        FOR UPDATE\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "deleted_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 1,
+        "name": "draft_updated_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 2,
+        "name": "published_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "6de5ae6214a48690cbe76581f95818a35e40b9bb5c390d6278afd65fcbf3005b"
+}

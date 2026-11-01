@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                    UPDATE menu_items\n                    SET published_at = COALESCE(published_at, now()), draft = NULL,\n                        draft_updated_at = NULL, updated_at = now()\n                    WHERE id = $1\n                    ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e5f890348ba84e2061174375566ef8e9624659bc328107efd102ee52d3929ac1"
+}

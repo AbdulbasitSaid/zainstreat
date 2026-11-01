@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT unit_price FROM order_items",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "unit_price",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "ea9f080b0c417925a198d8c9a7938e811dbcb3c187842e793a14fab10a2786fe"
+}

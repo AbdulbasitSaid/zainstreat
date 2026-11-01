@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO menu_items (id, category_id, name, price, draft, draft_updated_at)\n        VALUES (1, 1, 'Jollof Rice', 13.00,\n            '{\"category_id\":1,\"name\":\"Draft Name\",\"description\":null,\"price\":\"99.00\",\"price_options\":[],\"image_url\":null,\"is_featured\":true}',\n            now())\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "5d625a5620c062675d312d787fe3b3018c62b825ce516978b8114fb02c88ed06"
+}

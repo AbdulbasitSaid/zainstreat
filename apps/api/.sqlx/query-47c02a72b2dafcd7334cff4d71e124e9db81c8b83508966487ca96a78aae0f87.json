@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE site_content SET draft = NULL, draft_updated_at = NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "47c02a72b2dafcd7334cff4d71e124e9db81c8b83508966487ca96a78aae0f87"
+}
