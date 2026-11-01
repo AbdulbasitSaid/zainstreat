@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { AdminQuoteEditor } from "@/components/admin-quote-editor";
+import { AdminQuoteStatusBadge } from "@/components/admin-quote-status-badge";
 import { getAdminCateringEnquiry } from "@/lib/admin-enquiries-api";
 import { formatDateTime } from "@/lib/format";
 
@@ -54,6 +56,26 @@ export default async function AdminCateringEnquiryDetailPage({
         <p className="m-0 text-xs font-semibold uppercase tracking-wider text-text-muted">Message</p>
         <p className="m-0 whitespace-pre-wrap">{enquiry.message?.trim() || "—"}</p>
       </div>
+
+      <section className="flex max-w-[48rem] flex-col gap-5 border-t border-text/15 pt-8">
+        <div className="flex flex-wrap items-center gap-3">
+          <h2 className="m-0">Quotation{enquiry.quote ? ` #${enquiry.quote.id}` : ""}</h2>
+          {enquiry.quote && <AdminQuoteStatusBadge status={enquiry.quote.display_status} />}
+        </div>
+        {enquiry.quote?.sent_at && (
+          <p className="m-0 text-sm text-text-muted">Last sent {formatDateTime(enquiry.quote.sent_at)}</p>
+        )}
+        {enquiry.quote?.display_status === "declined" && (
+          <p className="m-0">
+            Declined{enquiry.quote.declined_at ? ` on ${formatDateTime(enquiry.quote.declined_at)}` : ""}.{" "}
+            Reason: {enquiry.quote.decline_reason ?? "(none given)"}
+          </p>
+        )}
+        {enquiry.quote?.display_status === "expired" && (
+          <p className="m-0">Expired: extend the valid-until date, save, and send it again.</p>
+        )}
+        <AdminQuoteEditor enquiry={enquiry} />
+      </section>
     </div>
   );
 }

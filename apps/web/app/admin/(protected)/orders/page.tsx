@@ -1,8 +1,9 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { isOrderStatus, ORDERS_PAGE_SIZE, ORDER_STATUSES, STATUS_LABELS } from "@/lib/admin-orders";
+import { FULFILMENT_LABELS, isOrderStatus, ORDERS_PAGE_SIZE, ORDER_STATUSES, STATUS_LABELS } from "@/lib/admin-orders";
 import { getAdminOrders, getAdminOrdersSummary } from "@/lib/admin-orders-api";
 import { AdminAutoRefresh, NewOrderHighlight } from "@/components/admin-auto-refresh";
+import { AdminCateringTag } from "@/components/admin-catering-tag";
 import { AdminStatusBadge } from "@/components/admin-status-badge";
 import { formatDateTime, formatPrice } from "@/lib/format";
 
@@ -85,7 +86,12 @@ export default async function AdminOrdersPage({
                       </Link>
                     </td>
                     <td className="py-3 pr-4">{order.customer_name}</td>
-                    <td className="py-3 pr-4 capitalize">{order.delivery_type}</td>
+                    <td className="py-3 pr-4">
+                      <span className="flex flex-wrap items-center gap-2">
+                        {FULFILMENT_LABELS[order.delivery_type]}
+                        {order.catering_enquiry_id !== null && <AdminCateringTag />}
+                      </span>
+                    </td>
                     <td className="py-3 pr-4 font-semibold">{formatPrice(order.total)}</td>
                     <td className="py-3 pr-4"><AdminStatusBadge status={order.status} /></td>
                     <td className="py-3 text-text-muted">{formatDateTime(order.created_at)}</td>

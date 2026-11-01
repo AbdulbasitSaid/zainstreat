@@ -18,6 +18,7 @@ const DASHBOARD_STATUSES: OrderStatus[] = [
   "processing",
   "ready_for_collection",
   "out_for_delivery",
+  "serving_on_site",
   "completed",
   "cancelled",
 ];
