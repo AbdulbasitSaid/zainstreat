@@ -81,7 +81,8 @@
     "addToCartOption": "Ajouter {option}",
     "fromPrice": "à partir de {price}",
     "chooseOption": "Choisissez une option",
-    "closeDialog": "Fermer"
+    "closeDialog": "Fermer",
+    "loadingMenu": "Chargement du menu…"
   },
   "Cart": {
     "metaTitle": "Panier | Zain's Treat n More",

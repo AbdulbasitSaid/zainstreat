@@ -3,29 +3,12 @@
 import type { MouseEvent } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { LiquidSurface } from "@/components/liquid-surface";
+import { PillLiquid, pillClasses } from "@/components/button";
 import { useMenuFilter } from "@/components/menu-filter-transition";
 import type { Category } from "@/lib/api";
 
-const PILL_BASE_CLASS =
-  "group/liquid relative isolate inline-flex items-center rounded-full px-5 py-2 text-sm font-semibold tracking-wide transition-colors";
-
-function pillClass(isActive: boolean) {
-  return `${PILL_BASE_CLASS} ${
-    isActive ? "bg-primary text-white" : "bg-card text-text hover:bg-background-soft"
-  }`;
-}
-
-function PillLiquid({ isActive }: { isActive: boolean }) {
-  return (
-    <LiquidSurface
-      pathClassName={`transition-[fill] duration-200 ${
-        isActive ? "fill-primary" : "fill-card group-hover/liquid:fill-background-soft"
-      }`}
-      splashClassName="fill-primary"
-    />
-  );
-}
+// Room for the sticky header when scrolling the filter bar back into view.
+const HEADER_OFFSET_PX = 96;
 
 // Plain clicks filter in place (MenuFilterProvider); modified clicks keep
 // the link's normal behaviour (new tab etc.).
@@ -47,7 +30,14 @@ export function CategoryFilter({
   const handleClick = (categoryId: number | undefined) => (event: MouseEvent) => {
     if (!isPlainClick(event)) return;
     event.preventDefault();
-    if (categoryId !== activeId) select(categoryId);
+    if (categoryId === activeId) return;
+    // Scrolled past the filter bar? Bring it back, or a shorter category
+    // could land above the viewport and leave the screen blank.
+    const nav = event.currentTarget.closest("nav");
+    if (nav && nav.getBoundingClientRect().top < HEADER_OFFSET_PX) {
+      window.scrollTo({ top: nav.getBoundingClientRect().top + window.scrollY - HEADER_OFFSET_PX, behavior: "smooth" });
+    }
+    select(categoryId);
   };
 
   return (
@@ -55,7 +45,7 @@ export function CategoryFilter({
       <Link
         href="/menu"
         aria-current={activeId === undefined ? "page" : undefined}
-        className={pillClass(activeId === undefined)}
+        className={pillClasses(activeId === undefined)}
         data-no-page-transition
         onClick={handleClick(undefined)}
       >
@@ -69,7 +59,7 @@ export function CategoryFilter({
             key={category.id}
             href={{ pathname: "/menu", query: { category: category.id } }}
             aria-current={isActive ? "page" : undefined}
-            className={pillClass(isActive)}
+            className={pillClasses(isActive)}
             data-no-page-transition
             onClick={handleClick(category.id)}
           >

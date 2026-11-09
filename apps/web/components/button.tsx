@@ -68,6 +68,29 @@ function ButtonLiquid({ variant, color }: { variant: ButtonVariant; color: Butto
   );
 }
 
+// Toggle pills (menu filter, contact form tabs): solid when active, a
+// bendable outline otherwise, so the liquid edge reads against the cream.
+export function pillClasses(isActive: boolean) {
+  return (
+    "group/liquid relative isolate inline-flex items-center rounded-full border-[1.5px] px-5 py-2 text-sm " +
+    "font-semibold tracking-wide transition-colors duration-150 focus-visible:outline focus-visible:outline-[3px] " +
+    "focus-visible:outline-accent focus-visible:outline-offset-2 " +
+    (isActive ? "border-primary bg-primary text-white" : "border-primary/40 bg-transparent text-text hover:bg-primary/10")
+  );
+}
+
+export function PillLiquid({ isActive }: { isActive: boolean }) {
+  return (
+    <LiquidSurface
+      strokeWidth={1.5}
+      pathClassName={`transition-[fill,stroke] duration-200 ${
+        isActive ? "fill-primary stroke-primary" : "fill-primary/0 stroke-primary/40 group-hover/liquid:fill-primary/10"
+      }`}
+      splashClassName="fill-primary"
+    />
+  );
+}
+
 function hasArrow(variant: ButtonVariant) {
   return variant === "primary" || variant === "invert";
 }

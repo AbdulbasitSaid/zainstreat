@@ -81,7 +81,8 @@
     "addToCartOption": "{option} Toevoegen",
     "fromPrice": "vanaf {price}",
     "chooseOption": "Kies een optie",
-    "closeDialog": "Sluiten"
+    "closeDialog": "Sluiten",
+    "loadingMenu": "Menu laden…"
   },
   "Cart": {
     "metaTitle": "Winkelwagen | Zain's Treat n More",

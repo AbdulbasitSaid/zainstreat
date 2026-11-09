@@ -81,7 +81,8 @@
     "addToCartOption": "Add {option}",
     "fromPrice": "from {price}",
     "chooseOption": "Choose an option",
-    "closeDialog": "Close"
+    "closeDialog": "Close",
+    "loadingMenu": "Loading menu…"
   },
   "Cart": {
     "metaTitle": "Cart | Zain's Treat n More",

@@ -54,7 +54,15 @@ export function MenuFilterProvider({ children }: { children: ReactNode }) {
  * fade); when `filterKey` changes the new cards drip in with a squash and
  * stretch, staggered like drops landing.
  */
-export function MenuFilterResults({ filterKey, children }: { filterKey: string; children: ReactNode }) {
+export function MenuFilterResults({
+  filterKey,
+  loadingLabel,
+  children,
+}: {
+  filterKey: string;
+  loadingLabel: string;
+  children: ReactNode;
+}) {
   const { isPending } = useMenuFilter();
   const ref = useRef<HTMLDivElement>(null);
   const firstRender = useRef(true);
@@ -114,5 +122,34 @@ export function MenuFilterResults({ filterKey, children }: { filterKey: string; 
     { scope: ref, dependencies: [filterKey] },
   );
 
-  return <div ref={ref}>{children}</div>;
+  return (
+    <div aria-busy={isPending}>
+      {/* Pinned under the header while the results load, so it's in view
+          however far down the menu the visitor is. */}
+      <div aria-live="polite" className="pointer-events-none sticky top-24 z-20 flex h-0 justify-center">
+        {isPending && <BubbleLoader label={loadingLabel} />}
+      </div>
+      <div ref={ref}>{children}</div>
+    </div>
+  );
+}
+
+// A small pot of rising, popping bubbles (globals.css `.bubble-loader`).
+// Fades in after a beat so quick loads don't flash it.
+function BubbleLoader({ label }: { label: string }) {
+  return (
+    <div
+      role="status"
+      className="loader-in mt-4 flex items-center gap-3 rounded-full bg-background/95 py-2.5 pr-5 pl-4 shadow-lg"
+    >
+      <span aria-hidden="true" className="bubble-loader">
+        <span />
+        <span />
+        <span />
+        <span />
+        <span />
+      </span>
+      <span className="text-sm font-semibold text-primary">{label}</span>
+    </div>
+  );
 }
