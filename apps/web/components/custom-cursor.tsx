@@ -73,11 +73,13 @@ export function CustomCursor() {
       <div
         ref={dotRef}
         aria-hidden="true"
+        data-custom-cursor
         className="pointer-events-none fixed top-0 left-0 z-[100] h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary"
       />
       <div
         ref={ringRef}
         aria-hidden="true"
+        data-custom-cursor
         className="pointer-events-none fixed top-0 left-0 z-[100] h-8 w-8 -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary"
       />
     </>

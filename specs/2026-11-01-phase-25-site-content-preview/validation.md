@@ -14,15 +14,16 @@ plan.md's "Implementation notes".
 
 - [x] `dig +short MX zainstreat.com` returns `10 mx1.improvmx.com.` and
       `20 mx2.improvmx.com.`.
-- [ ] `dig +short TXT zainstreat.com` shows
+- [x] `dig +short TXT zainstreat.com` shows
       `v=spf1 include:spf.improvmx.com include:amazonses.com ~all`, any
       other apex TXT values are unchanged, and the Namecheap `efwd`
       include is gone.
 - [x] The SES DKIM CNAMEs still resolve, and SES `GetEmailIdentity
       zainstreat.com` still shows `VerificationStatus: SUCCESS`.
-- [ ] ImprovMX's dashboard shows `zainstreat.com` verified. A mail from
+- [x] ImprovMX's dashboard shows `zainstreat.com` verified. A mail from
       an outside address to `contact@zainstreat.com` arrives at
-      `abdulbasitsaeed619@gmail.com`.
+      `abdulbasitsaeed619@gmail.com`. *2026-11-09: forwarding works,
+      confirmed by the user.*
 - [x] `gh variable list --env staging` shows `EMAIL_FROM_ADDRESS` and
       `EMAIL_BUSINESS_NOTIFY_ADDRESS` = `contact@zainstreat.com` and
       `EMAIL_SUBJECT_PREFIX` = `[STAGING] `.
@@ -38,17 +39,27 @@ plan.md's "Implementation notes".
       - an explicit Reply-To is used
       - the `[STAGING] ` prefix is applied when set, absent when unset,
         and gets a trailing space added
-- [ ] `EMAIL_SUBJECT_PREFIX` is in `docker-compose.yml`, `_deploy.yml`
+- [x] `EMAIL_SUBJECT_PREFIX` is in `docker-compose.yml`, `_deploy.yml`
       and `.env.example`, and `infra/env-parity.sh` passes.
-- [ ] SES `GetAccount` shows `AdditionalContactEmailAddresses` =
-      `["contact@zainstreat.com"]` and a new review case. Record its
-      ID and status here.
-      *2026-11-01: `PutAccountDetails` returns `ConflictException` (both
-      with and without `ProductionAccessEnabled`) while case
-      179346172100474 is `DENIED`. The re-request has to be a reply to
-      that case in AWS Support Center (text in the session notes).
-      Pending the user.*
-- [ ] On staging, after a redeploy, place a test order with a verified
+      *2026-11-09: in all three (commented out in `.env.example`, since
+      it's unset by default). The script only runs on the server; the
+      staging deploy (run 41343934662, with `[STAGING] ` set) printed
+      "Env parity: no changes".*
+- [x] SES `GetAccount` shows `ProductionAccessEnabled: true` with the
+      review `GRANTED`. Record the case ID and quota here. *(Reworded
+      2026-11-09. It used to require `AdditionalContactEmailAddresses` =
+      `contact@` and a new review case. See plan.md Implementation notes.)*
+      *2026-11-01: `PutAccountDetails` returned `ConflictException` while
+      case 179346172100474 was `DENIED`, so the re-request went in as a
+      reply to that case in AWS Support Center.*
+      *2026-11-09: granted on case 179346172100474. Quota is 50,000/day
+      at 14/s, and `EnforcementStatus` is `HEALTHY`.*
+- [x] AWS account Operations alternate contact = `contact@zainstreat.com`
+      (`aws account get-alternate-contact --alternate-contact-type
+      OPERATIONS`). This replaces the SES `AdditionalContactEmailAddresses`
+      setting. *2026-11-09: the user set it, and Claude confirmed it shows
+      "Zain's Treat n More", Operations, `contact@zainstreat.com`.*
+- [x] On staging, after a redeploy, place a test order with a verified
       customer address:
       - The owner notification arrives in the forwarded inbox, not in
         spam. Its subject starts with `[STAGING] ` and its sender is
@@ -59,6 +70,23 @@ plan.md's "Implementation notes".
         it addresses `contact@zainstreat.com`.
       - The same holds for a catering enquiry and a contact message
         (their Reply-To is the sender).
+      *2026-11-09, Claude in Chrome on staging (SES out of sandbox):
+      order ZTM-10 plus "I've paid", one contact message and one catering
+      enquiry. Customer addresses were Gmail plus-aliases
+      (`abdulbasitsaeed619+customer@`, `+contact@`, `+catering@`). All
+      five emails arrived in `abdulbasitsaeed619@gmail.com`: the new
+      order, the payment claim, the ZTM-10 invoice, the contact message
+      and the catering enquiry. Each has From "Zain's Treat n More"
+      <contact@zainstreat.com> and a `[STAGING] ` subject, with SPF,
+      DKIM (`zainstreat.com` and `amazonses.com`) and DMARC passing.
+      Reply-To on the three owner notifications is the customer's
+      `+customer@` address, and on the contact and catering emails it's
+      the sender's own alias. The invoice's Reply-To is
+      `contact@zainstreat.com`. The four mails forwarded through
+      ImprovMX also carry an `improvmx.net` DKIM pass. One exception:
+      Gmail put the **catering enquiry** in Spam, though it passed every
+      check like the others. Probably content-based. Mark it "Not spam"
+      once, and check again after launch.*
 - [ ] **Delivery tracking** (Group 1b):
       - `sqlx migrate run`/`revert`/`run` passes for `email_deliveries`.
       - On staging, an order for an **unverified** address while SES is
@@ -77,23 +105,46 @@ plan.md's "Implementation notes".
       launch, switch the ImprovMX `contact` alias to the owner's inbox
       (requirement.md Risk 1). Record the date here.
 
+- *Staging run 2026-11-01 (`51-102-179-66.sslip.io`, from `master` at
+  333e7ff): placed order ZTM-8 (verified Gmail), order ZTM-9
+  (`staging-unverified-test@example.com`) and one contact message. SES
+  `SentLast24Hours` went 38 → 42, which matches 4 sends with ZTM-9's
+  invoice rejected by the sandbox. Still to check by eye: the Gmail
+  inbox (prefix, sender, DKIM/DMARC, Reply-To) and the ZTM-9 admin page
+  ("may not have been delivered"). Production stays on the SES sandbox
+  for now (user, 2026-11-01). Out of sandbox since 2026-11-09 (see
+  the SES item above). Staging now delivers to any address, so test
+  orders use our own inboxes or the SES mailbox simulator. The
+  simulator's bounce comes back after SES accepts the mail, so it
+  records `sent`, not `failed`. ZTM-9 is the only `failed` example.*
+
 ### Bento grid (Group 2)
 
-- [x] `lib/menu-bento.ts` is the only place sizes are worked out, and
-      `bentoSize` returns all four sizes for suitable inputs. Check with a
-      quick `node`/`tsx` script or from the seed data.
-- [ ] `/en/menu` at 320 and 375px is one column, with every card full
-      width and in `display_order`.
-- [ ] At 640, 1024 and 1280px, items with long descriptions, several
-      price options or the featured flag span 2 columns and/or 2 rows.
-      Short items are 1 × 1. No text is clipped, and no card overflows
-      its cell.
-- [ ] A category with 1–2 items doesn't leave a mostly empty 4-column
-      row at `xl` (the `COLUMNS_FOR_SPAN` lookup).
-- [ ] Dense packing leaves no holes at `lg` and `xl` with the seed menu.
-      Keyboard tab order still follows `display_order`.
+*Revised 2026-11-09 for the pattern layout (requirement.md Decisions
+7–10). The first version's checks are replaced.*
+
+- [ ] `lib/menu-bento.ts` is the only place placement, shape and tint
+      are worked out. `pnpm check:bento` (plan 2.1) passes for counts 1–17:
+      no overlapping cells, no holes except beside a lone tail item, and
+      no touching `lg` tiles with the same tint.
+- [ ] `/en/menu` at 320 and 375px is one column, every card full width
+      and in `display_order`.
+- [ ] At 640 and 768px the 2-column pattern shows, and at 1024, 1280
+      and 1440px the 4-column pattern does. Each category's grid has no
+      holes, and no tile grows past its rows.
+- [ ] No text is clipped mid-word except clamped descriptions, at every
+      width above, including items with long names and several price
+      options.
+- [ ] Every tint passes WCAG AA contrast for its name, description,
+      price, button and the "Unavailable" badge.
+- [ ] Keyboard tab order follows `display_order` and matches the visual
+      order at every width.
 - [x] The homepage featured section uses the same grid.
-- [ ] Add-to-cart works from every card size, and the cart count updates.
+- [ ] Add-to-cart works from every tile shape. For a multi-price item
+      the dialog opens, lists every option with its price, adds the one
+      chosen, closes, and the cart count updates. Esc closes it too.
+- [ ] `pnpm check:messages` passes with `fromPrice` and `chooseOption`
+      in en, nl and fr.
 
 ### Migration and draft-safe public reads (Groups 3–4)
 
@@ -224,9 +275,16 @@ plan.md's "Implementation notes".
 
 - [ ] The client's real photos are uploaded and published on staging.
       Slots still on stock imagery: *(list here, or "none")*.
-- [ ] `docs/deployment.md` has the "Editing the site" section.
-- [ ] `specs/tech-stack.md` "Content preview" matches what was built.
-- [ ] `/validate` passes (lint, build, `check:messages`, smoke test).
+- [x] `docs/deployment.md` has the "Editing the site" section.
+- [x] `specs/tech-stack.md` "Content preview" matches what was built.
+- [x] `/validate` passes (lint, build, `check:messages`, smoke test).
+      *2026-11-09, on the docker compose stack: `check:messages` (331
+      keys), `pnpm lint`, `pnpm build`, `cargo clippy -D warnings`,
+      `cargo build` and the full `cargo test` all pass. Smoke test:
+      `/health` 200, `/` → `/en`, `/en` `/nl` `/fr` 200 with the right
+      `lang`, the menu, about, services and contact pages 200, the
+      contact page shows `contact@zainstreat.com`, and the preview
+      isolation checks above give the same 401/404/400 results.*
 
 ## Definition of done
 
@@ -235,12 +293,13 @@ address on staging and production. Customer emails reply to `contact@`,
 and owner notifications reply to the customer. Staging subjects carry
 `[STAGING] `. Mail sent to `contact@` is forwarded by ImprovMX (MX and SPF
 in Route 53), for now to the developer's inbox. SPF authorises SES, DKIM
-and DMARC pass, and SES production access has been re-requested with
-`contact@` as the contact. Failed customer emails are recorded and shown
+and DMARC pass, and SES production access is granted, with `contact@`
+as the AWS account's Operations contact. Failed customer emails are recorded and shown
 in admin next to the WhatsApp follow-up. The public contact page shows `contact@`, and `techsihir`
 appears nowhere outside earlier specs. The menu page and the homepage
-featured section use a responsive bento grid: one column on phones, up to
-four on wide screens, with each card's size worked out from its content.
+featured section use a responsive bento grid: one column on phones, then
+a repeating, hand-designed tile pattern (2 columns on tablets, 4 on
+desktops) with brand-tinted tiles of fixed height.
 The owner can replace the logo and site images and edit the homepage
 text in en/nl/fr from `cms.<host>/site`. Every content change (site
 content, menu items, categories) is saved as a draft and previewed live.

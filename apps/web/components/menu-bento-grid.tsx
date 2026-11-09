@@ -1,24 +1,31 @@
+import type { CSSProperties } from "react";
 import { MenuItemCard } from "@/components/menu-item-card";
-import { BENTO_SPAN, bentoColumns, bentoSize } from "@/lib/menu-bento";
+import { bentoLayout } from "@/lib/menu-bento";
 import type { MenuItem } from "@/lib/api";
 
+type AreaVars = CSSProperties & { "--sm-area": string; "--lg-area": string };
+
 // Phase 25 Decisions 7–10: one grid for /menu and the homepage's featured
-// items. Dense packing fills the holes big cards leave; DOM order (and so
-// reading and tab order) stays `display_order`.
+// items. Below `sm` it's a plain list; from `sm` each tile is placed
+// explicitly from the pattern, so visual order is DOM (`display_order`)
+// order.
 export function MenuBentoGrid({ items }: { items: MenuItem[] }) {
-  const sized = items.map((item) => ({ item, size: bentoSize(item) }));
+  const layout = bentoLayout(items.length);
 
   return (
-    <div
-      className={`grid grid-flow-row-dense auto-rows-[minmax(11rem,auto)] gap-6 ${bentoColumns(
-        sized.map(({ size }) => size),
-      )}`}
-    >
-      {sized.map(({ item, size }) => (
-        <div key={item.id} className={BENTO_SPAN[size]}>
-          <MenuItemCard item={item} size={size} />
-        </div>
-      ))}
+    <div className="grid grid-cols-1 gap-6 sm:auto-rows-[8rem] sm:grid-cols-2 lg:grid-cols-4">
+      {items.map((item, i) => {
+        const style: AreaVars = { "--sm-area": layout[i].sm.area, "--lg-area": layout[i].lg.area };
+        return (
+          <div
+            key={item.id}
+            style={style}
+            className="sm:[grid-area:var(--sm-area)] lg:[grid-area:var(--lg-area)]"
+          >
+            <MenuItemCard item={item} placement={layout[i]} />
+          </div>
+        );
+      })}
     </div>
   );
 }

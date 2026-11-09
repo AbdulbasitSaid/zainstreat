@@ -463,8 +463,8 @@ started.
   account contact is updated and production access re-requested, and
   failed customer emails are flagged in admin.
 - The menu page and homepage featured items use a responsive **bento
-  grid**. Items with more content (long description, several price
-  options, featured) get bigger cards.
+  grid**: a fixed, repeating tile pattern with brand-tinted tiles
+  (revised 2026-11-09; originally sized by content).
 - **Draft → preview → publish** for site content, menu items and
   categories. Edits autosave as drafts, the public site and ordering
   only read published data, and a Changes page offers Publish all.

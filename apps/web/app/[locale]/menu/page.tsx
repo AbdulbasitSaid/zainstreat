@@ -4,6 +4,8 @@ import { PageHero } from "@/components/page-hero";
 import { Notice } from "@/components/notice";
 import { CategoryFilter } from "@/components/category-filter";
 import { MenuBentoGrid } from "@/components/menu-bento-grid";
+import { MenuFilterProvider, MenuFilterResults } from "@/components/menu-filter-transition";
+import { Reveal } from "@/components/reveal";
 import { getCategories, getMenuItems } from "@/lib/api";
 import { localeAlternates } from "@/lib/seo";
 
@@ -55,22 +57,28 @@ export default async function MenuPage({
         <h1 className="text-[clamp(2.5rem,5vw,4.25rem)]">{t("heading")}</h1>
       </PageHero>
 
-      <CategoryFilter categories={categories} selectedCategoryId={selectedCategoryId} />
+      <MenuFilterProvider>
+        <CategoryFilter categories={categories} selectedCategoryId={selectedCategoryId} />
 
-      {visibleCategories.map((category) => {
-        const categoryItems = items.filter((item) => item.category_id === category.id);
+        <MenuFilterResults filterKey={String(selectedCategoryId ?? "all")}>
+          {visibleCategories.map((category) => {
+            const categoryItems = items.filter((item) => item.category_id === category.id);
 
-        return (
-          <section key={category.id}>
-            <h2>{category.name}</h2>
-            {categoryItems.length > 0 ? (
-              <MenuBentoGrid items={categoryItems} />
-            ) : (
-              <Notice>{t("emptyCategory")}</Notice>
-            )}
-          </section>
-        );
-      })}
+            return (
+              <section key={category.id}>
+                <Reveal>
+                  <h2>{category.name}</h2>
+                  {categoryItems.length > 0 ? (
+                    <MenuBentoGrid items={categoryItems} />
+                  ) : (
+                    <Notice>{t("emptyCategory")}</Notice>
+                  )}
+                </Reveal>
+              </section>
+            );
+          })}
+        </MenuFilterResults>
+      </MenuFilterProvider>
     </main>
   );
 }

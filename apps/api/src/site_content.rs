@@ -87,10 +87,11 @@ pub const HOME_TEXT_KEYS: &[&str] = &[
     "servicesMeals", "servicesSnacks", "servicesCatering", "servicesEventRentals",
     "whyChooseUsEyebrow", "whyChooseUs", "cateringCtaHeadline", "requestCateringQuote",
     "aboutPreview", "learnMore", "featuredMenuEyebrow", "featuredMenuHeading", "viewFullMenu",
+    "servicesEyebrow", "servicesHeading", "servicesSupporting", "exploreServices",
 ];
 
 /// Keys rendered with `t.rich`, which may carry `<em>…</em>`.
-const RICH_KEYS: &[&str] = &["heroHeadline", "whyChooseUs"];
+const RICH_KEYS: &[&str] = &["heroHeadline", "whyChooseUs", "servicesHeading"];
 
 const MAX_TEXT_CHARS: usize = 400;
 

@@ -214,91 +214,130 @@ Depends on: Group 1 (1.6). requirement.md Decision 6a.
 
 ## Group 2 — Bento menu grid (web)
 
-Depends on: Group 0. requirement.md Decisions 7–10.
+Depends on: Group 0. requirement.md Decisions 7–10 (revised 2026-11-09:
+pattern-based tiles replace the first, content-sized version).
 
-2.1. **`apps/web/lib/menu-bento.ts`:**
-     ```ts
-     import type { MenuItem } from "@/lib/api";
-
-     export type BentoSize = "regular" | "tall" | "wide" | "feature";
-
-     // Tuned against real menu content; see Phase 25 requirement.md Decision 7.
-     const THRESHOLDS = { feature: 5, wide: 3, tallOptions: 3 } as const;
-     const CHARS_PER_POINT = 60;
-
-     export function bentoScore(item: MenuItem): number {
-       const descriptionLength = item.description?.trim().length ?? 0;
-       return (
-         descriptionLength / CHARS_PER_POINT +
-         Math.max(0, item.price_options.length - 1) +
-         (item.is_featured ? 2 : 0)
-       );
-     }
-
-     export function bentoSize(item: MenuItem): BentoSize {
-       const score = bentoScore(item);
-       if (score >= THRESHOLDS.feature) return "feature";
-       if (score >= THRESHOLDS.wide) return "wide";
-       if (item.price_options.length >= THRESHOLDS.tallOptions) return "tall";
-       return "regular";
-     }
-
-     export const BENTO_SPAN: Record<BentoSize, string> = {
-       regular: "",
-       tall: "sm:row-span-2",
-       wide: "sm:col-span-2",
-       feature: "sm:col-span-2 sm:row-span-2",
-     };
-     ```
-     Write the class strings out in full (as above), never build them
-     from pieces, so Tailwind's scanner finds them.
+2.1. **`apps/web/lib/menu-bento.ts`** (pure, no React). Replaces
+     `bentoScore`/`bentoSize`/`BENTO_SPAN`/`BENTO_COLUMNS`.
+     - Types: `TileShape = "small" | "tall" | "wide"` and
+       `TileTint = "brand" | "cream" | "soft" | "card" | "white"`.
+     - Patterns are written as `grid-template-areas`-style strings, one
+       letter per item in item order (a = 1st item of the group, b =
+       2nd, …), `.` for an empty cell:
+       ```ts
+       const LG_PATTERNS: Record<number, string[]> = {
+         8: ["a b b c", "a b b c", "a d e c", "f d e c", "f g h h", "f g h h"],
+         7: ["a b b c", "a b b c", "a d d c", "a d d c", "e f f g", "e f f g"],
+         6: ["a b b c", "a b b c", "d d e f", "d d e f"],
+         5: ["a b b c", "a b b c", "a d e c", "a d e c"],
+         4: ["a b b c", "a b b c", "a d d c", "a d d c"],
+         3: ["a b b c", "a b b c"],
+         2: ["a a b b", "a a b b"],
+         1: ["a . . .", "a . . ."],
+       };
+       const SM_PATTERNS: Record<number, string[]> = {
+         4: ["a b", "a b", "a c", "d c", "d c"],
+         3: ["a b", "a b", "c c", "c c"],
+         2: ["a b", "a b"],
+         1: ["a .", "a ."],
+       };
+       ```
+       The 8-item pattern is the reference layout (requirement.md
+       Decision 8). Letters follow reading order (the order of each
+       tile's top-left cell), so DOM order, visual order and tab order
+       agree.
+     - `parsePattern(rows)` → for each letter, its
+       `{ rowStart, colStart, rowSpan, colSpan }` (bounding box), plus
+       the pattern's row count. Throw if a letter's cells aren't a
+       rectangle, so a typo fails at build time.
+     - `shapeOf(box)`: `colSpan 2` → `wide`; `rowSpan ≥ 3` → `tall`;
+       otherwise `small`.
+     - `bentoLayout(count)` → one entry per item:
+       ```ts
+       type TilePlacement = {
+         sm: { area: string; shape: TileShape };
+         lg: { area: string; shape: TileShape };
+         tint: TileTint;
+       };
+       ```
+       Split the items into full groups (8 for `lg`, 4 for `sm`) plus a
+       tail group. Each group's rows are offset by the rows used so far.
+       `area` is a CSS `grid-area` value:
+       `"<rowStart> / <colStart> / span <rowSpan> / span <colSpan>"`.
+     - **Tint** comes from the `lg` slot, from a tint list written by
+       hand next to each `LG_PATTERNS` entry (don't compute it). Wide
+       tiles get `brand`, except where wide tiles touch (the 4-, 6- and
+       7-item tails, and the 8-item pattern's last tile, which touches
+       the next group's first wide tile): those alternate `brand` and
+       `cream`. The rest
+       take `cream`, `soft`, `card` or `white` so no two touching tiles
+       match, including across group boundaries.
+       The unit check below asserts that.
+     - Unit-check `bentoLayout` for counts 1–17 with
+       `pnpm check:bento` (`scripts/check-bento.mjs`, plain Node): no two items share a cell, every row except the last one
+       of a lone-item tail is full, and no two touching `lg` tiles share
+       a tint (requirement.md Decisions 8–9).
 2.2. **`components/menu-bento-grid.tsx`** (server component):
      ```tsx
      export function MenuBentoGrid({ items }: { items: MenuItem[] }) {
+       const layout = bentoLayout(items.length);
        return (
-         <div className="grid grid-flow-row-dense auto-rows-[minmax(11rem,auto)] grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-           {items.map((item) => {
-             const size = bentoSize(item);
-             return (
-               <div key={item.id} className={BENTO_SPAN[size]}>
-                 <MenuItemCard item={item} size={size} />
-               </div>
-             );
-           })}
+         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 sm:auto-rows-[8rem] lg:grid-cols-4">
+           {items.map((item, i) => (
+             <div
+               key={item.id}
+               style={{ "--sm-area": layout[i].sm.area, "--lg-area": layout[i].lg.area } as CSSProperties}
+               className="sm:[grid-area:var(--sm-area)] lg:[grid-area:var(--lg-area)]"
+             >
+               <MenuItemCard item={item} placement={layout[i]} />
+             </div>
+           ))}
          </div>
        );
      }
      ```
-     **Few items** (requirement.md Decision 8). Compute
-     `totalSpan = Σ (sm column span)`, then pick the column classes from
-     a fixed lookup, never string-built:
-     ```ts
-     const COLUMNS_FOR_SPAN = {
-       1: "grid-cols-1 sm:grid-cols-2 sm:max-w-[50%]", // a lone regular card stays card-sized
-       2: "grid-cols-1 sm:grid-cols-2",
-       3: "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3",
-       many: "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4",
-     } as const;
-     ```
-     `grid-flow-row-dense` stays on in every case (requirement.md
-     Decision 8). Check `1`'s `max-w` by eye. If it looks off, drop the
-     `max-w` and let the single card span both columns.
-2.3. **`components/menu-item-card.tsx`** gains `size?: BentoSize`
-     (default `"regular"`). The root gets `h-full`.
-     - `tall`: photo `h-[260px]`.
-     - `wide`: `sm:flex-row`, photo `sm:w-1/2 sm:h-full`.
-     - `feature`: photo `h-[220px] sm:h-[320px]`.
-     - Update `sizes` to match: feature and wide use
-       `(max-width: 640px) 100vw, 50vw`.
-     - `AddToCartControls` is unchanged.
-2.4. **Swap the grids** in `app/[locale]/menu/page.tsx` and the
-     homepage featured section of `app/[locale]/page.tsx` for
-     `<MenuBentoGrid items={…} />`.
-2.5. **Check by eye** on `/en/menu` with seed data at 320, 640, 1024
-     and 1440px wide (the browser or, once Group 10 exists, the
-     simulator). Adjust `THRESHOLDS` if the seed menu comes out all
-     `regular` or all `feature`, and note the final values in
-     requirement.md Decision 7.
+     Below `sm` no placement applies, so it's a plain list in DOM order.
+     Type the custom properties precisely (a `CSSProperties`
+     intersection with the two `--` keys), not with `any`.
+2.3. **`components/menu-item-card.tsx`** takes `placement` instead of
+     `size`.
+     - Root: `flex h-full flex-col overflow-hidden rounded-card`, plus
+       the tint's background and text colours (`brand` →
+       `bg-primary text-text-light`; others → `bg-cream` /
+       `bg-background-soft` / `bg-card` with the usual text colours).
+     - Shape classes are looked up per breakpoint from two tables,
+       `SM_SHAPE` and `LG_SHAPE`, each written out in full with its
+       prefix (`sm:` / `lg:`) so Tailwind's scanner finds them. Each
+       table has `root`, `photo` and `description` entries per shape:
+       - `small`: photo `flex-1`, text `flex-none`, description `hidden`.
+       - `tall`: photo `flex-1`, text `flex-none`, description
+         `line-clamp-3` (1×3) / `line-clamp-6` (1×4; the row span is
+         passed through).
+       - `wide`: root `flex-row`, photo `w-1/2 h-full`, text `flex-1`,
+         description `line-clamp-4`.
+       Below `sm` the card is the plain `tall` layout with a `h-[200px]`
+       photo and `line-clamp-3`.
+     - Price row: flat price, or `t("fromPrice", { price })` using the
+       lowest option, then a compact round add button (`aria-label`
+       includes the item name).
+     - `sizes`: `(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 600px`.
+     - The "Unavailable" badge stays as it is.
+2.4. **`components/add-to-cart-controls.tsx`**:
+     - Flat price: the compact add button, same `addLine` call.
+     - Price options: the button opens a native `<dialog>` (the
+       `AdminConfirmDialog` pattern: `showModal()`, Esc closes, a close
+       button). It shows the item name and one row per option with its
+       label, price and an add button. Adding closes the dialog.
+     - Preview mode still disables the buttons (`PREVIEW_DISABLED_TITLE`).
+2.5. **Messages:** add `MenuPage.fromPrice` ("from {price}") and
+     `MenuPage.chooseOption` (dialog title) to `en`, `nl` and `fr`.
+     `pnpm check:messages` must pass. Drop `addToCartOption` if nothing
+     uses it any more.
+2.6. **Check by eye** on `/en/menu` and the homepage at 320, 640, 1024,
+     1280 and 1440px: no clipped words except the clamped descriptions,
+     no holes, and tints that don't repeat between neighbours. Note any
+     changes to the row unit or clamp counts in requirement.md
+     Decision 7.
 
 ## Group 3 — Draft/publish migration (repo)
 
@@ -840,3 +879,12 @@ groups above, these win.
   was needed. On 2026-11-01 the user added the two MX records and replaced
   the SPF record in the Lightsail console, and Claude checked them with
   `GetDomain` and `dig`. SES identity and DKIM still show `SUCCESS`.
+- **SES contact address** (1.5): `PutAccountDetails` was never applied.
+  It returned `ConflictException` while case 179346172100474 was
+  `DENIED`, so the re-request went in as a reply to that case in Support
+  Center, and AWS granted production access on 2026-11-09 (50,000/day at
+  14/s). Calling `PutAccountDetails` now would resubmit the account
+  details and could start a new review. So `AdditionalContactEmailAddresses`
+  stays unset, and the stored use case still says `no-reply@`.
+  `contact@zainstreat.com` becomes the AWS account's Operations alternate
+  contact instead, which doesn't touch the SES review.

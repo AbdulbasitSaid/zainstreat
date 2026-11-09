@@ -199,50 +199,87 @@ The user added these requirements when planning started (2026-11-01):
 
 ### Bento menu grid
 
-7. **Card size comes from the item's content**, computed by a pure
-   function `bentoSize(item)` in `apps/web/lib/menu-bento.ts`. There's no
-   admin field. Four sizes:
+*Revised 2026-11-09 after review: cards sized by content came out too
+large and the dense packing looked random. The layout now follows a
+fixed, hand-designed tile pattern, modelled on a reference bento the
+user supplied. This replaces the original "more content, more space"
+ask. The owner still decides which item lands in a big tile, through
+`display_order`.*
 
-   | Size | Span (from `sm`) | When |
+7. **Tile shape comes from the item's position, not its content.** A
+   pure function `bentoLayout(count)` in `apps/web/lib/menu-bento.ts`
+   returns each item's tile shape and grid placement. There's no admin
+   field and no content score. Three shapes, in a fixed row unit
+   (`8rem`, `gap-6`):
+
+   | Shape | Span | Layout |
    |---|---|---|
-   | `feature` | 2 cols × 2 rows | score ≥ 4 |
-   | `wide` | 2 cols × 1 row | score ≥ 2.5 |
-   | `tall` | 1 col × 2 rows | 3 or more price options and score < 2.5 |
-   | `regular` | 1 × 1 | otherwise |
+   | `small` | 1 col × 2 rows | photo, name, price + add button; no description |
+   | `tall` | 1 col × 3 or 4 rows | photo, name, description (3 or 6 lines), price + add |
+   | `wide` | 2 cols × 2 rows | photo on the left half, text on the right (4 lines) |
 
-   `score = descriptionLength / 60 + max(0, priceOptions − 1) + (is_featured ? 2 : 0)`.
-   Featured items count for 2 points, so the owner's picks get more
-   room. The thresholds live in one constant so they're easy to tune
-   once real content is in.
-8. **Responsive columns.** 1 column below `sm` (640px), 2 from `sm`, 3
-   from `lg` (1024px), 4 from `xl` (1280px).
-   - **Dense packing** (`grid-flow-row-dense`, asked after planning), so
-     the grid has no holes. Dense packing can show a later small card
-     before an earlier large one. DOM order still drives reading and tab
-     order (WCAG 1.3.2 is about meaning, and a menu list's order carries
-     none).
-   - Spans only apply from `sm`. On a phone every card is full width,
-     in list order. A 2-column span on a 2-column grid is full width,
-     which is intended.
-   - Rows use `auto-rows-[minmax(11rem,auto)]` so text never clips.
-   - **Few items:** a category whose spans add up to less than the
-     column count gets fewer columns. 1–2 regular items use at most 2
-     columns, and a lone `feature` item uses 2. Each section stays full
-     width, with no mostly empty rows. The column class comes from a
-     fixed lookup.
-9. **Size changes the layout, not just the box.**
-   - `regular`: today's card.
-   - `tall`: a taller photo with the full price-option list.
-   - `wide`: photo on the left and text on the right (from `sm`).
-   - `feature`: a large photo with the text below and the description
-     not truncated.
+   In stacked tiles the text takes its natural height and the photo
+   fills the rest of the tile.
 
-   `MenuItemCard` takes a `size` prop. The add-to-cart controls stay the
-   same at every size.
-10. **Used on `/menu` and the homepage featured section** (asked during
-    planning). Both render through one `MenuBentoGrid` component. Order
-    still follows `display_order`. Dense packing can move a small card
-    up into a gap (Decision 8).
+8. **Columns and patterns.**
+   - **Below `sm`:** 1 column, a plain list in `display_order`. Each
+     card is a `tall` card with auto height (photo, then text).
+   - **`sm` to `lg`:** 2 columns, a 4-item pattern over 5 rows:
+     ```
+     a b
+     a b
+     a c
+     d c
+     d c
+     ```
+     (a = tall 1×3, b = small, c = tall 1×3, d = small).
+   - **From `lg`:** 4 columns, an 8-item pattern over 6 rows (the
+     reference layout):
+     ```
+     1 2 2 3
+     1 2 2 3
+     1 5 6 3
+     4 5 6 3
+     4 7 8 8
+     4 7 8 8
+     ```
+     (1, 4 = tall 1×3; 3 = tall 1×4; 2, 8 = wide; 5, 6, 7 = small).
+   - **Leftover items.** Full patterns repeat. The last, partial group
+     uses a **tail pattern** for its count, hand-made so it still fills
+     every column with no holes (plan 2.1 lists them). Only a lone
+     leftover item, on any grid, leaves empty space beside it.
+   - Placement is explicit (row and column lines per item, per
+     breakpoint), so there's no dense packing. Visual order matches
+     DOM order, reading order and tab order.
+   - **Fixed rows mean content has to fit.** Descriptions use
+     `line-clamp` sized to the tile, and the tile has
+     `overflow-hidden` as a backstop. No tile grows its row.
+9. **Tile look: tints and prices.** Tile backgrounds rotate through
+   brand tints, like the reference's colour blocks. `wide` tiles use
+   `bg-primary` with light text and an inverted add button, and the
+   rest rotate through `cream`, `background-soft`, `card` and white.
+   Touching wide tiles alternate `brand` and `cream`. The full pattern's
+   last wide tile is `cream`, because it touches the next group's first
+   wide tile. The colour comes from the
+   item's slot in the 4-column pattern, so no two neighbours match
+   there, and it stays the same at every width (a tile's shape can
+   change between breakpoints, but its colour doesn't).
+   - Contrast is checked for every tint (text, price, button, the
+     "Unavailable" badge) at WCAG AA.
+   - Flat price: the price and a compact add button on one row.
+   - Price options: the tile shows "from €X" (the lowest option) and
+     one add button. That button opens a native `<dialog>` that lists
+     every option with its price and its own add button (the
+     `AdminConfirmDialog` pattern, so no `window.confirm`). The dialog
+     closes after an add.
+   - Unavailable items keep today's greyed look and badge, with no add
+     button.
+   - New message keys (`fromPrice`, `chooseOption`) go into en, nl
+     and fr; Claude writes the copy.
+10. **Used on `/menu` and the homepage featured section.** Both render
+    through one `MenuBentoGrid` component. The homepage shows up to 6
+    featured items, so it always uses the 6-item tail pattern or a
+    smaller one.
 
 ### Editable site content
 
@@ -439,7 +476,7 @@ The user added these requirements when planning started (2026-11-01):
 - Draft/preview for **orders, quotes, enquiries or the availability
   toggle**. They aren't site content (Decision 16).
 - Per-locale **menu** names and descriptions (still Phase 24's
-  "out of scope"). Bento sizing uses the single description.
+  "out of scope").
 - Editable text on pages other than the homepage, including SEO
   `metaTitle`/`metaDescription` (Phase 26).
 - The favicon (`app/icon.png`). It stays a build-time asset.
@@ -474,10 +511,12 @@ traceable.
    follow-up buttons (Decision 6a). Owner notifications to `contact@`
    work in the sandbox, because the domain is verified. **Still open:**
    the AWS decision itself, which is outside our control.
-4. **Dense packing changes visual order.** *Resolved:* dense packing is
-   kept on purpose (Decision 8).
-5. **Bento with very few items.** *Resolved:* the column count follows
-   the category's total span (Decision 8, plan 2.2).
+4. **Dense packing changes visual order.** *Resolved:* no longer
+   applies. Placement is explicit, so visual order matches DOM order
+   (Decision 8, revised 2026-11-09).
+5. **Bento with very few items.** *Resolved:* the last, partial group
+   uses a hand-made tail pattern for its count, so it fills every column
+   (Decision 8, plan 2.1).
 6. **The draft model touches order-critical queries.** *Resolved:* the
    API tests cover them (plan 4.3). An unpublished item isn't listed and
    gives `400` when ordered. A published item with a pending draft is

@@ -62,7 +62,11 @@
     "trustReliableDesc": "Altijd op tijd",
     "featuredMenuEyebrow": "Publieksfavorieten",
     "featuredMenuHeading": "Proef Ons Uitgelichte Menu",
-    "viewFullMenu": "Bekijk Volledig Menu"
+    "viewFullMenu": "Bekijk Volledig Menu",
+    "servicesEyebrow": "Wat Wij Bieden",
+    "servicesHeading": "Iets <em>Heerlijks</em> voor Elke Gelegenheid",
+    "servicesSupporting": "Van dagelijkse halal maaltijden en snacks tot complete catering en verhuur voor evenementen: wij zorgen voor het eten en de details, zodat u kunt genieten van het moment.",
+    "exploreServices": "Ontdek Onze Diensten"
   },
   "MenuPage": {
     "heading": "Ons Menu",
@@ -74,7 +78,10 @@
     "unavailable": "Momenteel niet beschikbaar",
     "loadError": "We konden het menu nu niet laden. Probeer het later opnieuw.",
     "addToCart": "In Winkelwagen",
-    "addToCartOption": "{option} Toevoegen"
+    "addToCartOption": "{option} Toevoegen",
+    "fromPrice": "vanaf {price}",
+    "chooseOption": "Kies een optie",
+    "closeDialog": "Sluiten"
   },
   "Cart": {
     "metaTitle": "Winkelwagen | Zain's Treat n More",

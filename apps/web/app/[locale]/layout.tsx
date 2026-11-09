@@ -9,6 +9,8 @@ import { SiteFooter } from "@/components/site-footer";
 import { MotionProvider } from "@/components/motion-provider";
 import { PageTransition } from "@/components/page-transition";
 import { CustomCursor } from "@/components/custom-cursor";
+import { LiquidPageTransition } from "@/components/liquid-page-transition";
+import { LiquidScroll } from "@/components/liquid-scroll";
 import { WhatsAppFloatButton } from "@/components/whatsapp-float-button";
 import { PreviewBridge } from "@/components/preview-bridge";
 import { CartProvider } from "@/lib/cart-context";
@@ -64,6 +66,9 @@ export default async function LocaleLayout({
               <PageTransition>{children}</PageTransition>
               <SiteFooter />
               <WhatsAppFloatButton />
+              <LiquidScroll />
+              {/* The admin's preview frame navigates on its own terms. */}
+              {!preview && <LiquidPageTransition />}
               {/* Draft mode only (cms host): no extra JS for visitors. */}
               {preview && <PreviewBridge />}
             </CartProvider>
