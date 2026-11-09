@@ -104,9 +104,19 @@
     }
   }
 
-  body.custom-cursor-active,
-  body.custom-cursor-active * {
+  /* A modal <dialog> renders in the top layer, above the custom cursor's
+     z-index, so fall back to the native cursor while one is open. */
+  body.custom-cursor-active:not(:has(dialog:modal)),
+  body.custom-cursor-active:not(:has(dialog:modal)) * {
     cursor: none;
+  }
+
+  body:has(dialog:modal) [data-custom-cursor] {
+    display: none;
+  }
+
+  dialog button:not(:disabled) {
+    cursor: pointer;
   }
 }
 

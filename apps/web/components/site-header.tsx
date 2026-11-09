@@ -158,11 +158,13 @@ export function SiteHeader({ logoSrc }: { logoSrc?: string | null }) {
           <li className="px-4 py-2 min-[769px]:px-0 min-[769px]:py-0">
             <LocaleToggle />
           </li>
-          <li className="px-4 pt-2 min-[769px]:px-0 min-[769px]:pt-0">
-            <ButtonLink href="/contact" className="w-full justify-center min-[769px]:w-auto">
-              {t("orderNow")}
-            </ButtonLink>
-          </li>
+          {pathname !== "/menu" && (
+            <li className="px-4 pt-2 min-[769px]:px-0 min-[769px]:pt-0">
+              <ButtonLink href="/menu" className="w-full justify-center min-[769px]:w-auto">
+                {t("orderNow")}
+              </ButtonLink>
+            </li>
+          )}
         </ul>
       </nav>
     </header>

@@ -62,7 +62,11 @@
     "trustReliableDesc": "À l'heure, à chaque fois",
     "featuredMenuEyebrow": "Les favoris",
     "featuredMenuHeading": "Goûtez notre sélection",
-    "viewFullMenu": "Voir tout le menu"
+    "viewFullMenu": "Voir tout le menu",
+    "servicesEyebrow": "Ce que nous proposons",
+    "servicesHeading": "Quelque chose de <em>délicieux</em> pour chaque occasion",
+    "servicesSupporting": "Des repas et snacks halal du quotidien jusqu'au service traiteur complet et à la location pour vos événements, nous nous occupons des plats et des détails pour que vous profitiez du moment.",
+    "exploreServices": "Découvrir nos services"
   },
   "MenuPage": {
     "heading": "Notre menu",
@@ -74,7 +78,10 @@
     "unavailable": "Actuellement indisponible",
     "loadError": "Nous n'avons pas pu charger le menu. Veuillez réessayer dans un instant.",
     "addToCart": "Ajouter au panier",
-    "addToCartOption": "Ajouter {option}"
+    "addToCartOption": "Ajouter {option}",
+    "fromPrice": "à partir de {price}",
+    "chooseOption": "Choisissez une option",
+    "closeDialog": "Fermer"
   },
   "Cart": {
     "metaTitle": "Panier | Zain's Treat n More",

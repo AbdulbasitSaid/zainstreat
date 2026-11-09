@@ -48,11 +48,15 @@ export const HOME_TEXT_KEYS = [
   "featuredMenuEyebrow",
   "featuredMenuHeading",
   "viewFullMenu",
+  "servicesEyebrow",
+  "servicesHeading",
+  "servicesSupporting",
+  "exploreServices",
 ] as const;
 export type HomeTextKey = (typeof HOME_TEXT_KEYS)[number];
 
 // Rendered with t.rich, so these may carry <em>…</em>.
-export const RICH_HOME_TEXT_KEYS: readonly HomeTextKey[] = ["heroHeadline", "whyChooseUs"];
+export const RICH_HOME_TEXT_KEYS: readonly HomeTextKey[] = ["heroHeadline", "whyChooseUs", "servicesHeading"];
 
 export interface SiteContent {
   images?: Partial<Record<SiteImageSlot, string | null>>;
