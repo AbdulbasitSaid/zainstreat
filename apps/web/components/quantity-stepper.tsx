@@ -1,5 +1,7 @@
 "use client";
 
+import { LiquidSurface } from "@/components/liquid-surface";
+
 export function QuantityStepper({
   quantity,
   onDecrement,
@@ -19,9 +21,10 @@ export function QuantityStepper({
         type="button"
         aria-label={decrementLabel}
         onClick={onDecrement}
-        className="flex h-7 w-7 items-center justify-center rounded-full text-text hover:bg-background-soft"
+        className="group/liquid relative isolate flex h-7 w-7 items-center justify-center rounded-full text-text hover:bg-background-soft"
       >
         −
+        <StepperLiquid />
       </button>
       <span aria-live="polite" className="w-5 text-center text-sm font-semibold">
         {quantity}
@@ -30,10 +33,20 @@ export function QuantityStepper({
         type="button"
         aria-label={incrementLabel}
         onClick={onIncrement}
-        className="flex h-7 w-7 items-center justify-center rounded-full text-text hover:bg-background-soft"
+        className="group/liquid relative isolate flex h-7 w-7 items-center justify-center rounded-full text-text hover:bg-background-soft"
       >
         +
+        <StepperLiquid />
       </button>
     </div>
+  );
+}
+
+function StepperLiquid() {
+  return (
+    <LiquidSurface
+      pathClassName="fill-background-soft/0 transition-[fill] duration-150 group-hover/liquid:fill-background-soft"
+      splashClassName="fill-primary"
+    />
   );
 }

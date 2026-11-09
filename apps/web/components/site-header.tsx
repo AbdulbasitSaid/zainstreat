@@ -10,6 +10,7 @@ import { LocaleToggle } from "@/components/locale-toggle";
 import { ButtonLink } from "@/components/button";
 import { CartIcon } from "@/components/cart-icon";
 import { CartBadge } from "@/components/cart-badge";
+import { LiquidSurface } from "@/components/liquid-surface";
 
 const NAV_ITEMS = [
   { href: "/", key: "home" },
@@ -18,6 +19,9 @@ const NAV_ITEMS = [
   { href: "/menu", key: "menu" },
   { href: "/contact", key: "contact" },
 ] as const;
+
+// Transparent icon buttons: the liquid only shows as their hover tint.
+const GHOST_LIQUID_PATH = "fill-background-soft/0 transition-[fill] duration-150 group-hover/liquid:fill-background-soft";
 
 const DESKTOP_QUERY = "(min-width: 769px)";
 
@@ -97,7 +101,7 @@ export function SiteHeader({ logoSrc }: { logoSrc?: string | null }) {
       <nav className="container flex items-center justify-between py-3.5" aria-label={t("navLabel")}>
         <Logo src={logoSrc} />
         <button
-          className="relative z-10 inline-flex h-10 w-10 flex-col items-center justify-center gap-1.5 rounded-full text-primary min-[769px]:hidden focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-accent focus-visible:outline-offset-2"
+          className="group/liquid relative isolate z-10 inline-flex h-10 w-10 flex-col items-center justify-center gap-1.5 rounded-full text-primary min-[769px]:hidden focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-accent focus-visible:outline-offset-2"
           aria-expanded={isMenuOpen}
           aria-controls="primary-navigation"
           aria-label={t(isMenuOpen ? "closeMenu" : "openMenu")}
@@ -106,6 +110,7 @@ export function SiteHeader({ logoSrc }: { logoSrc?: string | null }) {
           <span ref={bar1Ref} aria-hidden="true" className="block h-0.5 w-6 rounded-full bg-current" />
           <span ref={bar2Ref} aria-hidden="true" className="block h-0.5 w-6 rounded-full bg-current" />
           <span ref={bar3Ref} aria-hidden="true" className="block h-0.5 w-6 rounded-full bg-current" />
+          <LiquidSurface pathClassName={GHOST_LIQUID_PATH} splashClassName="fill-primary" />
         </button>
         <ul
           ref={navListRef}
@@ -149,10 +154,11 @@ export function SiteHeader({ logoSrc }: { logoSrc?: string | null }) {
             <Link
               href="/cart"
               aria-label={t("cart")}
-              className="relative inline-flex h-10 w-10 items-center justify-center rounded-full text-primary hover:bg-background-soft"
+              className="group/liquid relative isolate inline-flex h-10 w-10 items-center justify-center rounded-full text-primary hover:bg-background-soft"
             >
               <CartIcon className="h-5 w-5" />
               <CartBadge />
+              <LiquidSurface pathClassName={GHOST_LIQUID_PATH} splashClassName="fill-primary" />
             </Link>
           </li>
           <li className="px-4 py-2 min-[769px]:px-0 min-[769px]:py-0">

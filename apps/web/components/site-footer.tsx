@@ -1,6 +1,7 @@
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
+import { LiquidSurface } from "@/components/liquid-surface";
 
 function InstagramIcon() {
   return (
@@ -64,9 +65,10 @@ export function SiteFooter() {
                   type="submit"
                   disabled
                   aria-label={t("newsletterPlaceholder")}
-                  className="flex h-[2.4rem] w-[2.4rem] shrink-0 items-center justify-center rounded-full bg-primary text-text-light disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
+                  className="group/liquid relative isolate flex h-[2.4rem] w-[2.4rem] shrink-0 items-center justify-center rounded-full bg-primary text-text-light disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
                 >
                   →
+                  <LiquidSurface pathClassName="fill-primary" splashClassName="fill-primary" />
                 </button>
               </form>
               <p className="mt-2.5 max-w-[36ch] text-[0.8rem] text-on-dark-faint">
@@ -80,18 +82,20 @@ export function SiteFooter() {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={t("instagramLabel")}
-                className="flex h-9 w-9 items-center justify-center rounded-full border border-white/40 hover:bg-white/10"
+                className="group/liquid relative isolate flex h-9 w-9 items-center justify-center rounded-full border border-white/40 hover:bg-white/10"
               >
                 <InstagramIcon />
+                <SocialLiquid />
               </a>
               <a
                 href={buildWhatsAppLink(tw("prefilledMessage"))}
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={t("whatsappLabel")}
-                className="flex h-9 w-9 items-center justify-center rounded-full border border-white/40 hover:bg-white/10"
+                className="group/liquid relative isolate flex h-9 w-9 items-center justify-center rounded-full border border-white/40 hover:bg-white/10"
               >
                 <WhatsAppIcon />
+                <SocialLiquid />
               </a>
             </div>
           </div>
@@ -124,5 +128,16 @@ export function SiteFooter() {
         </p>
       </div>
     </footer>
+  );
+}
+
+// The social icons' border and hover tint, as a liquid surface.
+function SocialLiquid() {
+  return (
+    <LiquidSurface
+      strokeWidth={1}
+      pathClassName="fill-white/0 stroke-white/40 transition-[fill] duration-150 group-hover/liquid:fill-white/10"
+      splashClassName="fill-white"
+    />
   );
 }

@@ -115,10 +115,14 @@ export function AddToCartControls({ item, onBrand = false }: { item: MenuItem; o
           <button
             type="button"
             aria-label={t("closeDialog")}
-            className={`-mt-1 -mr-2 inline-flex h-9 w-9 items-center justify-center rounded-full text-xl text-text-muted hover:bg-text/10 ${FOCUS_CLASSES}`}
+            className={`group/liquid relative isolate -mt-1 -mr-2 inline-flex h-9 w-9 items-center justify-center rounded-full text-xl text-text-muted hover:bg-text/10 ${FOCUS_CLASSES}`}
             onClick={() => dialogRef.current?.close()}
           >
             <span aria-hidden="true">×</span>
+            <LiquidSurface
+              pathClassName="fill-text/0 transition-[fill] duration-150 group-hover/liquid:fill-text/10"
+              splashClassName="fill-text"
+            />
           </button>
         </div>
         <ul className="m-0 flex list-none flex-col gap-2 p-0">
