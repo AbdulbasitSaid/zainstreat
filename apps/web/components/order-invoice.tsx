@@ -1,5 +1,5 @@
 import { useLocale, useTranslations } from "next-intl";
-import { buttonClasses } from "@/components/button";
+import { ButtonAnchor } from "@/components/button";
 import { Notice } from "@/components/notice";
 import { OrderLineSummary } from "@/components/order-line-summary";
 import { formatPrice } from "@/lib/format";
@@ -86,14 +86,16 @@ export function OrderInvoice({ order }: { order: OrderResponse }) {
         ) : (
           <>
             <p className="m-0">{t("noBankDetails", { reference: order.payment_reference })}</p>
-            <a
+            <ButtonAnchor
               href={buildWhatsAppLink(t("noBankDetailsMessage", { reference: order.payment_reference }))}
               target="_blank"
               rel="noopener noreferrer"
-              className={buttonClasses({ variant: "outline", color: "whatsapp", className: "self-start" })}
+              variant="outline"
+              color="whatsapp"
+              className="self-start"
             >
               {t("noBankDetailsCta")}
-            </a>
+            </ButtonAnchor>
           </>
         )}
       </section>

@@ -2,6 +2,8 @@ import { useTranslations } from "next-intl";
 import Image from "next/image";
 import { ImageSlot } from "@/components/image-slot";
 import { AddToCartControls } from "@/components/add-to-cart-controls";
+import { TiltCard } from "@/components/tilt-card";
+import { LiquidCard } from "@/components/liquid-card";
 import { formatPrice } from "@/lib/format";
 import type { MenuItem } from "@/lib/api";
 import type { TilePlacement, TileShape, TileSlot, TileTint } from "@/lib/menu-bento";
@@ -86,66 +88,70 @@ export function MenuItemCard({ item, placement }: { item: MenuItem; placement: T
   const price = lowestPrice(item);
 
   return (
-    <div
-      className={`flex h-full flex-col overflow-hidden rounded-card shadow-sm ${SM_SHAPE[sm.shape].root} ${
-        LG_SHAPE[lg.shape].root
-      } ${tintClass.root} ${item.is_available ? "" : "opacity-60 grayscale-30"}`.trim()}
-    >
-      <div
-        className={`relative h-50 w-full shrink-0 sm:min-h-0 ${SM_SHAPE[sm.shape].photo} ${LG_SHAPE[lg.shape].photo}`}
+    <TiltCard className="h-full">
+      <LiquidCard
+        wrapperClassName="h-full"
+        strokeClassName={tint === "white" ? "stroke-text/10" : undefined}
+        className={`flex h-full flex-col overflow-hidden rounded-card shadow-sm transition-shadow duration-300 ease-out-expo hover:shadow-[0_18px_36px_rgba(43,17,20,0.16)] ${SM_SHAPE[sm.shape].root} ${
+          LG_SHAPE[lg.shape].root
+        } ${tintClass.root} ${item.is_available ? "" : "opacity-60 grayscale-30"}`.trim()}
       >
-        {item.image_url ? (
-          <Image
-            src={item.image_url}
-            alt={item.name}
-            fill
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 600px"
-            // Phase 14's uploaded photos are absolute URLs served by the API
-            // (apps/api's media route). In dev, next/image's server-side
-            // optimizer runs inside the `web` container, which can't reach
-            // the api container at the browser-facing `localhost:8080` host
-            // — so only that dev-only scheme stays unoptimized. Production's
-            // `https://api.$DOMAIN` URLs now get real format conversion
-            // (Phase 17 Decision 9). Relative seed-data paths (same origin)
-            // are unaffected and keep optimizing.
-            unoptimized={item.image_url.startsWith("http://")}
-            className="object-cover"
-          />
-        ) : (
-          <ImageSlot label={item.name} className="h-full min-h-0 rounded-none border-0" />
-        )}
-        {!item.is_available && (
-          <span className="absolute top-3 right-3 rounded-full bg-primary-dark px-3 py-1 text-[0.7rem] font-semibold tracking-wide text-text-light uppercase">
-            {t("unavailable")}
-          </span>
-        )}
-      </div>
-      <div
-        className={`flex min-h-0 min-w-0 flex-1 flex-col gap-1.5 p-4 ${SM_SHAPE[sm.shape].body} ${
-          LG_SHAPE[lg.shape].body
-        }`}
-      >
-        <h3 className="m-0 line-clamp-2 text-[1.05rem] text-inherit">{item.name}</h3>
-        {item.description && (
-          <p
-            className={`m-0 line-clamp-3 text-[0.9rem] ${tintClass.muted} ${descriptionClass(
-              sm,
-              SM_SHAPE,
-              SM_LONG_DESCRIPTION,
-            )} ${descriptionClass(lg, LG_SHAPE, LG_LONG_DESCRIPTION)}`}
-          >
-            {item.description}
-          </p>
-        )}
-        <div className="mt-auto flex items-center justify-between gap-3 pt-2">
-          {price !== null && (
-            <p className={`m-0 text-[1.05rem] font-semibold ${tintClass.price}`}>
-              {item.price === null ? t("fromPrice", { price: formatPrice(price) }) : formatPrice(price)}
+        <div
+          className={`relative h-50 w-full shrink-0 sm:min-h-0 ${SM_SHAPE[sm.shape].photo} ${LG_SHAPE[lg.shape].photo}`}
+        >
+          {item.image_url ? (
+            <Image
+              src={item.image_url}
+              alt={item.name}
+              fill
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 600px"
+              // Phase 14's uploaded photos are absolute URLs served by the API
+              // (apps/api's media route). In dev, next/image's server-side
+              // optimizer runs inside the `web` container, which can't reach
+              // the api container at the browser-facing `localhost:8080` host
+              // — so only that dev-only scheme stays unoptimized. Production's
+              // `https://api.$DOMAIN` URLs now get real format conversion
+              // (Phase 17 Decision 9). Relative seed-data paths (same origin)
+              // are unaffected and keep optimizing.
+              unoptimized={item.image_url.startsWith("http://")}
+              className="object-cover"
+            />
+          ) : (
+            <ImageSlot label={item.name} className="h-full min-h-0 rounded-none border-0" />
+          )}
+          {!item.is_available && (
+            <span className="absolute top-3 right-3 rounded-full bg-primary-dark px-3 py-1 text-[0.7rem] font-semibold tracking-wide text-text-light uppercase">
+              {t("unavailable")}
+            </span>
+          )}
+        </div>
+        <div
+          className={`flex min-h-0 min-w-0 flex-1 flex-col gap-1.5 p-4 ${SM_SHAPE[sm.shape].body} ${
+            LG_SHAPE[lg.shape].body
+          }`}
+        >
+          <h3 className="m-0 line-clamp-2 text-[1.05rem] text-inherit">{item.name}</h3>
+          {item.description && (
+            <p
+              className={`m-0 line-clamp-3 text-[0.9rem] ${tintClass.muted} ${descriptionClass(
+                sm,
+                SM_SHAPE,
+                SM_LONG_DESCRIPTION,
+              )} ${descriptionClass(lg, LG_SHAPE, LG_LONG_DESCRIPTION)}`}
+            >
+              {item.description}
             </p>
           )}
-          <AddToCartControls item={item} onBrand={tint === "brand"} />
+          <div className="mt-auto flex items-center justify-between gap-3 pt-2">
+            {price !== null && (
+              <p className={`m-0 text-[1.05rem] font-semibold ${tintClass.price}`}>
+                {item.price === null ? t("fromPrice", { price: formatPrice(price) }) : formatPrice(price)}
+              </p>
+            )}
+            <AddToCartControls item={item} onBrand={tint === "brand"} />
+          </div>
         </div>
-      </div>
-    </div>
+      </LiquidCard>
+    </TiltCard>
   );
 }

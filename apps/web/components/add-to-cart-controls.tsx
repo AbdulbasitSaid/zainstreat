@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 import { useTranslations } from "next-intl";
+import { LiquidSurface } from "@/components/liquid-surface";
 import { useCart } from "@/lib/cart-context";
 import { formatPrice } from "@/lib/format";
 import { PREVIEW_DISABLED_TITLE, usePreview } from "@/lib/preview-context";
@@ -12,16 +13,41 @@ const FOCUS_CLASSES =
 
 // A compact round "+" so the price and the button share one row even in a
 // small bento tile (Phase 25 Decision 9). `onBrand` inverts it for the
-// `bg-primary` tiles.
+// `bg-primary` tiles. Hover swaps fill and glyph colours (the border keeps
+// the inverted button visible against the tile) and spins the "+" once.
 function addButtonClasses(onBrand: boolean) {
   return (
-    "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xl leading-none " +
-    "transition-[transform,background-color] duration-150 ease-out-expo hover:scale-105 active:scale-95 " +
+    "group/add group/liquid relative isolate inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 text-xl leading-none " +
+    "transition-[transform,background-color,color] duration-200 ease-out-expo hover:scale-115 active:scale-95 " +
     "disabled:pointer-events-none disabled:opacity-50 " +
     FOCUS_CLASSES +
     (onBrand
-      ? " bg-white text-primary-dark hover:bg-accent-light"
-      : " bg-primary text-white hover:bg-primary-light")
+      ? " border-white bg-white text-primary-dark hover:bg-primary-dark hover:text-white"
+      : " border-primary bg-primary text-white hover:bg-white hover:text-primary")
+  );
+}
+
+// The "+" plus the button's liquid surface (mirrors addButtonClasses'
+// fill, border and hover inversion).
+function AddGlyph({ onBrand }: { onBrand: boolean }) {
+  return (
+    <>
+      <span
+        aria-hidden="true"
+        className="inline-block transition-transform duration-500 ease-out-expo group-hover/add:rotate-360"
+      >
+        +
+      </span>
+      <LiquidSurface
+        strokeWidth={2}
+        pathClassName={`transition-[fill] duration-200 ${
+          onBrand
+            ? "fill-white stroke-white group-hover/liquid:fill-primary-dark"
+            : "fill-primary stroke-primary group-hover/liquid:fill-white"
+        }`}
+        splashClassName={onBrand ? "fill-white" : "fill-primary"}
+      />
+    </>
   );
 }
 
@@ -54,7 +80,7 @@ export function AddToCartControls({ item, onBrand = false }: { item: MenuItem; o
         {...previewProps}
         onClick={() => addOption(null, flatPrice)}
       >
-        <span aria-hidden="true">+</span>
+        <AddGlyph onBrand={onBrand} />
       </button>
     );
   }
@@ -72,7 +98,7 @@ export function AddToCartControls({ item, onBrand = false }: { item: MenuItem; o
         {...previewProps}
         onClick={() => dialogRef.current?.showModal()}
       >
-        <span aria-hidden="true">+</span>
+        <AddGlyph onBrand={onBrand} />
       </button>
       <dialog
         ref={dialogRef}
@@ -113,7 +139,7 @@ export function AddToCartControls({ item, onBrand = false }: { item: MenuItem; o
                   dialogRef.current?.close();
                 }}
               >
-                <span aria-hidden="true">+</span>
+                <AddGlyph onBrand={false} />
               </button>
             </li>
           ))}

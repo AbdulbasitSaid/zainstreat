@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
-import { buttonClasses, ButtonLink } from "@/components/button";
+import { ButtonAnchor, ButtonLink } from "@/components/button";
 import { Notice } from "@/components/notice";
 import { PageHero } from "@/components/page-hero";
 import { QuoteActions } from "@/components/quote-actions";
@@ -52,14 +52,15 @@ export default async function QuotePage({
         : t("fulfilmentDelivery", { address: quote.delivery_address });
 
   const contactLink = (
-    <a
+    <ButtonAnchor
       href={buildWhatsAppLink(t("heading", { id: quote.id }))}
       target="_blank"
       rel="noopener noreferrer"
-      className={buttonClasses({ variant: "outline", color: "whatsapp" })}
+      variant="outline"
+      color="whatsapp"
     >
       {t("contactWhatsApp")}
-    </a>
+    </ButtonAnchor>
   );
 
   return (

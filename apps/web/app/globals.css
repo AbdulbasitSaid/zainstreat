@@ -121,6 +121,32 @@
 }
 
 @layer components {
+  /* Liquid surfaces (lib/liquid.ts). Once a <LiquidSurface /> is running it
+     draws the button's fill/border itself, so the real ones go transparent;
+     `!important` here (a lower layer) still beats the utilities' hover
+     colours. Until then — and on touch / reduced motion — the CSS button
+     shows as normal. */
+  [data-liquid="surface"] {
+    background: transparent !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+  }
+
+  /* A <LiquidCard /> clips the card to its outline, which would also clip a
+     box-shadow or border: the wrapper takes a drop-shadow instead and the
+     card's optional stroke SVG redraws the border. */
+  [data-liquid="clip"] {
+    border-color: transparent !important;
+    box-shadow: none !important;
+  }
+  .liquid-card:has(> [data-liquid="clip"]) {
+    filter: drop-shadow(0 1px 2px rgb(43 17 20 / 0.08));
+    transition: filter var(--transition-slow) var(--ease-out-expo);
+  }
+  .liquid-card:has(> [data-liquid="clip"]):hover {
+    filter: drop-shadow(0 14px 22px rgb(43 17 20 / 0.14));
+  }
+
   .container {
     max-width: var(--container-brand);
     margin-inline: auto;
