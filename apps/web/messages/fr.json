@@ -13,7 +13,8 @@
     "openMenu": "Ouvrir le menu",
     "closeMenu": "Fermer le menu",
     "cart": "Panier",
-    "whatsappLabel": "WhatsApp"
+    "whatsappLabel": "WhatsApp",
+    "loadingPage": "Chargement…"
   },
   "SiteFooter": {
     "tagline": "Une cuisine savoureuse. Des moments inoubliables. Un service exceptionnel.",

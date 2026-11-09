@@ -13,7 +13,8 @@
     "openMenu": "Open menu",
     "closeMenu": "Close menu",
     "cart": "Cart",
-    "whatsappLabel": "WhatsApp"
+    "whatsappLabel": "WhatsApp",
+    "loadingPage": "Loading…"
   },
   "SiteFooter": {
     "tagline": "Great Food. Memorable Moments. Exceptional Service.",

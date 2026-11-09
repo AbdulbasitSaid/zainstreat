@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useRef, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "@/i18n/navigation";
+import { BubbleLoader } from "@/components/bubble-loader";
 import { gsap, ScrollTrigger, useGSAP } from "@/lib/gsap";
 
 type FilterHref = "/menu" | { pathname: "/menu"; query: { category: number } };
@@ -127,29 +128,9 @@ export function MenuFilterResults({
       {/* Pinned under the header while the results load, so it's in view
           however far down the menu the visitor is. */}
       <div aria-live="polite" className="pointer-events-none sticky top-24 z-20 flex h-0 justify-center">
-        {isPending && <BubbleLoader label={loadingLabel} />}
+        {isPending && <BubbleLoader label={loadingLabel} className="mt-4" />}
       </div>
       <div ref={ref}>{children}</div>
-    </div>
-  );
-}
-
-// A small pot of rising, popping bubbles (globals.css `.bubble-loader`).
-// Fades in after a beat so quick loads don't flash it.
-function BubbleLoader({ label }: { label: string }) {
-  return (
-    <div
-      role="status"
-      className="loader-in mt-4 flex items-center gap-3 rounded-full bg-background/95 py-2.5 pr-5 pl-4 shadow-lg"
-    >
-      <span aria-hidden="true" className="bubble-loader">
-        <span />
-        <span />
-        <span />
-        <span />
-        <span />
-      </span>
-      <span className="text-sm font-semibold text-primary">{label}</span>
     </div>
   );
 }
