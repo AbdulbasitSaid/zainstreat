@@ -103,6 +103,15 @@
 }
 
 @layer base {
+  /* Liquid surfaces bleed an SVG 40px past their button (liquid-surface.tsx),
+     which near the screen edge would widen the page and let it pan sideways.
+     `clip` (unlike `hidden`) doesn't turn either into a scroll container, so
+     the sticky header and Lenis keep scrolling the viewport. */
+  html,
+  body {
+    overflow-x: clip;
+  }
+
   body {
     font-family: var(--font-body), sans-serif;
     color: var(--color-text);
@@ -166,6 +175,12 @@
 
   dialog button:not(:disabled) {
     cursor: pointer;
+  }
+
+  /* Same bleed inside a dialog (its × sits in the corner): clip it sideways
+     rather than scroll; tall content still scrolls vertically. */
+  dialog {
+    overflow-x: clip;
   }
 }
 

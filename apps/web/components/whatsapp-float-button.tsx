@@ -6,17 +6,22 @@ export async function WhatsAppFloatButton() {
   const t = await getTranslations("SiteHeader");
   const tw = await getTranslations("Whatsapp");
 
+  // The liquid surface bleeds 40px past the button, i.e. past the screen's
+  // right edge; html/body's overflow clip doesn't reach fixed elements, so a
+  // screen-sized fixed layer clips it instead of letting phones pan sideways.
   return (
-    <a
-      href={buildWhatsAppLink(tw("prefilledMessage"))}
-      target="_blank"
-      rel="noopener noreferrer"
-      aria-label={t("whatsappLabel")}
-      className="group/liquid isolate fixed bottom-6 right-6 z-50 inline-flex h-14 w-14 items-center justify-center rounded-full bg-whatsapp text-white shadow-lg transition-transform hover:scale-105"
-    >
-      <WhatsAppGlyph />
-      <LiquidSurface pathClassName="fill-whatsapp" splashClassName="fill-whatsapp" className="drop-shadow-lg" />
-    </a>
+    <div className="pointer-events-none fixed inset-0 z-50 overflow-hidden">
+      <a
+        href={buildWhatsAppLink(tw("prefilledMessage"))}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={t("whatsappLabel")}
+        className="group/liquid pointer-events-auto absolute bottom-6 right-6 isolate inline-flex h-14 w-14 items-center justify-center rounded-full bg-whatsapp text-white shadow-lg transition-transform hover:scale-105"
+      >
+        <WhatsAppGlyph />
+        <LiquidSurface pathClassName="fill-whatsapp" splashClassName="fill-whatsapp" className="drop-shadow-lg" />
+      </a>
+    </div>
   );
 }
 
