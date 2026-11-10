@@ -29,6 +29,55 @@
   /* Motion */
   --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1);
   --animate-marquee: marquee-scroll 26s linear infinite;
+  --animate-scroll-drip: scroll-drip 1.8s var(--ease-out-expo) infinite;
+}
+
+/* The wheel of .scroll-cue's mouse dripping down and fading, on a loop. */
+@keyframes scroll-drip {
+  0% {
+    transform: translate(-50%, 0) scaleY(1);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  60% {
+    transform: translate(-50%, 0.6rem) scaleY(1.4);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, 0.9rem) scaleY(0.6);
+    opacity: 0;
+  }
+}
+
+/* A bubble rising out of .bubble-loader's pot, wobbling, then popping. */
+@keyframes bubble-rise {
+  0% {
+    transform: translate(0, 0) scale(0.6);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  50% {
+    transform: translate(2px, -0.9rem) scale(1);
+  }
+  80% {
+    transform: translate(-2px, -1.5rem) scale(1.1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(0, -1.8rem) scale(1.6);
+    opacity: 0;
+  }
+}
+
+@keyframes loader-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.9);
+  }
 }
 
 @keyframes marquee-scroll {
@@ -139,6 +188,32 @@
     border-color: transparent !important;
     box-shadow: none !important;
   }
+  /* Loading indicator: bubbles rising and popping in a small pot. */
+  .bubble-loader {
+    position: relative;
+    display: inline-block;
+    width: 2.25rem;
+    height: 1.5rem;
+    border-bottom: 3px solid var(--color-primary);
+    border-radius: 0 0 0.6rem 0.6rem;
+  }
+  .bubble-loader > span {
+    position: absolute;
+    bottom: 2px;
+    border-radius: 9999px;
+    background: var(--color-primary);
+    animation: bubble-rise 1.2s ease-in infinite;
+  }
+  .bubble-loader > span:nth-child(1) { left: 10%; width: 6px; height: 6px; animation-delay: 0s; }
+  .bubble-loader > span:nth-child(2) { left: 32%; width: 9px; height: 9px; animation-delay: 0.3s; }
+  .bubble-loader > span:nth-child(3) { left: 55%; width: 5px; height: 5px; animation-delay: 0.6s; }
+  .bubble-loader > span:nth-child(4) { left: 70%; width: 8px; height: 8px; animation-delay: 0.15s; }
+  .bubble-loader > span:nth-child(5) { left: 45%; width: 4px; height: 4px; animation-delay: 0.85s; }
+
+  .loader-in {
+    animation: loader-in 0.25s var(--ease-out-expo) 0.15s both;
+  }
+
   /* LiquidScroll leans and stretches these with the scroll velocity. */
   [data-liquid-scroll] {
     transform: skewY(var(--liquid-skew, 0deg)) scaleY(var(--liquid-stretch, 1));

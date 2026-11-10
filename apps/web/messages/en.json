@@ -13,7 +13,8 @@
     "openMenu": "Open menu",
     "closeMenu": "Close menu",
     "cart": "Cart",
-    "whatsappLabel": "WhatsApp"
+    "whatsappLabel": "WhatsApp",
+    "loadingPage": "Loading…"
   },
   "SiteFooter": {
     "tagline": "Great Food. Memorable Moments. Exceptional Service.",
@@ -81,7 +82,8 @@
     "addToCartOption": "Add {option}",
     "fromPrice": "from {price}",
     "chooseOption": "Choose an option",
-    "closeDialog": "Close"
+    "closeDialog": "Close",
+    "loadingMenu": "Loading menu…"
   },
   "Cart": {
     "metaTitle": "Cart | Zain's Treat n More",
@@ -378,5 +380,9 @@
   },
   "Whatsapp": {
     "prefilledMessage": "Hi Zain's Treat n More! I'd like to know more about your menu and services."
+  },
+  "ScrollCue": {
+    "label": "Scroll",
+    "ariaLabel": "Scroll down to see more"
   }
 }

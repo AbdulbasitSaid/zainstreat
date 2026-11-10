@@ -1,150 +1,218 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
+import { BubbleLoader } from "@/components/bubble-loader";
 import { gsap } from "@/lib/gsap";
 
-// Wave shape of the liquid's leading edges.
-const WAVE_STEP_PX = 24;
-const WAVE_AMPLITUDE_PX = 26;
-const PAD_PX = WAVE_AMPLITUDE_PX * 2;
-// Give up waiting for a route that never commits (e.g. an error).
-const MAX_WAIT_MS = 6000;
+// Stop waiting for a route that never commits (e.g. an error).
+const MAX_WAIT_S = 8;
+const BUBBLES_PER_SECOND = 14;
+// Bubbles burst somewhere in this band, as a fraction of the screen height
+// from the top.
+const BURST_BAND = [0.06, 0.2] as const;
+const SVG_NS = "http://www.w3.org/2000/svg";
 
-type Edges = { top: number; bottom: number };
+type Bubble = {
+  el: SVGGElement;
+  x: number;
+  y: number;
+  radius: number;
+  speed: number; // px/s upwards, increasing as it rises
+  wobble: number;
+  phase: number;
+  age: number;
+  burstAt: number; // y (px) where it pops
+};
 
-// A full-width band of liquid between two wavy edges, with the waves at
-// their strongest mid-motion.
-function bandPath(width: number, edges: Edges, time: number, swell: number): string {
-  const wave = (x: number, phase: number) =>
-    WAVE_AMPLITUDE_PX *
-    swell *
-    (0.6 * Math.sin(x / 140 + time * 3.1 + phase) + 0.4 * Math.sin(x / 63 - time * 4.3 + phase * 2));
-  let d = "";
-  for (let x = 0; x <= width + WAVE_STEP_PX; x += WAVE_STEP_PX) {
-    d += `${d ? "L" : "M"}${x},${(edges.top + wave(x, 0)).toFixed(1)}`;
-  }
-  for (let x = width + WAVE_STEP_PX; x >= 0; x -= WAVE_STEP_PX) {
-    d += `L${x},${(edges.bottom + wave(x, 1.7)).toFixed(1)}`;
-  }
-  return `${d}Z`;
+type Pop = { el: SVGGElement; ring: SVGCircleElement; drops: SVGCircleElement[]; radius: number; age: number };
+
+const POP_DURATION_S = 0.32;
+
+function isInternalNavigation(event: MouseEvent): boolean {
+  if (event.defaultPrevented || event.button !== 0) return false;
+  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return false;
+  const anchor = event.target instanceof Element ? event.target.closest("a") : null;
+  if (!anchor || anchor.hasAttribute("download") || anchor.hasAttribute("data-no-page-transition")) return false;
+  if (anchor.target && anchor.target !== "_self") return false;
+  const url = new URL(anchor.href, location.href);
+  if (url.origin !== location.origin) return false;
+  // Same page (or only a #hash away): nothing is loading.
+  return !(url.pathname === location.pathname && url.search === location.search);
 }
 
-function isInternalNavigation(event: MouseEvent): URL | null {
-  if (event.defaultPrevented || event.button !== 0) return null;
-  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return null;
-  const anchor = event.target instanceof Element ? event.target.closest("a") : null;
-  if (!anchor || anchor.hasAttribute("download") || anchor.hasAttribute("data-no-page-transition")) return null;
-  if (anchor.target && anchor.target !== "_self") return null;
-  const url = new URL(anchor.href, location.href);
-  if (url.origin !== location.origin) return null;
-  // Same page (or only a #hash away): let the browser handle it.
-  if (url.pathname === location.pathname && url.search === location.search) return null;
-  return url;
+function svgEl<K extends "g" | "circle">(name: K, className = ""): SVGElementTagNameMap[K] {
+  const el = document.createElementNS(SVG_NS, name);
+  if (className) el.setAttribute("class", className);
+  return el;
+}
+
+// A see-through bubble: faint tinted body, a rim, and a glint.
+function makeBubbleElement(parent: SVGElement, radius: number): SVGGElement {
+  const group = svgEl("g");
+  const body = svgEl("circle", "fill-accent-light/20 stroke-primary/40");
+  body.setAttribute("r", radius.toFixed(1));
+  body.setAttribute("stroke-width", "1.2");
+  const glint = svgEl("circle", "fill-white/80");
+  glint.setAttribute("r", (radius * 0.25).toFixed(1));
+  glint.setAttribute("cx", (-radius * 0.38).toFixed(1));
+  glint.setAttribute("cy", (-radius * 0.38).toFixed(1));
+  group.append(body, glint);
+  parent.appendChild(group);
+  return group;
+}
+
+// A burst: the rim snaps outwards and a few droplets fly off.
+function makePop(parent: SVGElement, x: number, y: number, radius: number): Pop {
+  const el = svgEl("g");
+  el.setAttribute("transform", `translate(${x.toFixed(1)} ${y.toFixed(1)})`);
+  const ring = svgEl("circle", "fill-none stroke-primary/50");
+  ring.setAttribute("stroke-width", "1.2");
+  const drops = Array.from({ length: 5 }, () => {
+    const drop = svgEl("circle", "fill-primary/50");
+    el.appendChild(drop);
+    return drop;
+  });
+  el.appendChild(ring);
+  parent.appendChild(el);
+  return { el, ring, drops, radius, age: 0 };
 }
 
 /**
- * Navigating between pages pours liquid over the screen: a wavy wall of
- * brand colour rises to cover the page, the route changes underneath (as
- * long as it takes — slow pages keep the liquid sloshing instead of looking
- * frozen), then it drains away upwards to reveal the new page. Internal
- * links are intercepted in the capture phase, before next/link, which skips
- * navigation once the event is default-prevented. Links marked
- * `data-no-page-transition` (the menu filter) are left alone. Off with
- * reduced motion.
+ * Page loading: an internal link click swaps the old page for a pot
+ * simmering under the header (a cream screen with the bubble loader), with
+ * small see-through bubbles rising from the bottom of the screen and
+ * bursting near the top. Navigation itself is untouched; once the URL
+ * changes the new page has rendered underneath, the screen fades away and
+ * the last bubbles float up and pop. Links marked
+ * `data-no-page-transition` (the menu filter, which has its own loader) are
+ * skipped. Off with reduced motion.
  */
 export function LiquidPageTransition() {
-  const router = useRouter();
+  const t = useTranslations("SiteHeader");
   const svgRef = useRef<SVGSVGElement>(null);
-  const frontRef = useRef<SVGPathElement>(null);
-  const backRef = useRef<SVGPathElement>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const svg = svgRef.current;
     if (!svg || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
-    // progress: 0 → 1 covers, 1 → 2 drains. The back layer leads slightly.
-    const state = { progress: 0 };
-    let busy = false;
-    let startedAt = 0;
+    let bubbles: Bubble[] = [];
+    let pops: Pop[] = [];
+    let bubbling = false;
+    let running = false;
+    let waitedFor = 0;
+    let spawnDebt = 0;
+    let startHref = "";
 
-    const draw = () => {
-      const width = window.innerWidth;
-      const height = window.innerHeight;
-      const time = (performance.now() - startedAt) / 1000;
-      svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
-      const edgesAt = (p: number): Edges => {
-        const cover = gsap.utils.clamp(0, 1, p);
-        const drain = gsap.utils.clamp(0, 1, p - 1);
-        const span = height + 2 * PAD_PX;
-        return { top: height + PAD_PX - cover * span, bottom: height + PAD_PX - drain * span };
-      };
-      // Waves calm down once the screen is fully covered or uncovered.
-      const swell = (p: number) => 0.35 + 0.65 * Math.abs(Math.sin(Math.PI * gsap.utils.clamp(0, 2, p)));
-      // The accent layer leads the cover and trails the drain.
-      const p = state.progress;
-      const backP = p <= 1 ? Math.min(p + 0.1, 1) : Math.max(p - 0.1, 1);
-      backRef.current?.setAttribute("d", bandPath(width, edgesAt(backP), time, swell(backP)));
-      frontRef.current?.setAttribute("d", bandPath(width, edgesAt(p), time, swell(p)));
+    const spawn = (width: number, height: number) => {
+      const radius = 2.5 + Math.random() ** 2 * 8;
+      bubbles.push({
+        el: makeBubbleElement(svg, radius),
+        x: Math.random() * width,
+        y: height + radius,
+        radius,
+        speed: 140 + Math.random() * 120 + (10 - radius) * 12,
+        wobble: 4 + Math.random() * 10,
+        phase: Math.random() * Math.PI * 2,
+        age: 0,
+        burstAt: height * (BURST_BAND[0] + Math.random() * (BURST_BAND[1] - BURST_BAND[0])),
+      });
     };
 
-    const urlCommitted = (from: string) =>
-      new Promise<void>((resolve) => {
-        const giveUpAt = performance.now() + MAX_WAIT_MS;
-        const check = () => {
-          if (location.href !== from || performance.now() > giveUpAt) {
-            // One more frame for the new page to paint under the liquid.
-            requestAnimationFrame(() => resolve());
-          } else {
-            requestAnimationFrame(check);
-          }
-        };
-        check();
+    const tick = (_time: number, deltaMs: number) => {
+      const dt = Math.min(deltaMs / 1000, 0.05);
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+
+      if (bubbling) {
+        waitedFor += dt;
+        if (location.href !== startHref || waitedFor >= MAX_WAIT_S) {
+          bubbling = false;
+          // Let the new page paint under the screen before fading it.
+          requestAnimationFrame(() => setLoading(false));
+        }
+        spawnDebt += dt * BUBBLES_PER_SECOND;
+        for (; spawnDebt >= 1; spawnDebt -= 1) spawn(width, height);
+      }
+
+      bubbles = bubbles.filter((b) => {
+        b.age += dt;
+        b.speed *= 1 + dt * 0.5;
+        b.y -= b.speed * dt;
+        const x = b.x + Math.sin(b.age * 3 + b.phase) * b.wobble;
+        if (b.y <= b.burstAt) {
+          b.el.remove();
+          pops.push(makePop(svg, x, b.y, b.radius));
+          return false;
+        }
+        b.el.setAttribute("transform", `translate(${x.toFixed(1)} ${b.y.toFixed(1)})`);
+        b.el.setAttribute("opacity", Math.min(b.age / 0.2, 1).toFixed(2));
+        return true;
       });
 
-    const run = async (url: URL) => {
-      busy = true;
-      startedAt = performance.now();
-      state.progress = 0;
-      svg.style.visibility = "visible";
-      gsap.ticker.add(draw);
+      pops = pops.filter((pop) => {
+        pop.age += dt;
+        const k = pop.age / POP_DURATION_S;
+        if (k >= 1) {
+          pop.el.remove();
+          return false;
+        }
+        const out = 1 - (1 - k) ** 2;
+        pop.ring.setAttribute("r", (pop.radius * (1 + out * 1.4)).toFixed(1));
+        pop.ring.setAttribute("opacity", (1 - k).toFixed(2));
+        pop.drops.forEach((drop, i) => {
+          const angle = (i / pop.drops.length) * Math.PI * 2 - Math.PI / 2;
+          const reach = pop.radius * (1.2 + out * 2.2);
+          drop.setAttribute("cx", (Math.cos(angle) * reach).toFixed(1));
+          drop.setAttribute("cy", (Math.sin(angle) * reach + k * k * 6).toFixed(1));
+          drop.setAttribute("r", (Math.max(pop.radius * 0.18, 1) * (1 - k * 0.6)).toFixed(2));
+          drop.setAttribute("opacity", (1 - k).toFixed(2));
+        });
+        return true;
+      });
 
-      await gsap.to(state, { progress: 1, duration: 0.55, ease: "power2.inOut" });
-      const from = location.href;
-      router.push(url.pathname + url.search + url.hash);
-      await urlCommitted(from);
-      await gsap.to(state, { progress: 2, duration: 0.7, ease: "power2.inOut" });
-
-      gsap.ticker.remove(draw);
-      svg.style.visibility = "hidden";
-      busy = false;
+      if (!bubbling && bubbles.length === 0 && pops.length === 0) {
+        gsap.ticker.remove(tick);
+        running = false;
+      }
     };
 
     const handleClick = (event: MouseEvent) => {
-      const url = isInternalNavigation(event);
-      if (!url) return;
-      event.preventDefault();
-      if (!busy) void run(url);
+      if (!isInternalNavigation(event)) return;
+      startHref = location.href;
+      bubbling = true;
+      waitedFor = 0;
+      setLoading(true);
+      if (!running) {
+        running = true;
+        gsap.ticker.add(tick);
+      }
     };
 
     document.addEventListener("click", handleClick, true);
     return () => {
       document.removeEventListener("click", handleClick, true);
-      gsap.ticker.remove(draw);
-      gsap.killTweensOf(state);
+      gsap.ticker.remove(tick);
+      bubbles.forEach((b) => b.el.remove());
+      pops.forEach((pop) => pop.el.remove());
     };
-  }, [router]);
+  }, []);
 
   return (
-    <svg
-      ref={svgRef}
-      aria-hidden="true"
-      className="pointer-events-none fixed inset-0 z-[90] h-full w-full"
-      style={{ visibility: "hidden" }}
-      preserveAspectRatio="none"
-    >
-      <path ref={backRef} className="fill-accent" />
-      <path ref={frontRef} className="fill-primary" />
-    </svg>
+    <>
+      {/* Below the sticky header (z-50), so the nav stays put. Showing
+          waits a beat so fast navigations don't flash it. */}
+      <div
+        aria-hidden={!loading}
+        className={`fixed inset-0 z-40 flex items-center justify-center bg-cream transition-opacity duration-300 ease-out-expo ${
+          loading ? "opacity-100 delay-150" : "pointer-events-none opacity-0"
+        }`}
+      >
+        <BubbleLoader label={t("loadingPage")} className="scale-125" />
+      </div>
+      <svg ref={svgRef} aria-hidden="true" className="pointer-events-none fixed inset-0 z-[90] h-full w-full" />
+    </>
   );
 }

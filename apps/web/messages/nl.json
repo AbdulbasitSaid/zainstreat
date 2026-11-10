@@ -13,7 +13,8 @@
     "openMenu": "Menu openen",
     "closeMenu": "Menu sluiten",
     "cart": "Winkelwagen",
-    "whatsappLabel": "WhatsApp"
+    "whatsappLabel": "WhatsApp",
+    "loadingPage": "Laden…"
   },
   "SiteFooter": {
     "tagline": "Heerlijk Eten. Onvergetelijke Momenten. Uitstekende Service.",
@@ -81,7 +82,8 @@
     "addToCartOption": "{option} Toevoegen",
     "fromPrice": "vanaf {price}",
     "chooseOption": "Kies een optie",
-    "closeDialog": "Sluiten"
+    "closeDialog": "Sluiten",
+    "loadingMenu": "Menu laden…"
   },
   "Cart": {
     "metaTitle": "Winkelwagen | Zain's Treat n More",
@@ -378,5 +380,9 @@
   },
   "Whatsapp": {
     "prefilledMessage": "Hallo Zain's Treat n More! Ik wil graag meer weten over jullie menu en diensten."
+  },
+  "ScrollCue": {
+    "label": "Scroll",
+    "ariaLabel": "Scroll naar beneden voor meer"
   }
 }

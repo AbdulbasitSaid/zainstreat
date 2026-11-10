@@ -14,7 +14,8 @@ const BASE_CLASSES =
   "disabled:pointer-events-none disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:scale-100 disabled:hover:shadow-none";
 
 const VARIANT_CLASSES: Record<ButtonVariant, (color: ButtonColor) => string> = {
-  primary: () => "bg-primary text-white hover:bg-primary-light",
+  primary: (color) =>
+    color === "whatsapp" ? "bg-whatsapp-dark text-white hover:bg-whatsapp" : "bg-primary text-white hover:bg-primary-light",
   secondary: () => "bg-transparent text-text border-[1.5px] border-text hover:bg-text hover:text-white",
   outline: (color) =>
     color === "whatsapp"
@@ -31,10 +32,16 @@ type LiquidLook = { pathClassName: string; splashClassName: string; strokeWidth?
 const FILL_TRANSITION = "transition-[fill] duration-150";
 
 const LIQUID_LOOKS: Record<ButtonVariant, (color: ButtonColor) => LiquidLook> = {
-  primary: () => ({
-    pathClassName: `fill-primary group-hover/liquid:fill-primary-light ${FILL_TRANSITION}`,
-    splashClassName: "fill-primary",
-  }),
+  primary: (color) =>
+    color === "whatsapp"
+      ? {
+          pathClassName: `fill-whatsapp-dark group-hover/liquid:fill-whatsapp ${FILL_TRANSITION}`,
+          splashClassName: "fill-whatsapp",
+        }
+      : {
+          pathClassName: `fill-primary group-hover/liquid:fill-primary-light ${FILL_TRANSITION}`,
+          splashClassName: "fill-primary",
+        },
   secondary: () => ({
     pathClassName: `fill-text/0 stroke-text group-hover/liquid:fill-text ${FILL_TRANSITION}`,
     splashClassName: "fill-text",
@@ -64,6 +71,29 @@ function ButtonLiquid({ variant, color }: { variant: ButtonVariant; color: Butto
     <LiquidSurface
       {...LIQUID_LOOKS[variant](color)}
       className="transition-[filter] duration-150 group-hover/liquid:drop-shadow-lg"
+    />
+  );
+}
+
+// Toggle pills (menu filter, contact form tabs): solid when active, a
+// bendable outline otherwise, so the liquid edge reads against the cream.
+export function pillClasses(isActive: boolean) {
+  return (
+    "group/liquid relative isolate inline-flex items-center rounded-full border-[1.5px] px-5 py-2 text-sm " +
+    "font-semibold tracking-wide transition-colors duration-150 focus-visible:outline focus-visible:outline-[3px] " +
+    "focus-visible:outline-accent focus-visible:outline-offset-2 " +
+    (isActive ? "border-primary bg-primary text-white" : "border-primary/40 bg-transparent text-text hover:bg-primary/10")
+  );
+}
+
+export function PillLiquid({ isActive }: { isActive: boolean }) {
+  return (
+    <LiquidSurface
+      strokeWidth={1.5}
+      pathClassName={`transition-[fill,stroke] duration-200 ${
+        isActive ? "fill-primary stroke-primary" : "fill-primary/0 stroke-primary/40 group-hover/liquid:fill-primary/10"
+      }`}
+      splashClassName="fill-primary"
     />
   );
 }

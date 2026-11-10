@@ -7,6 +7,8 @@ import { Eyebrow } from "@/components/eyebrow";
 import { ButtonAnchor, ButtonLink } from "@/components/button";
 import { MenuBentoGrid } from "@/components/menu-bento-grid";
 import { LiquidCard } from "@/components/liquid-card";
+import { BoilingSlideshow, type BoilingSlide } from "@/components/boiling-slideshow";
+import { ScrollCue } from "@/components/scroll-cue";
 import { Link } from "@/i18n/navigation";
 import { getMenuItems, getSiteContent } from "@/lib/api";
 import { getHomeText } from "@/lib/home-text";
@@ -22,6 +24,8 @@ import aboutHero from "@/assets/images/about-hero.jpg";
 import { localeAlternates } from "@/lib/seo";
 
 const MAX_FEATURED_ITEMS = 6;
+// The section the hero's scroll cue glides to.
+const AFTER_HERO_ID = "services";
 
 function ShieldCheckIcon() {
   return (
@@ -97,6 +101,7 @@ export default async function Home() {
   const [locale, content] = await Promise.all([getLocale(), getSiteContent()]);
   const t = await getHomeText(locale as AppLocale, content);
   const tw = await getTranslations("Whatsapp");
+  const ts = await getTranslations("ScrollCue");
   const heroHeadingClass = "mb-4 text-[clamp(2.5rem,5vw,4.25rem)]";
   const heroSupportingClass = "max-w-[48ch] text-[clamp(1.05rem,1.5vw,1.25rem)] text-text-muted";
 
@@ -105,44 +110,62 @@ export default async function Home() {
     .filter((item) => item.is_featured && item.is_available)
     .slice(0, MAX_FEATURED_ITEMS);
 
+  // The hero simmers through the featured dishes' photos, each photo once
+  // (splashing a dish into itself would show nothing); with none, it falls
+  // back to the (admin-replaceable) hero image.
+  const featuredSlides: BoilingSlide[] = featuredItems.flatMap((item, i) =>
+    item.image_url && featuredItems.findIndex((other) => other.image_url === item.image_url) === i
+      ? [{ src: item.image_url, alt: item.name }]
+      : [],
+  );
+  const heroSlides: BoilingSlide[] =
+    featuredSlides.length > 0
+      ? featuredSlides
+      : [{ src: siteImage(content, "hero") ?? hero, alt: t.markup("heroHeadline", { em: (chunks) => chunks }) }];
+
   return (
     <main>
-      <SplitRow
-        className="container"
-        content={
-          <div>
-            <Eyebrow>{t("heroEyebrow")}</Eyebrow>
-            <h1 className={heroHeadingClass}>
-              {t.rich("heroHeadline", { em: (chunks) => <em>{chunks}</em> })}
-            </h1>
-            <p className={heroSupportingClass}>{t("heroSupporting")}</p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <ButtonLink href="/menu">{t("orderNow")}</ButtonLink>
-              <ButtonLink href="/contact" variant="secondary">{t("bookCatering")}</ButtonLink>
-              <ButtonAnchor
-                href={buildWhatsAppLink(tw("prefilledMessage"))}
-                target="_blank"
-                rel="noopener noreferrer"
-                variant="outline"
-                color="whatsapp"
-              >
-                {t("whatsappUs")}
-              </ButtonAnchor>
+      {/* Full-bleed banner: the dishes fill the screen below the header
+          (36px announcement bar + 76px sticky header), with the text over
+          them on a dark scrim — from the bottom on phones, from the left
+          on wider screens. */}
+      <section className="relative isolate flex min-h-[max(560px,calc(100svh-112px))] items-end overflow-hidden md:items-center">
+        <BoilingSlideshow slides={heroSlides} className="absolute inset-0 -z-20 bg-text" />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 -z-10 bg-linear-to-t from-text/90 via-text/55 to-text/5 md:bg-linear-to-r md:from-text/85 md:via-text/50 md:to-transparent"
+        />
+        <div className="container pb-24 pt-16 md:py-24">
+          <Reveal>
+            <div className="max-w-[46rem] text-white">
+              <Eyebrow tone="light">{t("heroEyebrow")}</Eyebrow>
+              <h1 className={`${heroHeadingClass} [&_em]:text-accent-light`}>
+                {t.rich("heroHeadline", { em: (chunks) => <em>{chunks}</em> })}
+              </h1>
+              <p className="max-w-[48ch] text-[clamp(1.05rem,1.5vw,1.25rem)] text-on-dark-body">
+                {t("heroSupporting")}
+              </p>
+              <div className="mt-8 flex flex-wrap gap-3">
+                <ButtonLink href="/menu">{t("orderNow")}</ButtonLink>
+                <ButtonLink href="/contact" variant="invert">{t("bookCatering")}</ButtonLink>
+                <ButtonAnchor
+                  href={buildWhatsAppLink(tw("prefilledMessage"))}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  color="whatsapp"
+                >
+                  {t("whatsappUs")}
+                </ButtonAnchor>
+              </div>
             </div>
-          </div>
-        }
-        media={
-          <SiteImage
-            src={siteImage(content, "hero") ?? hero}
-            alt={t.markup("heroHeadline", { em: (chunks) => chunks })}
-            priority
-            float
-          />
-        }
-      />
+          </Reveal>
+        </div>
+        <ScrollCue targetId={AFTER_HERO_ID} label={ts("label")} ariaLabel={ts("ariaLabel")} />
+      </section>
 
       <SplitRow
-        className="container"
+        id={AFTER_HERO_ID}
+        className="container scroll-mt-20"
         reverse
         media={
           // Staggered collage: the second column starts lower, and each

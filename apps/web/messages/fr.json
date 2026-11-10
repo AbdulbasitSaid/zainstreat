@@ -13,7 +13,8 @@
     "openMenu": "Ouvrir le menu",
     "closeMenu": "Fermer le menu",
     "cart": "Panier",
-    "whatsappLabel": "WhatsApp"
+    "whatsappLabel": "WhatsApp",
+    "loadingPage": "Chargement…"
   },
   "SiteFooter": {
     "tagline": "Une cuisine savoureuse. Des moments inoubliables. Un service exceptionnel.",
@@ -81,7 +82,8 @@
     "addToCartOption": "Ajouter {option}",
     "fromPrice": "à partir de {price}",
     "chooseOption": "Choisissez une option",
-    "closeDialog": "Fermer"
+    "closeDialog": "Fermer",
+    "loadingMenu": "Chargement du menu…"
   },
   "Cart": {
     "metaTitle": "Panier | Zain's Treat n More",
@@ -378,5 +380,9 @@
   },
   "Whatsapp": {
     "prefilledMessage": "Bonjour Zain's Treat n More ! J'aimerais en savoir plus sur votre menu et vos services."
+  },
+  "ScrollCue": {
+    "label": "Défiler",
+    "ariaLabel": "Faites défiler pour en voir plus"
   }
 }

@@ -60,7 +60,7 @@ export default async function MenuPage({
       <MenuFilterProvider>
         <CategoryFilter categories={categories} selectedCategoryId={selectedCategoryId} />
 
-        <MenuFilterResults filterKey={String(selectedCategoryId ?? "all")}>
+        <MenuFilterResults filterKey={String(selectedCategoryId ?? "all")} loadingLabel={t("loadingMenu")}>
           {visibleCategories.map((category) => {
             const categoryItems = items.filter((item) => item.category_id === category.id);
 

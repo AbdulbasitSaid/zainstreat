@@ -48,6 +48,10 @@ pub async fn get_media(
                 header::CACHE_CONTROL,
                 "public, max-age=31536000, immutable".to_string(),
             ),
+            // Public, read-only images: let any origin read the bytes, so
+            // the web app can use them as WebGL textures (the homepage
+            // hero's boil-out shader) without tainting the canvas.
+            (header::ACCESS_CONTROL_ALLOW_ORIGIN, "*".to_string()),
         ],
         bytes,
     )

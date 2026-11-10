@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useRef, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "@/i18n/navigation";
+import { BubbleLoader } from "@/components/bubble-loader";
 import { gsap, ScrollTrigger, useGSAP } from "@/lib/gsap";
 
 type FilterHref = "/menu" | { pathname: "/menu"; query: { category: number } };
@@ -54,7 +55,15 @@ export function MenuFilterProvider({ children }: { children: ReactNode }) {
  * fade); when `filterKey` changes the new cards drip in with a squash and
  * stretch, staggered like drops landing.
  */
-export function MenuFilterResults({ filterKey, children }: { filterKey: string; children: ReactNode }) {
+export function MenuFilterResults({
+  filterKey,
+  loadingLabel,
+  children,
+}: {
+  filterKey: string;
+  loadingLabel: string;
+  children: ReactNode;
+}) {
   const { isPending } = useMenuFilter();
   const ref = useRef<HTMLDivElement>(null);
   const firstRender = useRef(true);
@@ -114,5 +123,14 @@ export function MenuFilterResults({ filterKey, children }: { filterKey: string; 
     { scope: ref, dependencies: [filterKey] },
   );
 
-  return <div ref={ref}>{children}</div>;
+  return (
+    <div aria-busy={isPending}>
+      {/* Pinned under the header while the results load, so it's in view
+          however far down the menu the visitor is. */}
+      <div aria-live="polite" className="pointer-events-none sticky top-24 z-20 flex h-0 justify-center">
+        {isPending && <BubbleLoader label={loadingLabel} className="mt-4" />}
+      </div>
+      <div ref={ref}>{children}</div>
+    </div>
+  );
 }
