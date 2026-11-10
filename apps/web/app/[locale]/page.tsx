@@ -121,32 +121,42 @@ export default async function Home() {
 
   return (
     <main>
-      <SplitRow
-        className="container"
-        content={
-          <div>
-            <Eyebrow>{t("heroEyebrow")}</Eyebrow>
-            <h1 className={heroHeadingClass}>
-              {t.rich("heroHeadline", { em: (chunks) => <em>{chunks}</em> })}
-            </h1>
-            <p className={heroSupportingClass}>{t("heroSupporting")}</p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <ButtonLink href="/menu">{t("orderNow")}</ButtonLink>
-              <ButtonLink href="/contact" variant="secondary">{t("bookCatering")}</ButtonLink>
-              <ButtonAnchor
-                href={buildWhatsAppLink(tw("prefilledMessage"))}
-                target="_blank"
-                rel="noopener noreferrer"
-                variant="outline"
-                color="whatsapp"
-              >
-                {t("whatsappUs")}
-              </ButtonAnchor>
+      {/* Full-bleed banner: the dishes fill the screen below the header
+          (36px announcement bar + 76px sticky header), with the text over
+          them on a dark scrim — from the bottom on phones, from the left
+          on wider screens. */}
+      <section className="relative isolate flex min-h-[max(560px,calc(100svh-112px))] items-end overflow-hidden md:items-center">
+        <BoilingSlideshow slides={heroSlides} className="absolute inset-0 -z-20 bg-text" />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 -z-10 bg-linear-to-t from-text/90 via-text/55 to-text/5 md:bg-linear-to-r md:from-text/85 md:via-text/50 md:to-transparent"
+        />
+        <div className="container py-16 md:py-24">
+          <Reveal>
+            <div className="max-w-[46rem] text-white">
+              <Eyebrow tone="light">{t("heroEyebrow")}</Eyebrow>
+              <h1 className={`${heroHeadingClass} [&_em]:text-accent-light`}>
+                {t.rich("heroHeadline", { em: (chunks) => <em>{chunks}</em> })}
+              </h1>
+              <p className="max-w-[48ch] text-[clamp(1.05rem,1.5vw,1.25rem)] text-on-dark-body">
+                {t("heroSupporting")}
+              </p>
+              <div className="mt-8 flex flex-wrap gap-3">
+                <ButtonLink href="/menu">{t("orderNow")}</ButtonLink>
+                <ButtonLink href="/contact" variant="invert">{t("bookCatering")}</ButtonLink>
+                <ButtonAnchor
+                  href={buildWhatsAppLink(tw("prefilledMessage"))}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  color="whatsapp"
+                >
+                  {t("whatsappUs")}
+                </ButtonAnchor>
+              </div>
             </div>
-          </div>
-        }
-        media={<BoilingSlideshow slides={heroSlides} className="h-[clamp(340px,62vh,640px)]" />}
-      />
+          </Reveal>
+        </div>
+      </section>
 
       <SplitRow
         className="container"

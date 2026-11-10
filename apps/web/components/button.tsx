@@ -14,7 +14,8 @@ const BASE_CLASSES =
   "disabled:pointer-events-none disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:scale-100 disabled:hover:shadow-none";
 
 const VARIANT_CLASSES: Record<ButtonVariant, (color: ButtonColor) => string> = {
-  primary: () => "bg-primary text-white hover:bg-primary-light",
+  primary: (color) =>
+    color === "whatsapp" ? "bg-whatsapp-dark text-white hover:bg-whatsapp" : "bg-primary text-white hover:bg-primary-light",
   secondary: () => "bg-transparent text-text border-[1.5px] border-text hover:bg-text hover:text-white",
   outline: (color) =>
     color === "whatsapp"
@@ -31,10 +32,16 @@ type LiquidLook = { pathClassName: string; splashClassName: string; strokeWidth?
 const FILL_TRANSITION = "transition-[fill] duration-150";
 
 const LIQUID_LOOKS: Record<ButtonVariant, (color: ButtonColor) => LiquidLook> = {
-  primary: () => ({
-    pathClassName: `fill-primary group-hover/liquid:fill-primary-light ${FILL_TRANSITION}`,
-    splashClassName: "fill-primary",
-  }),
+  primary: (color) =>
+    color === "whatsapp"
+      ? {
+          pathClassName: `fill-whatsapp-dark group-hover/liquid:fill-whatsapp ${FILL_TRANSITION}`,
+          splashClassName: "fill-whatsapp",
+        }
+      : {
+          pathClassName: `fill-primary group-hover/liquid:fill-primary-light ${FILL_TRANSITION}`,
+          splashClassName: "fill-primary",
+        },
   secondary: () => ({
     pathClassName: `fill-text/0 stroke-text group-hover/liquid:fill-text ${FILL_TRANSITION}`,
     splashClassName: "fill-text",

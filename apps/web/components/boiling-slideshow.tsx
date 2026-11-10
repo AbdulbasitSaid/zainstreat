@@ -10,6 +10,10 @@ export type BoilingSlide = { src: StaticImageData | string; alt: string };
 const HOLD_MS = 6000;
 // How far the camera leans from straight down at the dish (radians).
 const TILT = 0.35;
+// Where the bubble may rise (box uv, y up), clear of the hero text: to the
+// right of it on wide screens, above it on narrow ones.
+const WIDE_BUBBLE_AREA = { left: 0.55, right: 0.85, bottom: 0.25, top: 0.75 };
+const NARROW_BUBBLE_AREA = { left: 0.25, right: 0.75, bottom: 0.55, top: 0.85 };
 // Fallback without WebGL: a plain crossfade.
 const CROSSFADE_MS = 800;
 
@@ -114,7 +118,8 @@ export function BoilingSlideshow({ slides, className = "" }: { slides: BoilingSl
 
       // The first frame is the old dish untouched, so showing the canvas
       // and moving the stack on underneath it is invisible.
-      gl.prepare(textures[0], textures[1], { width, height }, { seed: seed++, tilt: TILT });
+      const area = window.matchMedia("(min-width: 768px)").matches ? WIDE_BUBBLE_AREA : NARROW_BUBBLE_AREA;
+      gl.prepare(textures[0], textures[1], { width, height }, { seed: seed++, tilt: TILT, area });
       canvas.style.visibility = "visible";
       restack();
       setTop(order[0]);
@@ -156,14 +161,14 @@ export function BoilingSlideshow({ slides, className = "" }: { slides: BoilingSl
   }, [slides.length]);
 
   return (
-    <div ref={ref} className={`relative overflow-hidden rounded-card bg-card ${className}`.trim()}>
+    <div ref={ref} className={`overflow-hidden ${className}`.trim()}>
       {slides.map((slide, i) => (
         <div key={i} data-slide className="absolute inset-0" style={{ zIndex: slides.length - i }}>
           <Image
             src={slide.src}
             alt={i === top ? slide.alt : ""}
             fill
-            sizes="(max-width: 768px) 100vw, 50vw"
+            sizes="100vw"
             priority={i === 0}
             // CORS-mode, so the boil shader can reuse the cached photo as a
             // WebGL texture (the API sends Access-Control-Allow-Origin).

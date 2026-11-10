@@ -48,6 +48,9 @@ export type SplashTexture = {
   thumb: Uint8ClampedArray;
 };
 
+// Part of the box (uv, y up) the bubble may rise in.
+export type SplashArea = { left: number; right: number; bottom: number; top: number };
+
 export type SplashLayers = { bubble: boolean; crown: boolean; droplets: boolean; waves: boolean; lighting: boolean };
 export type SplashView = "final" | "wave" | "reveal";
 // Mean and largest per-channel difference (0–255) between a frame and the
@@ -62,7 +65,7 @@ export type SplashRenderer = {
     current: SplashTexture,
     next: SplashTexture,
     size: { width: number; height: number },
-    options: { seed: number; tilt: number },
+    options: { seed: number; tilt: number; area?: SplashArea },
   ) => void;
   duration: () => number;
   setLayers: (layers: SplashLayers) => void;
@@ -81,6 +84,11 @@ const STEP_S = 1 / 60;
 const WAVE_SUBSTEPS = 3;
 const WAVE_GRID = 256;
 const THUMB = 48;
+// Canvas pixels the composite may shade per frame: a full-screen banner
+// renders below the device pixel ratio rather than overload the GPU.
+const PIXEL_BUDGET = 2.4e6;
+const COARSE_PIXEL_BUDGET = 1.2e6;
+const MIDDLE: SplashArea = { left: 0.22, right: 0.78, bottom: 0.22, top: 0.78 };
 const MAX_IMPULSES = 24;
 const MAX_STAMPS = 24;
 const MAX_BUBBLES = 12;
@@ -538,15 +546,22 @@ function colourAt(source: SplashTexture, frame: Vector4, u: number, v: number): 
 
 // Where the bubble rises: a bright, saturated, food-coloured spot near the
 // middle, away from the plate, table and edges. Returns screen coords.
-function pickCentre(source: SplashTexture, frame: Vector4, aspect: number, rand: () => number): [number, number] {
+function pickCentre(
+  source: SplashTexture,
+  frame: Vector4,
+  aspect: number,
+  area: SplashArea,
+  rand: () => number,
+): [number, number] {
   const candidates: { x: number; y: number; score: number }[] = [];
   const grid = 16;
+  const [midU, midV] = [(area.left + area.right) / 2, (area.bottom + area.top) / 2];
   for (let gy = 0; gy <= grid; gy++) {
     for (let gx = 0; gx <= grid; gx++) {
-      const u = 0.22 + (0.56 * gx) / grid;
-      const v = 0.22 + (0.56 * gy) / grid;
+      const u = area.left + ((area.right - area.left) * gx) / grid;
+      const v = area.bottom + ((area.top - area.bottom) * gy) / grid;
       const [r, g, b] = colourAt(source, frame, u, v);
-      const centred = Math.exp(-((u - 0.5) ** 2 + (v - 0.5) ** 2) / 0.08);
+      const centred = Math.exp(-((u - midU) ** 2 + (v - midV) ** 2) / 0.08);
       candidates.push({ x: u * aspect, y: v, score: saturation(r, g, b) * Math.max(r, g, b) ** 2 * centred });
     }
   }
@@ -574,7 +589,8 @@ type SimBubble = { x: number; y: number; r: number; age: number; life: number };
 export function createSplashRenderer(canvas: HTMLCanvasElement): SplashRenderer {
   const renderer = new WebGLRenderer({ canvas, antialias: false, alpha: false, powerPreference: "high-performance" });
   const coarse = window.matchMedia("(pointer: coarse)").matches;
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, coarse ? 1.25 : 1.5));
+  const maxPixelRatio = Math.min(window.devicePixelRatio || 1, coarse ? 1.25 : 1.5);
+  const pixelBudget = coarse ? COARSE_PIXEL_BUDGET : PIXEL_BUDGET;
   renderer.autoClear = false;
   const gl = renderer.getContext();
   if (!gl.getExtension("EXT_color_buffer_float") && !gl.getExtension("EXT_color_buffer_half_float")) {
@@ -1128,6 +1144,7 @@ export function createSplashRenderer(canvas: HTMLCanvasElement): SplashRenderer 
   return {
     loadTexture,
     prepare(current, next, size, options) {
+      renderer.setPixelRatio(Math.min(maxPixelRatio, Math.sqrt(pixelBudget / (size.width * size.height))));
       renderer.setSize(size.width, size.height, false);
       aspect = size.width / size.height;
       fore = Math.cos(options.tilt);
@@ -1156,7 +1173,7 @@ export function createSplashRenderer(canvas: HTMLCanvasElement): SplashRenderer 
 
       // Everything random about this splash comes from the seed.
       rand = random(seed);
-      const [cx, cy] = pickCentre(current, coverCurrent, aspect, rand);
+      const [cx, cy] = pickCentre(current, coverCurrent, aspect, options.area ?? MIDDLE, rand);
       centre.set(cx, cy);
       shared.uCentre.value.copy(centre);
       const k1 = 5 + Math.floor(rand() * 4);
