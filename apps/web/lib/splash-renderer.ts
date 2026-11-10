@@ -544,8 +544,10 @@ function colourAt(source: SplashTexture, frame: Vector4, u: number, v: number): 
   return [source.thumb[i] / 255, source.thumb[i + 1] / 255, source.thumb[i + 2] / 255];
 }
 
-// Where the bubble rises: a bright, saturated, food-coloured spot near the
-// middle, away from the plate, table and edges. Returns screen coords.
+// Where the bubble rises: anywhere in `area` with equal odds, except spots
+// that clearly aren't food (a pale plate, the table, a dark shadow), which
+// are rarely chosen. Jittered so it never snaps to a grid. Returns screen
+// coords.
 function pickCentre(
   source: SplashTexture,
   frame: Vector4,
@@ -553,21 +555,24 @@ function pickCentre(
   area: SplashArea,
   rand: () => number,
 ): [number, number] {
-  const candidates: { x: number; y: number; score: number }[] = [];
+  const candidates: { x: number; y: number }[] = [];
+  const weights: number[] = [];
   const grid = 16;
-  const [midU, midV] = [(area.left + area.right) / 2, (area.bottom + area.top) / 2];
   for (let gy = 0; gy <= grid; gy++) {
     for (let gx = 0; gx <= grid; gx++) {
       const u = area.left + ((area.right - area.left) * gx) / grid;
       const v = area.bottom + ((area.top - area.bottom) * gy) / grid;
       const [r, g, b] = colourAt(source, frame, u, v);
-      const centred = Math.exp(-((u - midU) ** 2 + (v - midV) ** 2) / 0.08);
-      candidates.push({ x: u * aspect, y: v, score: saturation(r, g, b) * Math.max(r, g, b) ** 2 * centred });
+      const food = saturation(r, g, b) > 0.3 && Math.max(r, g, b) > 0.2;
+      candidates.push({ x: u * aspect, y: v });
+      weights.push(food ? 1 : 0.04);
     }
   }
-  candidates.sort((a, b) => b.score - a.score);
-  const pick = candidates[Math.floor(rand() * Math.min(6, candidates.length))];
-  return [pick.x, pick.y];
+  let target = rand() * weights.reduce((sum, w) => sum + w, 0);
+  const pick = candidates.find((_, i) => (target -= weights[i]) <= 0) ?? candidates[0];
+  const cellU = (area.right - area.left) / grid;
+  const cellV = (area.top - area.bottom) / grid;
+  return [pick.x + (rand() - 0.5) * cellU * aspect, pick.y + (rand() - 0.5) * cellV];
 }
 
 // x/y: surface offset from the burst, z: height. `ligament` is how
@@ -1186,9 +1191,10 @@ export function createSplashRenderer(canvas: HTMLCanvasElement): SplashRenderer 
       const holeAngle = between(-Math.PI, Math.PI);
       compositeUniforms.uHoleDir.value.set(Math.cos(holeAngle), Math.sin(holeAngle));
 
-      const burstAt = 2.05 + between(-0.08, 0.08);
-      const r1 = 0.09 * scale;
-      const r2 = 0.17 * scale;
+      const burstAt = 2.05 + between(-0.15, 0.15);
+      const bubbleSize = between(0.85, 1.15);
+      const r1 = 0.09 * scale * bubbleSize;
+      const r2 = 0.17 * scale * bubbleSize;
       const corners = [[0, 0], [aspect, 0], [0, 1], [aspect, 1]];
       const frontMax = Math.max(...corners.map(([x, y]) => Math.hypot(x - cx, (y - cy) / fore))) * 1.25 + 0.1;
       buildTimeline(burstAt, r1, r2, frontMax);

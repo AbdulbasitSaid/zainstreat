@@ -29,6 +29,26 @@
   /* Motion */
   --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1);
   --animate-marquee: marquee-scroll 26s linear infinite;
+  --animate-scroll-drip: scroll-drip 1.8s var(--ease-out-expo) infinite;
+}
+
+/* The wheel of .scroll-cue's mouse dripping down and fading, on a loop. */
+@keyframes scroll-drip {
+  0% {
+    transform: translate(-50%, 0) scaleY(1);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  60% {
+    transform: translate(-50%, 0.6rem) scaleY(1.4);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, 0.9rem) scaleY(0.6);
+    opacity: 0;
+  }
 }
 
 /* A bubble rising out of .bubble-loader's pot, wobbling, then popping. */

@@ -8,6 +8,7 @@ import { ButtonAnchor, ButtonLink } from "@/components/button";
 import { MenuBentoGrid } from "@/components/menu-bento-grid";
 import { LiquidCard } from "@/components/liquid-card";
 import { BoilingSlideshow, type BoilingSlide } from "@/components/boiling-slideshow";
+import { ScrollCue } from "@/components/scroll-cue";
 import { Link } from "@/i18n/navigation";
 import { getMenuItems, getSiteContent } from "@/lib/api";
 import { getHomeText } from "@/lib/home-text";
@@ -23,6 +24,8 @@ import aboutHero from "@/assets/images/about-hero.jpg";
 import { localeAlternates } from "@/lib/seo";
 
 const MAX_FEATURED_ITEMS = 6;
+// The section the hero's scroll cue glides to.
+const AFTER_HERO_ID = "services";
 
 function ShieldCheckIcon() {
   return (
@@ -98,6 +101,7 @@ export default async function Home() {
   const [locale, content] = await Promise.all([getLocale(), getSiteContent()]);
   const t = await getHomeText(locale as AppLocale, content);
   const tw = await getTranslations("Whatsapp");
+  const ts = await getTranslations("ScrollCue");
   const heroHeadingClass = "mb-4 text-[clamp(2.5rem,5vw,4.25rem)]";
   const heroSupportingClass = "max-w-[48ch] text-[clamp(1.05rem,1.5vw,1.25rem)] text-text-muted";
 
@@ -131,7 +135,7 @@ export default async function Home() {
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 -z-10 bg-linear-to-t from-text/90 via-text/55 to-text/5 md:bg-linear-to-r md:from-text/85 md:via-text/50 md:to-transparent"
         />
-        <div className="container py-16 md:py-24">
+        <div className="container pb-24 pt-16 md:py-24">
           <Reveal>
             <div className="max-w-[46rem] text-white">
               <Eyebrow tone="light">{t("heroEyebrow")}</Eyebrow>
@@ -156,10 +160,12 @@ export default async function Home() {
             </div>
           </Reveal>
         </div>
+        <ScrollCue targetId={AFTER_HERO_ID} label={ts("label")} ariaLabel={ts("ariaLabel")} />
       </section>
 
       <SplitRow
-        className="container"
+        id={AFTER_HERO_ID}
+        className="container scroll-mt-20"
         reverse
         media={
           // Staggered collage: the second column starts lower, and each

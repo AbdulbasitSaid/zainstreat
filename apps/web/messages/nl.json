@@ -380,5 +380,9 @@
   },
   "Whatsapp": {
     "prefilledMessage": "Hallo Zain's Treat n More! Ik wil graag meer weten over jullie menu en diensten."
+  },
+  "ScrollCue": {
+    "label": "Scroll",
+    "ariaLabel": "Scroll naar beneden voor meer"
   }
 }

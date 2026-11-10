@@ -12,8 +12,8 @@ const HOLD_MS = 6000;
 const TILT = 0.35;
 // Where the bubble may rise (box uv, y up), clear of the hero text: to the
 // right of it on wide screens, above it on narrow ones.
-const WIDE_BUBBLE_AREA = { left: 0.55, right: 0.85, bottom: 0.25, top: 0.75 };
-const NARROW_BUBBLE_AREA = { left: 0.25, right: 0.75, bottom: 0.55, top: 0.85 };
+const WIDE_BUBBLE_AREA = { left: 0.5, right: 0.9, bottom: 0.18, top: 0.82 };
+const NARROW_BUBBLE_AREA = { left: 0.2, right: 0.8, bottom: 0.55, top: 0.88 };
 // Fallback without WebGL: a plain crossfade.
 const CROSSFADE_MS = 800;
 
@@ -56,7 +56,8 @@ export function BoilingSlideshow({ slides, className = "" }: { slides: BoilingSl
     let webglFailed = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
     let frame = 0;
-    let seed = 1;
+    // A fresh starting seed per visit, so the splashes never replay.
+    let seed = Math.floor(Math.random() * 2 ** 31);
 
     const getRenderer = async () => {
       if (renderer || webglFailed) return renderer;
