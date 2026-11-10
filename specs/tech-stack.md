@@ -114,6 +114,37 @@ triggering, animate a disclosure panel's `height: auto` cleanly, or drive
 per-frame cursor-following/idle-float tweens — GSAP is reserved for those
 cases, keeping the CSS/JS split deliberate rather than all-or-nothing.
 
+- **three.js** (`three`, `@types/three`) for one effect only: the
+  homepage hero's liquid splash between featured dishes,
+  `apps/web/lib/splash-renderer.ts`. A glossy liquid layer over the dish
+  photo simmers, a bubble swells and bursts into a crown and droplets, and
+  the next dish spreads out behind the liquid front. It's a hybrid. Ripples
+  are a real 2D wave equation on a small half-float grid; the bubble, its
+  rupture and the crown are analytic shapes drawn per pixel; droplets are
+  projectiles moved on the CPU and drawn as instanced sphere impostors;
+  reflections are a photo studio drawn in the shader with Fresnel; and the
+  reveal is a mask that only grows, driven by the front and by droplets
+  landing. A paused GSAP timeline sequences the stages and the simulation
+  runs on a fixed 60 Hz step from a seed, so any moment can be replayed
+  exactly and each splash looks different. The first and last frames match
+  the plain photos, so the canvas is shown over the photo stack only while
+  a splash runs. It is loaded with a dynamic `import()` from
+  `apps/web/components/boiling-slideshow.tsx` when the first splash is
+  due, so it never ships in the initial bundle. Photos are used as
+  textures, so the API's public media route (`apps/api/src/routes/media.rs`)
+  sends `Access-Control-Allow-Origin: *`. Without WebGL (or float render
+  targets) the hero crossfades; under reduced motion it's a still image.
+  The effect is tuned in a dev-only lab, `/[locale]/lab/splash` (a 404 in
+  production): a scrubber, seeds, layer toggles, debug views of the wave
+  grid and reveal mask, a frame-time readout, and a pixel check that the
+  first and last frames match the plain photos.
+
+_Why three.js rather than GSAP or a 2D canvas:_ the client wanted the
+dishes to look like boiling soup that splashes into the next one —
+per-pixel refraction and shading of the photo by a moving liquid surface,
+plus lit droplets — which shaders do cheaply and neither DOM tweens nor a
+2D canvas can. Confined to that one lazily-loaded module.
+
 - **Site-decoration imagery**: real, AI-generated photos committed as
   static files under `apps/web/assets/images/` and brought in via a plain
   Next.js static `import` (not `public/` + a manual URL), so `next/image`
@@ -518,7 +549,7 @@ or recreated repo can't match.
 | Concern | Choice |
 |---|---|
 | Frontend | Next.js (App Router) + React + TypeScript + Tailwind CSS v4 |
-| Animation | GSAP + ScrollTrigger + CustomEase (scroll/transitions/cursor/float) + Lenis (smooth scroll) + plain CSS (hover/focus) |
+| Animation | GSAP + ScrollTrigger + CustomEase (scroll/transitions/cursor/float) + Lenis (smooth scroll) + three.js (hero liquid splash, lazy-loaded) + plain CSS (hover/focus) |
 | Site imagery | Admin-uploaded MinIO images in `site_content` (Phase 25), falling back to static imports from `apps/web/assets/images/`; `placehold.co` (DB `image_url` fallback only) |
 | i18n | next-intl (locale-prefixed `/en`, `/nl`, `/fr` routing) |
 | Backend API | Rust + Axum + sqlx + serde |

@@ -7,6 +7,7 @@ import { Eyebrow } from "@/components/eyebrow";
 import { ButtonAnchor, ButtonLink } from "@/components/button";
 import { MenuBentoGrid } from "@/components/menu-bento-grid";
 import { LiquidCard } from "@/components/liquid-card";
+import { BoilingSlideshow, type BoilingSlide } from "@/components/boiling-slideshow";
 import { Link } from "@/i18n/navigation";
 import { getMenuItems, getSiteContent } from "@/lib/api";
 import { getHomeText } from "@/lib/home-text";
@@ -105,6 +106,19 @@ export default async function Home() {
     .filter((item) => item.is_featured && item.is_available)
     .slice(0, MAX_FEATURED_ITEMS);
 
+  // The hero simmers through the featured dishes' photos, each photo once
+  // (splashing a dish into itself would show nothing); with none, it falls
+  // back to the (admin-replaceable) hero image.
+  const featuredSlides: BoilingSlide[] = featuredItems.flatMap((item, i) =>
+    item.image_url && featuredItems.findIndex((other) => other.image_url === item.image_url) === i
+      ? [{ src: item.image_url, alt: item.name }]
+      : [],
+  );
+  const heroSlides: BoilingSlide[] =
+    featuredSlides.length > 0
+      ? featuredSlides
+      : [{ src: siteImage(content, "hero") ?? hero, alt: t.markup("heroHeadline", { em: (chunks) => chunks }) }];
+
   return (
     <main>
       <SplitRow
@@ -131,14 +145,7 @@ export default async function Home() {
             </div>
           </div>
         }
-        media={
-          <SiteImage
-            src={siteImage(content, "hero") ?? hero}
-            alt={t.markup("heroHeadline", { em: (chunks) => chunks })}
-            priority
-            float
-          />
-        }
+        media={<BoilingSlideshow slides={heroSlides} className="h-[clamp(340px,62vh,640px)]" />}
       />
 
       <SplitRow
