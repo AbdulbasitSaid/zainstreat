@@ -123,8 +123,11 @@ export function LiquidPageTransition() {
 
     let bubbles: Bubble[] = [];
     let pops: Pop[] = [];
-    let bubbling = true;
-    let running = true;
+    // Idle until a click: handleClick starts the ticker only when it isn't
+    // already running, and the ticker is what notices the new URL and hides
+    // the loading screen.
+    let bubbling = false;
+    let running = false;
     let waitedFor = 0;
     let spawnDebt = 0;
     let startHref = "";
