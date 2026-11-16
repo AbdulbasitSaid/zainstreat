@@ -228,8 +228,10 @@ scope.
 **Implementation specifics pinned in `roadmap.md` Phase 11** (see
 `specs/2026-10-03-phase-11-admin-auth/requirement.md` for full rationale):
 
-- Session expiry is a **rolling 7-day inactivity window**
+- Session expiry is a **rolling 30-day inactivity window**
   (`tower_sessions::Expiry::OnInactivity`), not a fixed absolute expiry.
+  It was 7 days until Phase 27, which lengthened it so tapping a push
+  notification in the installed admin rarely lands on the login page.
 - The `tower-sessions-sqlx-store` session table is **self-migrated by the
   crate's own `PostgresStore::migrate()` call at API startup**, not a
   committed `apps/api/migrations/*.sql` file — a deliberate, scoped
@@ -421,6 +423,28 @@ No WhatsApp Business API/webhook integration is needed for the MVP — it's
 a link, not a service dependency. This keeps WhatsApp as a contact channel
 alongside, not a replacement for, the online ordering system.
 
+## Admin PWA & Web Push (Phase 27)
+
+- **Installable admin, no library.** A static `public/admin.webmanifest`
+  linked only from the admin root layout, Apple web-app metadata, and a
+  hand-written `public/sw.js` registered on `cms.<host>` with scope `/`.
+  The service worker handles push and notification clicks only. It has
+  no fetch handler and no offline cache, because the admin shows live
+  order data. iOS 16.4+ supports web push only for the Home Screen app,
+  so the admin shows "Add to Home Screen" steps on iOS.
+- **Standard Web Push (RFC 8030/8291/8292) from the Rust API** with
+  **`web-push-native`** (VAPID signing and `aes128gcm` encryption, pure
+  Rust) and **`reqwest`** (rustls) to send. One sender covers Apple
+  (`web.push.apple.com`), FCM and Mozilla. Subscriptions live in
+  Postgres (`push_subscriptions`). Sends are fire-and-forget like email,
+  and 404/410 answers delete dead subscriptions. VAPID keys come from
+  `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` and `VAPID_SUBJECT`, generated
+  by the `generate_vapid_keys` binary. If they're unset, push is off.
+- _Why not the `web-push` crate:_ it needs OpenSSL (through `ece`) and
+  the old `http` 0.2/`hyper` 0.14 stack. _Why not OneSignal or FCM
+  directly:_ the protocol is enough, with no account, SDK or extra
+  privacy terms.
+
 ## Hosting & Deployment
 
 - **AWS Lightsail VPS**, Amazon Linux 2023 blueprint (what Phase 2
@@ -560,6 +584,7 @@ or recreated repo can't match.
 | Email | lettre (SMTP transport) + Amazon SES, fire-and-forget (Phase 17); inbound `contact@` via ImprovMX forwarding (Phase 25) |
 | Spam/abuse mitigation | `tower_governor` (per-IP rate limit, custom `X-Forwarded-For` key extractor) + honeypot field (Phase 15) |
 | WhatsApp | `wa.me` deep links |
+| Admin PWA / push | Static manifest + hand-written service worker on `cms.<host>`; Web Push with VAPID from the API via `web-push-native` + `reqwest` (rustls) (Phase 27) |
 | Hosting | AWS Lightsail VPS, 4 GB (`eu-central-1`, Frankfurt), Docker Compose with per-container memory/CPU limits |
 | Monitoring | Lightsail metric alarms + external HTTP uptime monitor + persistent systemd journal (Phase 18) |
 | CI/CD | GitHub Actions → private GHCR (SHA tags) → SSH deploy (dedicated `deploy` user); `master` → staging, approved promote → production (Phase 21) |

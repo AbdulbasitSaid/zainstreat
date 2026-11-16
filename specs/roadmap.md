@@ -485,13 +485,23 @@ started.
 
 ## Phase 27 — Installable Admin (PWA) & Push Notifications
 
-To be investigated first: the client uses an iPhone, and iOS only
-supports web push for home-screen-installed PWAs (iOS 16.4+).
+Planned 2026-11-16 (see
+`specs/2026-11-16-phase-27-admin-pwa-push/requirement.md`). The iOS
+investigation is in its Context: web push works on iPhone only for the
+Home Screen app (iOS 16.4+), installed by hand from Safari.
 
 - Web app manifest and service worker so the admin can be installed to
   the home screen.
-- Web push to the owner for new orders and payment claims, even when the
-  admin isn't open. Tapping a notification opens the order in admin.
+- Web push to the owner for every event that emails the owner: new
+  orders, quote acceptances, payment claims, catering enquiries, quote
+  declines and contact messages, even when the admin isn't open (widened
+  from orders and payment claims during planning). Notifications
+  include the customer's name. Tapping one opens the matching admin
+  page.
+- A Settings page to turn notifications on per device, send a test, and
+  manage devices. The app icon badge counts orders awaiting payment or
+  its confirmation.
+- Admin sessions last 30 days of inactivity (was 7).
 
 ## Phase 28 — WhatsApp Owner Notifications
 
