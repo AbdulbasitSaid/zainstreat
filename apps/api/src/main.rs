@@ -104,8 +104,9 @@ async fn main() {
     };
     let email = api::email::EmailConfig::from_env();
     let payment = api::payment::PaymentConfig::from_env();
+    let push = api::push::PushConfig::from_env();
 
-    let app = match api::build_app(pool, cookie_secure, media, email, payment).await {
+    let app = match api::build_app(pool, cookie_secure, media, email, payment, push).await {
         Ok(app) => app,
         Err(error) => {
             tracing::error!(%error, "failed to build application");

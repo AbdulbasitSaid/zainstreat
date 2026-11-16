@@ -1,6 +1,7 @@
 use crate::email::{EmailConfig, OutgoingEmail};
 use crate::error::{AppError, FieldError};
 use crate::order_emails::Locale;
+use crate::push::{self, PushConfig};
 use crate::validation::{is_valid_email, is_valid_phone};
 use axum::extract::State;
 use axum::{Json, http::StatusCode};
@@ -159,6 +160,7 @@ fn validate(payload: &CreateCateringEnquiryRequest) -> Vec<FieldError> {
 pub async fn create_catering_enquiry(
     State(pool): State<PgPool>,
     State(email): State<EmailConfig>,
+    State(push): State<PushConfig>,
     Json(payload): Json<CreateCateringEnquiryRequest>,
 ) -> Result<(StatusCode, Json<CateringEnquiryResponse>), AppError> {
     // Honeypot tripped: pretend success, touch nothing. Checked before
@@ -205,6 +207,17 @@ pub async fn create_catering_enquiry(
     )
     .fetch_one(&pool)
     .await?;
+
+    push.spawn_notify_owner(
+        &pool,
+        push::catering_enquiry(
+            row.id,
+            payload.name.trim(),
+            &payload.event_type,
+            payload.event_date,
+            payload.guest_count,
+        ),
+    );
 
     if let Some(to) = email.business_notify_address() {
         email.spawn_send(OutgoingEmail {

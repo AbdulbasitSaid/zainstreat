@@ -2,6 +2,7 @@ use crate::email::{EmailConfig, OutgoingEmail};
 use crate::error::{AppError, FieldError};
 use crate::order_emails::Locale;
 use crate::payment::{PaymentConfig, payment_reference};
+use crate::push::{self, PushConfig};
 use crate::quote_status::{customer_can_accept, display_status, is_expired};
 use crate::routes::orders::{load_order_by_token, parse_token, send_invoice};
 use axum::{
@@ -130,6 +131,7 @@ pub struct AcceptQuoteResponse {
 pub async fn accept_quote(
     State(pool): State<PgPool>,
     State(email): State<EmailConfig>,
+    State(push): State<PushConfig>,
     State(payment): State<PaymentConfig>,
     Path(token): Path<String>,
     Json(payload): Json<AcceptQuoteRequest>,
@@ -246,6 +248,7 @@ pub async fn accept_quote(
     // invoice, and the owner a heads-up.
     let response = load_order_by_token(&pool, &payment, order.public_token).await?;
     send_invoice(&email, &pool, &response, &order.placed_at);
+    push.spawn_notify_owner(&pool, push::quote_accepted(quote.id, &response));
 
     if let Some(business_address) = email.business_notify_address() {
         email.spawn_send(OutgoingEmail {
@@ -288,6 +291,7 @@ pub struct DeclineQuoteRequest {
 pub async fn decline_quote(
     State(pool): State<PgPool>,
     State(email): State<EmailConfig>,
+    State(push): State<PushConfig>,
     Path(token): Path<String>,
     Json(payload): Json<DeclineQuoteRequest>,
 ) -> Result<Json<PublicQuoteResponse>, AppError> {
@@ -331,6 +335,7 @@ pub async fn decline_quote(
     };
 
     tracing::info!(quote_id = row.id, "customer declined catering quote");
+    push.spawn_notify_owner(&pool, push::quote_declined(row.id, row.enquiry_id, &row.name, reason));
 
     if let Some(business_address) = email.business_notify_address() {
         email.spawn_send(OutgoingEmail {

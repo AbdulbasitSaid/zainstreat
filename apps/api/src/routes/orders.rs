@@ -3,6 +3,7 @@ use crate::error::{AppError, FieldError, UnavailableItem};
 use crate::order_emails::{Locale, invoice_email};
 use crate::order_status::CUSTOMER_COMPLETABLE;
 use crate::payment::{PaymentConfig, PaymentInstructions, payment_reference};
+use crate::push::{self, PushConfig};
 use crate::validation::{is_valid_email, is_valid_phone};
 use axum::{
     Json,
@@ -209,6 +210,7 @@ struct PricedLine {
 pub async fn create_order(
     State(pool): State<PgPool>,
     State(email): State<EmailConfig>,
+    State(push): State<PushConfig>,
     State(payment): State<PaymentConfig>,
     Json(payload): Json<CreateOrderRequest>,
 ) -> Result<(StatusCode, Json<OrderResponse>), AppError> {
@@ -407,6 +409,8 @@ pub async fn create_order(
     };
 
     send_invoice(&email, &pool, &response, &order.placed_at);
+    // Independent of email (Phase 27 Decision 7).
+    push.spawn_notify_owner(&pool, push::new_order(&response));
 
     if let Some(business_address) = email.business_notify_address() {
         email.spawn_send(OutgoingEmail {
@@ -539,6 +543,7 @@ pub async fn get_order_by_token(
 pub async fn claim_payment(
     State(pool): State<PgPool>,
     State(email): State<EmailConfig>,
+    State(push): State<PushConfig>,
     State(payment): State<PaymentConfig>,
     Path(token): Path<String>,
 ) -> Result<Json<OrderResponse>, AppError> {
@@ -566,6 +571,7 @@ pub async fn claim_payment(
     };
 
     tracing::info!(order_id, "customer claimed payment");
+    push.spawn_notify_owner(&pool, push::payment_claimed(&order));
 
     if let Some(business_address) = email.business_notify_address() {
         email.spawn_send(OutgoingEmail {

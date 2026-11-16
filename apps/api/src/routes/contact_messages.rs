@@ -1,5 +1,6 @@
 use crate::email::{EmailConfig, OutgoingEmail};
 use crate::error::{AppError, FieldError};
+use crate::push::{self, PushConfig};
 use crate::validation::{is_valid_email, is_valid_phone};
 use axum::{Json, extract::State, http::StatusCode};
 use chrono::{DateTime, Utc};
@@ -96,6 +97,7 @@ fn validate(payload: &CreateContactMessageRequest) -> Vec<FieldError> {
 pub async fn create_contact_message(
     State(pool): State<PgPool>,
     State(email): State<EmailConfig>,
+    State(push): State<PushConfig>,
     Json(payload): Json<CreateContactMessageRequest>,
 ) -> Result<(StatusCode, Json<ContactMessageResponse>), AppError> {
     // Honeypot tripped — see catering_enquiries.rs's identical check for the rationale.
@@ -128,6 +130,11 @@ pub async fn create_contact_message(
     )
     .fetch_one(&pool)
     .await?;
+
+    push.spawn_notify_owner(
+        &pool,
+        push::contact_message(row.id, payload.name.trim(), &payload.subject, &payload.message),
+    );
 
     if let Some(to) = email.business_notify_address() {
         email.spawn_send(OutgoingEmail {

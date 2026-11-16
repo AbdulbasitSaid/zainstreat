@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, endpoint, p256dh, auth FROM push_subscriptions\n        WHERE $1::BIGINT IS NULL OR user_id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "endpoint",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "p256dh",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "auth",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "ff66fa57ee56e3a04d2cb072c985a94c84ed9641deb0783484aa1a2e1baf88f4"
+}

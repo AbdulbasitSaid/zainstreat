@@ -6,6 +6,7 @@ pub mod media;
 pub mod menu_items;
 pub mod middleware;
 pub mod orders;
+pub mod push;
 pub mod quotes;
 pub mod site_content;
 
@@ -61,6 +62,11 @@ pub fn admin_router() -> Router<AppState> {
         .route("/publish", post(drafts::publish))
         .route("/drafts/site_content", delete(drafts::discard_site_content_draft))
         .route("/drafts/{kind}/{id}", delete(drafts::discard_draft))
+        // Phase 27: admin web push.
+        .route("/push/public-key", get(push::get_public_key))
+        .route("/push/subscriptions", get(push::list_subscriptions).post(push::subscribe))
+        .route("/push/subscriptions/{id}", delete(push::delete_subscription))
+        .route("/push/test", post(push::send_test))
         .route_layer(from_fn(middleware::require_admin));
 
     Router::new()
