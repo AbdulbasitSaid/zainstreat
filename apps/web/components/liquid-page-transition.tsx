@@ -25,23 +25,41 @@ type Bubble = {
   burstAt: number; // y (px) where it pops
 };
 
-type Pop = { el: SVGGElement; ring: SVGCircleElement; drops: SVGCircleElement[]; radius: number; age: number };
+type Pop = {
+  el: SVGGElement;
+  ring: SVGCircleElement;
+  drops: SVGCircleElement[];
+  radius: number;
+  age: number;
+};
 
-const POP_DURATION_S = 0.32;
+const POP_DURATION_S = 0.3;
 
 function isInternalNavigation(event: MouseEvent): boolean {
   if (event.defaultPrevented || event.button !== 0) return false;
-  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return false;
-  const anchor = event.target instanceof Element ? event.target.closest("a") : null;
-  if (!anchor || anchor.hasAttribute("download") || anchor.hasAttribute("data-no-page-transition")) return false;
+  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
+    return false;
+  const anchor =
+    event.target instanceof Element ? event.target.closest("a") : null;
+  if (
+    !anchor ||
+    anchor.hasAttribute("download") ||
+    anchor.hasAttribute("data-no-page-transition")
+  )
+    return false;
   if (anchor.target && anchor.target !== "_self") return false;
   const url = new URL(anchor.href, location.href);
   if (url.origin !== location.origin) return false;
   // Same page (or only a #hash away): nothing is loading.
-  return !(url.pathname === location.pathname && url.search === location.search);
+  return !(
+    url.pathname === location.pathname && url.search === location.search
+  );
 }
 
-function svgEl<K extends "g" | "circle">(name: K, className = ""): SVGElementTagNameMap[K] {
+function svgEl<K extends "g" | "circle">(
+  name: K,
+  className = "",
+): SVGElementTagNameMap[K] {
   const el = document.createElementNS(SVG_NS, name);
   if (className) el.setAttribute("class", className);
   return el;
@@ -63,7 +81,12 @@ function makeBubbleElement(parent: SVGElement, radius: number): SVGGElement {
 }
 
 // A burst: the rim snaps outwards and a few droplets fly off.
-function makePop(parent: SVGElement, x: number, y: number, radius: number): Pop {
+function makePop(
+  parent: SVGElement,
+  x: number,
+  y: number,
+  radius: number,
+): Pop {
   const el = svgEl("g");
   el.setAttribute("transform", `translate(${x.toFixed(1)} ${y.toFixed(1)})`);
   const ring = svgEl("circle", "fill-none stroke-primary/50");
@@ -95,12 +118,13 @@ export function LiquidPageTransition() {
 
   useEffect(() => {
     const svg = svgRef.current;
-    if (!svg || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (!svg || window.matchMedia("(prefers-reduced-motion: reduce)").matches)
+      return;
 
     let bubbles: Bubble[] = [];
     let pops: Pop[] = [];
-    let bubbling = false;
-    let running = false;
+    let bubbling = true;
+    let running = true;
     let waitedFor = 0;
     let spawnDebt = 0;
     let startHref = "";
@@ -112,11 +136,13 @@ export function LiquidPageTransition() {
         x: Math.random() * width,
         y: height + radius,
         radius,
-        speed: 140 + Math.random() * 120 + (10 - radius) * 12,
+        speed: 200 + Math.random() * 120 + (10 - radius) * 12,
         wobble: 4 + Math.random() * 10,
         phase: Math.random() * Math.PI * 2,
         age: 0,
-        burstAt: height * (BURST_BAND[0] + Math.random() * (BURST_BAND[1] - BURST_BAND[0])),
+        burstAt:
+          height *
+          (BURST_BAND[0] + Math.random() * (BURST_BAND[1] - BURST_BAND[0])),
       });
     };
 
@@ -147,7 +173,10 @@ export function LiquidPageTransition() {
           pops.push(makePop(svg, x, b.y, b.radius));
           return false;
         }
-        b.el.setAttribute("transform", `translate(${x.toFixed(1)} ${b.y.toFixed(1)})`);
+        b.el.setAttribute(
+          "transform",
+          `translate(${x.toFixed(1)} ${b.y.toFixed(1)})`,
+        );
         b.el.setAttribute("opacity", Math.min(b.age / 0.2, 1).toFixed(2));
         return true;
       });
@@ -166,8 +195,14 @@ export function LiquidPageTransition() {
           const angle = (i / pop.drops.length) * Math.PI * 2 - Math.PI / 2;
           const reach = pop.radius * (1.2 + out * 2.2);
           drop.setAttribute("cx", (Math.cos(angle) * reach).toFixed(1));
-          drop.setAttribute("cy", (Math.sin(angle) * reach + k * k * 6).toFixed(1));
-          drop.setAttribute("r", (Math.max(pop.radius * 0.18, 1) * (1 - k * 0.6)).toFixed(2));
+          drop.setAttribute(
+            "cy",
+            (Math.sin(angle) * reach + k * k * 6).toFixed(1),
+          );
+          drop.setAttribute(
+            "r",
+            (Math.max(pop.radius * 0.18, 1) * (1 - k * 0.6)).toFixed(2),
+          );
           drop.setAttribute("opacity", (1 - k).toFixed(2));
         });
         return true;
@@ -212,7 +247,11 @@ export function LiquidPageTransition() {
       >
         <BubbleLoader label={t("loadingPage")} className="scale-125" />
       </div>
-      <svg ref={svgRef} aria-hidden="true" className="pointer-events-none fixed inset-0 z-[90] h-full w-full" />
+      <svg
+        ref={svgRef}
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-0 z-[90] h-full w-full"
+      />
     </>
   );
 }
