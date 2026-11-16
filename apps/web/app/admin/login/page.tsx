@@ -7,7 +7,7 @@ export const metadata: Metadata = {
 
 export default function AdminLoginPage() {
   return (
-    <main className="container">
+    <main className="container pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
       <AdminLoginForm />
     </main>
   );

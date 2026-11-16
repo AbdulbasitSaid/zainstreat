@@ -3,6 +3,7 @@ import { getCurrentAdmin } from "@/lib/admin-auth";
 import { adminApiJson } from "@/lib/admin-api";
 import { AdminNav } from "@/components/admin-nav";
 import { AdminLogoutButton } from "@/components/admin-logout-button";
+import { AdminServiceWorker } from "@/components/admin-service-worker";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +20,10 @@ export default async function ProtectedAdminLayout({
   const changes = await adminApiJson<{ count: number }>("/api/admin/changes?count=1").catch(() => ({ count: 0 }));
 
   return (
-    <div className="min-h-dvh md:grid md:grid-cols-[15rem_1fr]">
+    // Safe-area padding keeps the installed app clear of the notch and home
+    // indicator (Phase 27 Decision 3, viewport-fit=cover).
+    <div className="min-h-dvh pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] md:grid md:grid-cols-[15rem_1fr]">
+      <AdminServiceWorker />
       <aside className="flex flex-col gap-6 border-b border-text/10 bg-background-soft/40 p-5 md:min-h-dvh md:border-b-0 md:border-r">
         <p className="m-0 text-base font-semibold text-primary">Zain&apos;s Admin</p>
         <AdminNav changesCount={changes.count} />
