@@ -428,4 +428,27 @@ rounds.
 
 ## Implementation notes
 
-*(Filled in during implementation: deviations from this plan and why.)*
+2026-11-16, Groups 1–5:
+
+- **`web-push-native` has no Urgency option, and ties TTL to the VAPID
+  token's lifetime.** The token stays at 12 h (Apple rejects tokens that
+  expire more than 24 h out). `TTL: 86400` and `Urgency: high` are set on
+  the `reqwest::Request` after the build (`push.rs` `build_request`).
+- **`PushConfig::from_keys` checks that the public key matches the private
+  key** and turns push off with an error log if not, instead of letting
+  every send fail with a 403.
+- **The device list returns each row's `endpoint`** (only to the admin
+  who owns it), so the web can mark "This device" by comparing endpoints.
+  There's no `is_current` field.
+- **`lib/admin-proxy.ts` now forwards `User-Agent`** for every admin proxy
+  route, so device labels work through the cms proxy.
+- **Turning on with an existing browser subscription made with a
+  different key** (after a key rotation) unsubscribes it and subscribes
+  again (`lib/push-client.ts` `subscribe`).
+- **Step 6.1 done early** (`docker-compose.yml`, `.env.example`) so push
+  can be tried locally. A local dev key pair is in the gitignored root
+  `.env`. `_deploy.yml` and the GitHub Environment keys (6.1–6.3) are
+  still to do.
+- `tests/admin_push.rs` runs a fake push service on `127.0.0.1` and
+  decrypts the payload with the browser-side key. It covers headers,
+  payload, badge, `last_success_at`, and deleting a row on `410`.

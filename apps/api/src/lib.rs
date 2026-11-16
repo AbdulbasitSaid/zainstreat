@@ -3,6 +3,7 @@ pub mod error;
 pub mod order_emails;
 pub mod order_status;
 pub mod payment;
+pub mod push;
 pub mod quote_status;
 pub mod rate_limit;
 pub mod routes;
@@ -38,6 +39,7 @@ pub struct AppState {
     pub media: MediaConfig,
     pub email: email::EmailConfig,
     pub payment: payment::PaymentConfig,
+    pub push: push::PushConfig,
 }
 
 impl FromRef<AppState> for PgPool {
@@ -61,6 +63,12 @@ impl FromRef<AppState> for email::EmailConfig {
 impl FromRef<AppState> for payment::PaymentConfig {
     fn from_ref(state: &AppState) -> payment::PaymentConfig {
         state.payment.clone()
+    }
+}
+
+impl FromRef<AppState> for push::PushConfig {
+    fn from_ref(state: &AppState) -> push::PushConfig {
+        state.push.clone()
     }
 }
 
@@ -100,6 +108,7 @@ pub async fn build_app(
     media: MediaConfig,
     email: email::EmailConfig,
     payment: payment::PaymentConfig,
+    push: push::PushConfig,
 ) -> Result<Router, sqlx::Error> {
     let session_store = PostgresStore::new(pool.clone());
     session_store.migrate().await?;
@@ -107,7 +116,9 @@ pub async fn build_app(
     let session_layer = SessionManagerLayer::new(session_store)
         .with_secure(cookie_secure)
         .with_same_site(SameSite::Lax)
-        .with_expiry(Expiry::OnInactivity(Duration::days(7)));
+        // 30 days (Phase 27 Decision 12): tapping a push notification after a
+        // quiet week shouldn't land on the login page.
+        .with_expiry(Expiry::OnInactivity(Duration::days(30)));
 
     Ok(Router::new()
         .nest("/api", routes::api_router())
@@ -132,5 +143,6 @@ pub async fn build_app(
             media,
             email,
             payment,
+            push,
         }))
 }

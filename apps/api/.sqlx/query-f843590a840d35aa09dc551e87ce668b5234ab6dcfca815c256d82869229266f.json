@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth, user_agent)\n        VALUES ($1, $2, $3, $4, $5)\n        ON CONFLICT (endpoint) DO UPDATE\n        SET user_id = EXCLUDED.user_id, p256dh = EXCLUDED.p256dh, auth = EXCLUDED.auth,\n            user_agent = EXCLUDED.user_agent, failure_count = 0\n        RETURNING (xmax = 0) as \"inserted!\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "inserted!",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "f843590a840d35aa09dc551e87ce668b5234ab6dcfca815c256d82869229266f"
+}

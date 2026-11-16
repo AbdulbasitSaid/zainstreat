@@ -1,5 +1,6 @@
 use api::email::EmailConfig;
 use api::payment::PaymentConfig;
+use api::push::PushConfig;
 use api::{MediaConfig, build_app};
 use argon2::Argon2;
 use argon2::password_hash::PasswordHasher;
@@ -68,6 +69,7 @@ async fn send_raw(pool: PgPool, request: Request<Body>) -> (StatusCode, HeaderMa
         test_media_config().await,
         EmailConfig::from_env(),
         PaymentConfig::from_env(),
+        PushConfig::disabled(),
     )
     .await
     .expect("failed to build app in test");
@@ -89,6 +91,22 @@ pub async fn build_test_app(pool: PgPool) -> axum::Router {
         test_media_config().await,
         EmailConfig::from_env(),
         PaymentConfig::from_env(),
+        PushConfig::disabled(),
+    )
+    .await
+    .expect("failed to build app in test")
+}
+
+/// For web push tests (Phase 27): the same app with push configured.
+#[allow(dead_code)]
+pub async fn build_test_app_with_push(pool: PgPool, push: PushConfig) -> axum::Router {
+    build_app(
+        pool,
+        false,
+        test_media_config().await,
+        EmailConfig::from_env(),
+        PaymentConfig::from_env(),
+        push,
     )
     .await
     .expect("failed to build app in test")

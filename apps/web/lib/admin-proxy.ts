@@ -21,6 +21,8 @@ export async function proxyAdminRequest(
     headers: {
       "Content-Type": "application/json",
       Cookie: request.headers.get("cookie") ?? "",
+      // Push subscriptions label each device from it (Phase 27).
+      "User-Agent": request.headers.get("user-agent") ?? "",
     },
     body: method === "PUT" || method === "POST" ? await request.text() : undefined,
     cache: "no-store",
