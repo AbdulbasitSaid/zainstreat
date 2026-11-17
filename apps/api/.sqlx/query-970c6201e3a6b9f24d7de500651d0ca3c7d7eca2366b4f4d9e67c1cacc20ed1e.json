@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT count(*) AS \"count!\" FROM login_failures\n           WHERE lower(email) = lower($1)\n             AND created_at > now() - make_interval(mins => $2)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "970c6201e3a6b9f24d7de500651d0ca3c7d7eca2366b4f4d9e67c1cacc20ed1e"
+}

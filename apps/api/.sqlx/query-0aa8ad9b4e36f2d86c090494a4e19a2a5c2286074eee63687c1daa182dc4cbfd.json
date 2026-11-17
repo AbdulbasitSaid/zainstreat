@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id FROM orders WHERE id = ANY($1) AND status NOT IN ('completed', 'cancelled') ORDER BY id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8Array"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "0aa8ad9b4e36f2d86c090494a4e19a2a5c2286074eee63687c1daa182dc4cbfd"
+}

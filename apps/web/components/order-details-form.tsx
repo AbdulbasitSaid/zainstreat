@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/button";
+import { FormPrivacyNote } from "@/components/form-privacy-note";
 
 export type DeliveryType = "pickup" | "delivery";
 
@@ -226,6 +227,7 @@ export function OrderDetailsForm({
       </div>
 
       <Button type="submit" className="self-start">{t("continueToReview")}</Button>
+      <FormPrivacyNote form="order" />
     </form>
   );
 }

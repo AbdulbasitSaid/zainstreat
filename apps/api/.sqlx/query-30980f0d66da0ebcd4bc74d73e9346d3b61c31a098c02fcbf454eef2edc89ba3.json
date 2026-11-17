@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT ce.id FROM catering_enquiries ce\n           LEFT JOIN catering_quotes q ON q.enquiry_id = ce.id\n           WHERE ce.anonymised_at IS NULL\n             AND (ce.created_at < now() - make_interval(months => $1)\n                  OR (q.status IS DISTINCT FROM 'accepted'\n                      AND greatest(ce.created_at, q.updated_at) < now() - make_interval(months => $2)))",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "30980f0d66da0ebcd4bc74d73e9346d3b61c31a098c02fcbf454eef2edc89ba3"
+}

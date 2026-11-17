@@ -8,9 +8,14 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.text();
+  // The API rate-limits login per visitor IP (Phase 33 Decision 3).
+  const forwardedFor = request.headers.get("x-forwarded-for");
   const apiResponse = await fetch(`${API_BASE_URL}/api/admin/login`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(forwardedFor ? { "X-Forwarded-For": forwardedFor } : {}),
+    },
     body,
   });
 

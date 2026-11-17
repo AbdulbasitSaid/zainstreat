@@ -8,10 +8,15 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.text();
+  // The API rate-limits orders per visitor IP (Phase 33 Decision 6).
+  const forwardedFor = request.headers.get("x-forwarded-for");
 
   const apiResponse = await fetch(`${API_BASE_URL}/api/orders`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(forwardedFor ? { "X-Forwarded-For": forwardedFor } : {}),
+    },
     body,
   });
 

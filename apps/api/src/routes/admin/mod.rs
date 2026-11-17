@@ -7,6 +7,7 @@ pub mod media;
 pub mod menu_items;
 pub mod middleware;
 pub mod orders;
+pub mod privacy;
 pub mod push;
 pub mod quotes;
 pub mod site_content;
@@ -81,9 +82,16 @@ pub fn admin_router() -> Router<AppState> {
         .route("/push/subscriptions", get(push::list_subscriptions).post(push::subscribe))
         .route("/push/subscriptions/{id}", delete(push::delete_subscription))
         .route("/push/test", post(push::send_test))
+        // Phase 33: GDPR access and erasure requests.
+        .route("/privacy", get(privacy::search))
+        .route("/privacy/export", get(privacy::export))
+        .route("/privacy/anonymise", post(privacy::anonymise))
         .route_layer(from_fn(middleware::require_admin));
 
     Router::new()
-        .route("/login", post(auth::login))
+        .route(
+            "/login",
+            post(auth::login).route_layer(crate::rate_limit::login_rate_limiter()),
+        )
         .merge(protected)
 }

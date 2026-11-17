@@ -2,3 +2,11 @@ allowBuilds:
   '@parcel/watcher': true
   '@swc/core': true
   unrs-resolver: true
+
+# pnpm audit exceptions (Phase 33 Decision 11). Each needs a reason; review
+# on every dependency upgrade.
+auditConfig:
+  ignoreGhsas:
+    # picomatch ReDoS: no fixed release. Only reached through next-intl's
+    # @parcel/watcher (a dev/build file watcher), never from a web request.
+    - GHSA-fc5q-39xc-vjpf

@@ -1,0 +1,25 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT jsonb_build_object(\n             'orders', coalesce((SELECT jsonb_agg(jsonb_build_object(\n                 'id', id, 'created_at', created_at, 'status', status, 'total', total)\n                 ORDER BY id) FROM orders WHERE id = ANY($1)), '[]'),\n             'bookings', coalesce((SELECT jsonb_agg(jsonb_build_object(\n                 'id', b.id, 'event_id', b.event_id, 'event_slug', e.slug, 'created_at', b.created_at,\n                 'status', b.status, 'party_size', b.party_size)\n                 ORDER BY b.id) FROM event_bookings b JOIN events e ON e.id = b.event_id\n                 WHERE b.id = ANY($2)), '[]'),\n             'enquiries', coalesce((SELECT jsonb_agg(jsonb_build_object(\n                 'id', ce.id, 'created_at', ce.created_at, 'event_type', ce.event_type,\n                 'quote_status', q.status)\n                 ORDER BY ce.id) FROM catering_enquiries ce\n                 LEFT JOIN catering_quotes q ON q.enquiry_id = ce.id WHERE ce.id = ANY($3)), '[]'),\n             'contact_messages', coalesce((SELECT jsonb_agg(jsonb_build_object(\n                 'id', id, 'created_at', created_at, 'subject', subject)\n                 ORDER BY id) FROM contact_messages WHERE id = ANY($4)), '[]')\n           ) AS \"summary!\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "summary!",
+        "type_info": "Jsonb"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8Array",
+        "Int8Array",
+        "Int8Array",
+        "Int8Array"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "702d63fb0e51717d1e2edc6dc68c986c2a1b552f5956339e1a09bfae4235f36f"
+}

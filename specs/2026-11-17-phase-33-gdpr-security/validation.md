@@ -4,18 +4,18 @@
 
 ### Build, tests and audits
 
-- [ ] `cargo test` and `cargo clippy -- -D warnings` pass in `apps/api`,
+- [x] `cargo test` and `cargo clippy -- -D warnings` pass in `apps/api`,
       including the lockout, retention and privacy-tool tests.
-- [ ] `apps/api/.sqlx/` is regenerated and the Docker build passes with
+- [x] `apps/api/.sqlx/` is regenerated and the Docker build passes with
       `SQLX_OFFLINE=true`.
-- [ ] Both new migrations apply on top of Phase 32 and their down
+- [x] Both new migrations apply on top of Phase 32 and their down
       migrations revert them.
-- [ ] `pnpm check:messages`, `pnpm lint` and `pnpm build` pass in
+- [x] `pnpm check:messages`, `pnpm lint` and `pnpm build` pass in
       `apps/web`, with no `any`.
-- [ ] `/validate` passes.
-- [ ] `cargo audit` exits 0 (ignores only in `audit.toml`, each with a
+- [x] `/validate` passes.
+- [x] `cargo audit` exits 0 (ignores only in `audit.toml`, each with a
       reason).
-- [ ] `pnpm audit --prod --audit-level=high` exits 0.
+- [x] `pnpm audit --prod --audit-level=high` exits 0.
 - [ ] The CI `audit` job runs and passes on the PR.
 
 ### S1 — Next.js
@@ -31,13 +31,13 @@
 
 ### S2 — Admin login
 
-- [ ] Six quick wrong-password logins from one IP: the sixth returns
+- [x] Six quick wrong-password logins from one IP: the sixth returns
       `429`.
-- [ ] Ten wrong passwords for one email (spread across IPs or with the
+- [x] Ten wrong passwords for one email (spread across IPs or with the
       limiter relaxed in a test), then the right password, still returns
       `401 invalid_credentials`; after 15 minutes (or in the test, after
       ageing the rows) it succeeds.
-- [ ] Logs for a failed login show the IP and no email or password.
+- [x] Logs for a failed login show the IP and no email or password.
 - [ ] On staging, `curl -s -o /dev/null -w '%{http_code}' -X POST https://api.<staging>/api/admin/login`
       → `404`; `https://api.<staging>/api/menu-items` still `200`.
 
@@ -57,54 +57,54 @@
 
 ### S5/S6 — Orders and CSRF
 
-- [ ] Six quick `POST /api/orders` from one IP: the sixth returns `429`.
-- [ ] `curl -X POST -H 'Origin: https://evil.example' -H 'Cookie: <admin session>' http://cms.localhost:3000/api/admin/publish`
+- [x] Six quick `POST /api/orders` from one IP: the sixth returns `429`.
+- [x] `curl -X POST -H 'Origin: https://evil.example' -H 'Cookie: <admin session>' http://cms.localhost:3000/api/admin/publish`
       → `403`. The same request from the admin UI works.
-- [ ] Every `route.ts` under `app/api/admin` and `app/api/preview` with
-      a non-GET handler calls `rejectCrossSite` (or goes through
-      `proxyAdminRequest`).
-- [ ] The admin session cookie is `SameSite=Strict`; logging in, push
-      notification taps and the live preview still work.
+- [x] Every non-GET request to `/api/*` on the `cms.` host passes
+      `rejectCrossSite`, called once in `proxy.ts` (as implemented).
+- [ ] The admin session cookie stays `SameSite=Lax` (requirement.md
+      Decision 7, changed during implementation); logging in, push
+      notification taps, owner-email links and the live preview still work.
 
 ### S7/S8/S11 — Ops
 
-- [ ] `docker-compose.prod.yml` has no `:latest` image, and Dozzle has
+- [x] `docker-compose.prod.yml` has no `:latest` image, and Dozzle has
       actions and shell disabled.
 - [ ] An expired row in `tower_sessions.session` is gone within an hour
       of the API running.
-- [ ] `grep -rn 'to = ' apps/api/src` is empty.
+- [x] `grep -rn 'to = ' apps/api/src` is empty.
 
 ### Retention
 
-- [ ] With `RETENTION_SWEEP_ENABLED=true`, a seeded 8-year-old completed
+- [x] With `RETENTION_SWEEP_ENABLED=true`, a seeded 8-year-old completed
       order, 13-month-old contact message, 13-month-old unconverted
       enquiry and 100-day-old `email_deliveries` row are anonymised or
       deleted; a 2-month-old order is untouched; amounts and items on
       the anonymised order are unchanged.
-- [ ] The anonymised order's old tracking link returns not-found.
-- [ ] A second sweep changes nothing (`anonymised_at` set).
+- [x] The anonymised order's old tracking link returns not-found.
+- [x] A second sweep changes nothing (`anonymised_at` set).
 - [ ] With the flag unset, the sweeper doesn't start (log line absent).
 
 ### Admin Privacy tool
 
-- [ ] `cms.<host>/privacy` is in the nav; searching a test customer's
+- [x] `cms.<host>/privacy` is in the nav; searching a test customer's
       email lists their orders, bookings, enquiries and messages.
-- [ ] Export downloads a JSON file with every row for that address and
+- [x] Export downloads a JSON file with every row for that address and
       nothing for other addresses.
-- [ ] Anonymise refuses a mismatched confirmation email, refuses while
+- [x] Anonymise refuses a mismatched confirmation email, refuses while
       an open order exists (shows it), and otherwise anonymises; a new
       search finds nothing for that email.
-- [ ] `privacy_requests` has one row per export/anonymise with a SHA-256
+- [x] `privacy_requests` has one row per export/anonymise with a SHA-256
       hash, not the email.
 
 ### Privacy page and notices
 
-- [ ] `/en/privacy`, `/nl/privacy` and `/fr/privacy` render, are in
+- [x] `/en/privacy`, `/nl/privacy` and `/fr/privacy` render, are in
       `sitemap.xml` with `hreflang`, and are linked from the footer.
-- [ ] The page names Zain's Treat n More, contact@zainstreat.com and
+- [x] The page names Zain's Treat n More, contact@zainstreat.com and
       WhatsApp, shows the KvK line only when `BUSINESS_KVK` is set, and
       has no street address.
-- [ ] It covers data collected per form, purposes and lawful bases,
+- [x] It covers data collected per form, purposes and lawful bases,
       processors, retention, cookies/storage, every data subject right,
       the Autoriteit Persoonsgegevens, no automated decisions, and a
       last-updated date.
@@ -116,11 +116,11 @@
 
 ### Docs
 
-- [ ] `docs/privacy.md` exists with the processing record, processors,
+- [x] `docs/privacy.md` exists with the processing record, processors,
       retention, DSR how-to and breach checklist.
-- [ ] `docs/deployment.md` covers the `logs.` password, `CSP_HEADER`,
+- [x] `docs/deployment.md` covers the `logs.` password, `CSP_HEADER`,
       `RETENTION_SWEEP_ENABLED` and the post-restore anonymisation step.
-- [ ] `specs/tech-stack.md` has the Security & Privacy section and
+- [x] `specs/tech-stack.md` has the Security & Privacy section and
       Summary Table row.
 
 ## Definition of done

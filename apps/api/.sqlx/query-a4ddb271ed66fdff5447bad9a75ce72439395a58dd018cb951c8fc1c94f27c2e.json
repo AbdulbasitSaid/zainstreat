@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE catering_enquiries SET\n               name = 'Anonymised',\n               email = 'anonymised+' || id || '@invalid',\n               phone = '',\n               location = '',\n               message = NULL,\n               anonymised_at = now()\n           WHERE id = ANY($1) AND anonymised_at IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8Array"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a4ddb271ed66fdff5447bad9a75ce72439395a58dd018cb951c8fc1c94f27c2e"
+}

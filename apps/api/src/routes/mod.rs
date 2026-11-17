@@ -21,7 +21,12 @@ pub fn api_router() -> Router<AppState> {
         .route("/categories", get(categories::list_categories))
         .route("/menu-items", get(menu_items::list_menu_items))
         .route("/site-content", get(site_content::get_site_content))
-        .route("/orders", post(orders::create_order))
+        // Phase 33 Decision 6: every order emails an invoice to the typed
+        // address, so it gets the same per-IP limit as the other forms.
+        .route(
+            "/orders",
+            post(orders::create_order).route_layer(crate::rate_limit::enquiry_rate_limiter()),
+        )
         .route("/orders/by-token/{token}", get(orders::get_order_by_token))
         .route(
             "/orders/by-token/{token}/payment-claim",

@@ -108,6 +108,12 @@ async fn main() {
 
     // Phase 31 Decision 8: release unpaid event bookings after their hold.
     api::events::spawn_hold_sweeper(pool.clone(), email.clone(), push.clone(), payment.clone());
+    // Phase 33 Decision 14: off unless turned on per environment, until the
+    // client's accountant has confirmed the retention periods.
+    if std::env::var("RETENTION_SWEEP_ENABLED").is_ok_and(|v| v == "true") {
+        tracing::info!("retention sweeper enabled");
+        api::retention::spawn_retention_sweeper(pool.clone());
+    }
 
     let app = match api::build_app(pool, cookie_secure, media, email, payment, push).await {
         Ok(app) => app,

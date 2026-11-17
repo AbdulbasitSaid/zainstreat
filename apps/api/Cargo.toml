@@ -5,7 +5,9 @@ edition = "2024"
 
 [dependencies]
 axum = { version = "0.8", features = ["multipart"] }
-aws-sdk-s3 = "1"
+# Phase 33 Decision 2: no default features, so the SDK uses its hyper 1 /
+# rustls 0.23 client instead of the legacy hyper 0.14 / rustls 0.21 one.
+aws-sdk-s3 = { version = "1", default-features = false, features = ["default-https-client", "http-1x", "rt-tokio"] }
 uuid = { version = "1", features = ["v4", "serde"] }
 time = "0.3"
 tokio = { version = "1", features = ["full"] }
@@ -20,7 +22,9 @@ tower = "0.5"
 tower-http = { version = "0.6", features = ["trace", "request-id"] }
 argon2 = "0.6"
 tower-sessions = "0.14"
-tower-sessions-sqlx-store = { version = "0.15", features = ["postgres"] }
+# =0.15.0: 0.15.1 moved to tower-sessions-core 0.15, which tower-sessions
+# 0.14 can't use (found by Phase 33's cargo update).
+tower-sessions-sqlx-store = { version = "=0.15.0", features = ["postgres"] }
 rpassword = "7"
 tower_governor = { version = "0.8.0", default-features = false, features = ["axum"] }
 governor = { version = "0.10.4", default-features = false, features = ["std"] }

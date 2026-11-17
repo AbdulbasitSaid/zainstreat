@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE orders SET\n               customer_name = 'Anonymised',\n               customer_email = 'anonymised+' || id || '@invalid',\n               customer_phone = '',\n               delivery_address = NULL,\n               notes = NULL,\n               public_token = gen_random_uuid(),\n               anonymised_at = now()\n           WHERE id = ANY($1) AND anonymised_at IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8Array"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "acc0c6a42dcd339923aa7b08e20c96aa0cc010ea3f2c46ff3e8d9ec2df37ca48"
+}

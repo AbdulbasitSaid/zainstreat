@@ -1,6 +1,9 @@
 use std::time::Duration;
 
-use axum::{body::Body, http::Request};
+use axum::{
+    body::Body,
+    http::{HeaderMap, Request},
+};
 use governor::middleware::NoOpMiddleware;
 use tower_governor::{
     GovernorError, GovernorLayer, governor::GovernorConfigBuilder, key_extractor::KeyExtractor,
@@ -22,12 +25,12 @@ impl KeyExtractor for ForwardedForKeyExtractor {
     type Key = String;
 
     fn extract<T>(&self, req: &Request<T>) -> Result<Self::Key, GovernorError> {
-        Ok(client_ip_key(req))
+        Ok(client_ip_key(req.headers()))
     }
 }
 
-pub fn client_ip_key<T>(req: &Request<T>) -> String {
-    req.headers()
+pub fn client_ip_key(headers: &HeaderMap) -> String {
+    headers
         .get("x-forwarded-for")
         .and_then(|value| value.to_str().ok())
         // Caddy appends (never replaces) an incoming X-Forwarded-For, so
@@ -45,14 +48,28 @@ pub fn client_ip_key<T>(req: &Request<T>) -> String {
 
 const CLEANUP_INTERVAL: Duration = Duration::from_secs(300);
 
-/// Two independent calls (one per route, Group 7) build two independent
-/// `GovernorLayer`s — each with its own bucket per client IP, not a combined
-/// budget across both endpoints.
+/// Each call (one per route, Group 7) builds an independent `GovernorLayer`
+/// — its own bucket per client IP, not a combined budget across endpoints.
 pub fn enquiry_rate_limiter() -> GovernorLayer<ForwardedForKeyExtractor, NoOpMiddleware, Body> {
+    // Refill one token every 30s, allowing short bursts up to 5.
+    limiter(30, 5)
+}
+
+/// Admin login (Phase 33 Decision 3): 5 quick tries per IP, then one a
+/// minute. The per-email lockout in `routes/admin/auth.rs` covers attackers
+/// spreading tries across many IPs.
+pub fn login_rate_limiter() -> GovernorLayer<ForwardedForKeyExtractor, NoOpMiddleware, Body> {
+    limiter(60, 5)
+}
+
+fn limiter(
+    refill_seconds: u64,
+    burst: u32,
+) -> GovernorLayer<ForwardedForKeyExtractor, NoOpMiddleware, Body> {
     let config = GovernorConfigBuilder::default()
         .key_extractor(ForwardedForKeyExtractor)
-        .per_second(30) // refill one token every 30s...
-        .burst_size(5) // ...allowing short bursts up to 5
+        .per_second(refill_seconds)
+        .burst_size(burst)
         .finish()
         .expect("rate limiter config is valid");
 

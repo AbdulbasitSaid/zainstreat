@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
 import { Button } from "@/components/button";
+import { FormPrivacyNote } from "@/components/form-privacy-note";
 import { Notice } from "@/components/notice";
 import { QuantityStepper } from "@/components/quantity-stepper";
 import { createBooking, type EventPlate } from "@/lib/events";
@@ -416,6 +417,7 @@ export function EventBookingForm({
           {submitting ? t("submitting") : waitlistOnly ? t("joinWaitlist") : t("submit")}
         </Button>
       )}
+      <FormPrivacyNote form="booking" />
 
       {failure && (
         <p role="alert" className={FIELD_ERROR_CLASS}>

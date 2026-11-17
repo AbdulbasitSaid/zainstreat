@@ -42,7 +42,10 @@ Decisions refer to `requirement.md`. Findings S1–S11 are its audit table.
      `hyper-rustls 0.24` connector, switch it to the
      `default-https-client` feature (aws-smithy-http-client, rustls
      0.23).
-2.3. Whatever remains with no fix goes in `apps/api/audit.toml`:
+2.3. Whatever remains with no fix goes in `apps/api/.cargo/audit.toml`
+     (implemented: `rsa`, `crypto-bigint` and the never-compiled
+     `libsqlite3-sys`; also pinned `tower-sessions-sqlx-store = "=0.15.0"`,
+     because 0.15.1 needs a newer `tower-sessions`):
      ```toml
      [advisories]
      ignore = [
@@ -148,7 +151,9 @@ Decisions refer to `requirement.md`. Findings S1–S11 are its audit table.
      `.route("/orders", post(orders::create_order).route_layer(crate::rate_limit::enquiry_rate_limiter()))`.
 5.2. `apps/web/app/api/orders/route.ts`: forward `X-Forwarded-For`,
      matching the other public proxies.
-5.3. `apps/web/lib/admin-proxy.ts`:
+5.3. **As implemented:** `apps/web/lib/same-origin.ts`, called once from
+     `proxy.ts` for every `/api/*` request on the `cms.` host, instead of
+     in each handler. Originally planned in `apps/web/lib/admin-proxy.ts`:
      ```ts
      /** Rejects cross-site writes to the admin proxies (Phase 33 Decision 7). */
      export function rejectCrossSite(request: NextRequest): NextResponse | null {
@@ -172,7 +177,8 @@ Decisions refer to `requirement.md`. Findings S1–S11 are its audit table.
      `categories/**`, `menu-items/**`, `site-content/draft`,
      `preview/enable`, `preview/disable`). Behind Caddy, `Host` is the
      public `cms.` host (Caddy passes it through).
-5.4. `apps/api/src/lib.rs`: `.with_same_site(SameSite::Strict)`.
+5.4. ~~`apps/api/src/lib.rs`: `.with_same_site(SameSite::Strict)`.~~ Not
+     done: stays `Lax` (requirement.md Decision 7).
 
 ## Group 6 — Ops hardening (S7, S8, S11, Decisions 8–10)
 
@@ -329,7 +335,9 @@ Decisions refer to `requirement.md`. Findings S1–S11 are its audit table.
       (match by hashing each row's email).
 10.3. `.github/workflows/ci.yml`: an `audit` job —
       `pnpm audit --prod --audit-level=high` in `apps/web`, and
-      `rustsec/audit-check@v2` (pinned to a commit SHA) in `apps/api`.
+      `cargo audit` in `apps/api` (cargo-audit from
+      `taiki-e/install-action`, pinned to a commit SHA;
+      `rustsec/audit-check` needs extra write permissions).
 10.4. `specs/tech-stack.md` and `specs/roadmap.md` were updated during
       planning (Security & Privacy section, Summary Table row, Phase 26
       note). Revise them if implementation changes a decision.

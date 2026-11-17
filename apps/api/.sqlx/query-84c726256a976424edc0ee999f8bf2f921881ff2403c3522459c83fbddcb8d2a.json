@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT b.id FROM event_bookings b JOIN events e ON e.id = b.event_id\n           WHERE b.anonymised_at IS NULL\n             AND (b.created_at < now() - make_interval(months => $1)\n                  OR ((b.status <> 'confirmed' OR b.order_id IS NULL)\n                      AND e.starts_at < now() - make_interval(months => $2)))",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "84c726256a976424edc0ee999f8bf2f921881ff2403c3522459c83fbddcb8d2a"
+}

@@ -101,8 +101,8 @@ aren't published on servers, and Caddy only gets the env vars it needs.
 2. **Run `cargo update` and bump the crates that pull the old TLS
    stacks** until `cargo audit` shows no vulnerabilities. Any left
    without a fix (e.g. `rsa`, which only signs VAPID JWTs locally and
-   isn't reachable as an oracle) go in `apps/api/audit.toml` with a
-   one-line reason. Unmaintained-crate warnings are informational. (S3)
+   isn't reachable as an oracle) go in `apps/api/.cargo/audit.toml` (where
+   `cargo audit` reads it) with a one-line reason. Unmaintained-crate warnings are informational. (S3)
 3. **Rate-limit admin login: 5 attempts per IP, then one every 60 s**,
    using the existing `tower_governor` setup. Add a **per-email lockout**
    in Postgres: 10 failures in 15 minutes blocks that email for 15
@@ -129,20 +129,22 @@ aren't published on servers, and Caddy only gets the env vars it needs.
    No `preload` on HSTS yet, because preload is hard to undo. (S4, S10)
 6. **Rate-limit `POST /api/orders`** with the same limiter as the other
    public forms, and forward `X-Forwarded-For` from its web proxy. (S5)
-7. **Same-origin check on every admin write.** A shared
-   `assertSameOrigin(request)` in `apps/web/lib/admin-proxy.ts` rejects a
-   non-GET admin route handler request with 403 unless `Origin` (or
-   `Sec-Fetch-Site: same-origin` when `Origin` is missing) matches the
-   `cms.` host. It's applied to `login`, `logout`, `media` and every
-   `app/api/admin/**` route, plus `/api/preview/enable` and
-   `/api/preview/disable`. The session cookie becomes
-   **`SameSite=Strict`**: the admin is opened by typing the URL or from
-   a push notification, which are both top-level navigations without a
-   cross-site referrer. Push opens `cms.` from the service worker, which
-   counts as same-site. (S6)
+7. **Same-origin check on every admin write.** `rejectCrossSite` in
+   `apps/web/lib/same-origin.ts` returns 403 for a non-GET request unless
+   `Origin` (or `Sec-Fetch-Site: same-origin` when `Origin` is missing)
+   matches the `cms.` host. It runs once in `proxy.ts` for every `/api/*`
+   request on the `cms.` host, so it covers `login`, `logout`, `media`,
+   every `app/api/admin/**` route and any added later, instead of being
+   repeated in each handler. `/api/preview/enable` and `disable` are GET
+   navigations and stay exempt. **Changed during implementation:** the
+   session cookie stays **`SameSite=Lax`**, not Strict. Strict would drop
+   the cookie on every click from the owner's notification emails (they
+   link to `cms.`), sending the owner to the login page each time; the
+   Origin check already blocks the cross-site write that Strict would
+   have. (S6)
 8. **Pin Dozzle to an exact version and make it read-only**:
-   `DOZZLE_ENABLE_ACTIONS=false`, `DOZZLE_ENABLE_SHELL=false` and the
-   socket mounted `:ro` (as now). Rate-limit `logs.` Basic Auth through
+   `DOZZLE_ENABLE_ACTIONS=false`, `DOZZLE_ENABLE_SHELL=false`,
+   `DOZZLE_ENABLE_MCP=false` and the socket mounted `:ro` (as now). Rate-limit `logs.` Basic Auth through
    Caddy isn't available out of the box, so the Basic Auth password must
    be a 20+ character random secret (documented in
    `docs/deployment.md`). (S7)
@@ -151,8 +153,10 @@ aren't published on servers, and Caddy only gets the env vars it needs.
 10. **No customer emails in logs.** Log the `email_deliveries` id or the
     order/booking id instead of `to`. (S11)
 11. **CI audit gate:** `pnpm audit --prod --audit-level=high` and
-    `cargo audit` (via `rustsec/audit-check`) run in the CI workflow and
-    fail it. Dependabot (or Renovate) is **not** added: the user reviews
+    `cargo audit` (installed with `taiki-e/install-action`, pinned by
+    commit) run in the CI workflow and fail it. npm exceptions go in
+    `apps/web/pnpm-workspace.yaml` (`auditConfig.ignoreGhsas`) with a
+    reason. Dependabot (or Renovate) is **not** added: the user reviews
     upgrades by hand. (S1, S3, S9)
 
 ### GDPR
@@ -262,11 +266,8 @@ aren't published on servers, and Caddy only gets the env vars it needs.
   phase picks `'unsafe-inline'` for scripts to keep pages statically
   rendered; nonces would force every page dynamic (Group 4 notes the
   trade-off).
-- **`SameSite=Strict`** means a link to the admin from an email client
-  opens logged-out on the first click in some browsers. Owner emails
-  link to `cms.`, so the owner may need to log in once from those links.
-  If that's annoying, fall back to `Lax`; the Origin check (Decision 7)
-  already blocks the CSRF case.
+- **`SameSite=Strict`** would have opened owner-email links logged out,
+  so Decision 7 keeps `Lax` (resolved during implementation).
 - **Retention defaults are a legal judgment.** 7 years matches the
   Dutch fiscal record-keeping duty (AWR art. 52). The client's
   accountant should confirm before the sweeper runs on production. The

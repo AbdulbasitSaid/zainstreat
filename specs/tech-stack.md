@@ -596,15 +596,18 @@ or recreated repo can't match.
 - **Admin login:** a `tower_governor` limiter (5 burst, one per 60 s) plus
   a per-email lockout in Postgres (`login_failures`, 10 in 15 minutes).
   `/api/admin/*` is blocked on `api.${DOMAIN}`.
-- **CSRF:** an `Origin`/`Sec-Fetch-Site` check on every admin write
-  route handler, and `SameSite=Strict` session cookies.
+- **CSRF:** an `Origin`/`Sec-Fetch-Site` check in `proxy.ts` on every
+  write to the `cms.` host's `/api/*`; session cookies stay `SameSite=Lax`
+  so owner-email links keep working.
 - **Retention:** a nightly sweeper in `apps/api/src/retention.rs`
   (behind `RETENTION_SWEEP_ENABLED`) anonymises bookkeeping records after
   7 years and other personal data after 12 months; `privacy_requests`
   logs admin exports and erasures by email hash.
 - **Dependency audits in CI:** `pnpm audit --prod --audit-level=high` and
-  `rustsec/audit-check`; exceptions in `apps/api/audit.toml` with a
-  reason. Next.js is pinned to an exact version.
+  `cargo audit`; exceptions, each with a reason, in
+  `apps/api/.cargo/audit.toml` and `apps/web/pnpm-workspace.yaml`. Next.js
+  is pinned to an exact version. `aws-sdk-s3` runs without default
+  features so it uses its hyper 1 / rustls 0.23 client.
 
 ## Summary Table
 

@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT b.id FROM event_bookings b JOIN events e ON e.id = b.event_id\n           WHERE b.id = ANY($1) AND b.status <> 'cancelled' AND e.starts_at > now()\n           ORDER BY b.id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8Array"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "e36be37f02b31bfd41f740c8567f62e4de5ec4e0c581058d1c70423c48f7118c"
+}

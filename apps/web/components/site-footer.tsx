@@ -118,6 +118,7 @@ export function SiteFooter() {
               </p>
               <ul className="m-0 flex list-none flex-col gap-2.5 p-0">
                 <li><Link href="/terms">{t("terms")}</Link></li>
+                <li><Link href="/privacy">{t("privacy")}</Link></li>
                 <li><Link href="/food-regulations">{t("foodRegulations")}</Link></li>
               </ul>
             </div>

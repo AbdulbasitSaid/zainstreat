@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/button";
+import { FormPrivacyNote } from "@/components/form-privacy-note";
 import { PREVIEW_DISABLED_TITLE, usePreview } from "@/lib/preview-context";
 import { Notice } from "@/components/notice";
 import { submitContactMessage, type CreateContactMessageRequest } from "@/lib/contact";
@@ -300,6 +301,7 @@ export function ContactForm() {
       >
         {submitting ? t("submittingMessage") : t("submitMessage")}
       </Button>
+      <FormPrivacyNote form="contact" />
     </form>
   );
 }
