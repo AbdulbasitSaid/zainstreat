@@ -1,0 +1,124 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT e.id, e.slug, e.content, e.area, e.address, e.capacity, e.max_party_size,\n               e.payment_hold_hours, e.cover_image_url,\n               to_char(e.starts_at AT TIME ZONE 'Europe/Amsterdam', 'YYYY-MM-DD\"T\"HH24:MI') as \"starts_at!\",\n               to_char(e.ends_at AT TIME ZONE 'Europe/Amsterdam', 'YYYY-MM-DD\"T\"HH24:MI') as ends_at,\n               to_char(e.meal_orders_close_at AT TIME ZONE 'Europe/Amsterdam', 'YYYY-MM-DD\"T\"HH24:MI') as meal_orders_close_at,\n               to_char(e.rsvp_closes_at AT TIME ZONE 'Europe/Amsterdam', 'YYYY-MM-DD\"T\"HH24:MI') as rsvp_closes_at,\n               e.starts_at as \"starts_at_utc: DateTime<Utc>\",\n               (e.published_at IS NOT NULL) as \"published!\",\n               (e.archived_at IS NOT NULL) as \"archived!\",\n               (now() >= COALESCE(e.ends_at, e.starts_at)) as \"is_past!\",\n               EXISTS (SELECT 1 FROM event_bookings b WHERE b.event_id = e.id) as \"has_bookings!\"\n        FROM events e\n        WHERE e.id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "slug",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "content",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 3,
+        "name": "area",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "address",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "capacity",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "max_party_size",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 7,
+        "name": "payment_hold_hours",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 8,
+        "name": "cover_image_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "starts_at!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "ends_at",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
+        "name": "meal_orders_close_at",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 12,
+        "name": "rsvp_closes_at",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 13,
+        "name": "starts_at_utc: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 14,
+        "name": "published!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 15,
+        "name": "archived!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 16,
+        "name": "is_past!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 17,
+        "name": "has_bookings!",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      null,
+      null,
+      null,
+      null,
+      false,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "9dd95926af4cc93c877d33b91f6fa3ae1f636273753b346288bcadcffb6b9a4a"
+}

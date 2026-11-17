@@ -2,7 +2,9 @@ use crate::email::{latest_delivery, DeliveryRef, EmailConfig, EmailDeliveryStatu
 use crate::error::{AppError, FieldError};
 use crate::order_emails::status_email;
 use crate::order_status::{ORDER_STATUSES, admin_next, is_reopen, is_valid_status};
-use crate::payment::payment_reference;
+use crate::events::{self, BookingEvent};
+use crate::payment::{PaymentConfig, payment_reference};
+use crate::push::PushConfig;
 use axum::{
     Json,
     extract::{Path, Query, State},
@@ -25,6 +27,8 @@ struct OrderSummaryRow {
     status: String,
     created_at: DateTime<Utc>,
     catering_enquiry_id: Option<i64>,
+    event_id: Option<i64>,
+    event_title: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -40,6 +44,9 @@ pub struct OrderSummaryResponse {
     /// Set when the order came from an accepted catering quote (Phase 23
     /// Decision 7).
     pub catering_enquiry_id: Option<i64>,
+    /// Set for an event booking's meals (Phase 31 Decision 20).
+    pub event_id: Option<i64>,
+    pub event_title: Option<String>,
 }
 
 impl From<OrderSummaryRow> for OrderSummaryResponse {
@@ -53,6 +60,8 @@ impl From<OrderSummaryRow> for OrderSummaryResponse {
             status: row.status,
             created_at: row.created_at,
             catering_enquiry_id: row.catering_enquiry_id,
+            event_id: row.event_id,
+            event_title: row.event_title,
         }
     }
 }
@@ -120,7 +129,10 @@ pub async fn list_orders(
         r#"
         SELECT id, customer_name, delivery_type, total, status,
                created_at as "created_at: DateTime<Utc>",
-               (SELECT q.enquiry_id FROM catering_quotes q WHERE q.order_id = orders.id) as "catering_enquiry_id?"
+               (SELECT q.enquiry_id FROM catering_quotes q WHERE q.order_id = orders.id) as "catering_enquiry_id?",
+               (SELECT b.event_id FROM event_bookings b WHERE b.order_id = orders.id) as "event_id?",
+               (SELECT e.content->'en'->>'title' FROM event_bookings b JOIN events e ON e.id = b.event_id
+                 WHERE b.order_id = orders.id) as "event_title?"
         FROM orders
         WHERE ($1::TEXT IS NULL OR status = $1)
         ORDER BY created_at DESC, id DESC
@@ -181,6 +193,8 @@ pub struct AdminOrderResponse {
     /// `customer` or `admin`, once completed (Phase 22 Decision 8).
     pub completed_by: Option<String>,
     pub catering_enquiry_id: Option<i64>,
+    pub event_id: Option<i64>,
+    pub event_title: Option<String>,
     /// The admin UI renders these as buttons, so `admin_next` has no
     /// TypeScript mirror to drift from (Phase 20 open risk 4).
     pub next_statuses: &'static [&'static str],
@@ -210,7 +224,10 @@ pub async fn get_order(
                completed_by,
                created_at as "created_at: DateTime<Utc>",
                updated_at as "updated_at: DateTime<Utc>",
-               (SELECT q.enquiry_id FROM catering_quotes q WHERE q.order_id = orders.id) as "catering_enquiry_id?"
+               (SELECT q.enquiry_id FROM catering_quotes q WHERE q.order_id = orders.id) as "catering_enquiry_id?",
+               (SELECT b.event_id FROM event_bookings b WHERE b.order_id = orders.id) as "event_id?",
+               (SELECT e.content->'en'->>'title' FROM event_bookings b JOIN events e ON e.id = b.event_id
+                 WHERE b.order_id = orders.id) as "event_title?"
         FROM orders
         WHERE id = $1
         "#,
@@ -255,6 +272,8 @@ pub async fn get_order(
         cancelled_at: order.cancelled_at,
         completed_by: order.completed_by,
         catering_enquiry_id: order.catering_enquiry_id,
+        event_id: order.event_id,
+        event_title: order.event_title,
         next_statuses,
         created_at: order.created_at,
         updated_at: order.updated_at,
@@ -271,6 +290,8 @@ pub struct UpdateOrderStatusRequest {
 pub async fn update_order_status(
     State(pool): State<PgPool>,
     State(email): State<EmailConfig>,
+    State(push): State<PushConfig>,
+    State(payment): State<PaymentConfig>,
     Path(id): Path<i64>,
     Json(payload): Json<UpdateOrderStatusRequest>,
 ) -> Result<Json<OrderSummaryResponse>, AppError> {
@@ -330,7 +351,10 @@ pub async fn update_order_status(
         RETURNING id, customer_name, customer_email, delivery_type, total, status,
                   public_token, locale,
                   created_at as "created_at: DateTime<Utc>",
-                  (SELECT q.enquiry_id FROM catering_quotes q WHERE q.order_id = orders.id) as "catering_enquiry_id?"
+                  (SELECT q.enquiry_id FROM catering_quotes q WHERE q.order_id = orders.id) as "catering_enquiry_id?",
+                  (SELECT b.event_id FROM event_bookings b WHERE b.order_id = orders.id) as "event_id?",
+                  (SELECT e.content->'en'->>'title' FROM event_bookings b JOIN events e ON e.id = b.event_id
+                    WHERE b.order_id = orders.id) as "event_title?"
         "#,
         id,
         payload.status,
@@ -339,9 +363,52 @@ pub async fn update_order_status(
     .fetch_one(&mut *tx)
     .await?;
 
+    // An event order's booking follows it (Phase 31 Decision 2): confirming
+    // the payment confirms the seats, cancelling frees them.
+    let mut booking_event = None;
+    if order.delivery_type == "event"
+        && let Some(booking) = sqlx::query!(
+            "SELECT id, status FROM event_bookings WHERE order_id = $1 FOR UPDATE",
+            id
+        )
+        .fetch_optional(&mut *tx)
+        .await?
+    {
+        match (order.status.as_str(), booking.status.as_str()) {
+            ("processing", "awaiting_payment") => {
+                events::confirm(&mut tx, booking.id).await?;
+                booking_event = Some((booking.id, BookingEvent::PaymentConfirmed));
+            }
+            ("cancelled", status) if status != "cancelled" => {
+                events::cancel(&mut tx, booking.id, "admin").await?;
+                booking_event = Some((booking.id, BookingEvent::CancelledByAdmin));
+            }
+            _ => {}
+        }
+    }
+
     tx.commit().await?;
 
     tracing::info!(order_id = id, status = %order.status, reopened, "admin updated order status");
+
+    // Event bookings get their own emails instead of the order's.
+    if order.delivery_type == "event" {
+        if let Some((booking_id, what)) = booking_event {
+            events::notify(&pool, &email, &push, &payment, booking_id, what).await;
+        }
+        return Ok(Json(OrderSummaryResponse {
+            id: order.id,
+            payment_reference: payment_reference(order.id),
+            customer_name: order.customer_name,
+            delivery_type: order.delivery_type,
+            total: order.total,
+            status: order.status,
+            created_at: order.created_at,
+            catering_enquiry_id: order.catering_enquiry_id,
+            event_id: order.event_id,
+            event_title: order.event_title,
+        }));
+    }
 
     // After the commit, like `create_order`: a failed send never undoes the
     // status change. A reopen is silent (Phase 22 Decisions 6, 8).
@@ -373,6 +440,8 @@ pub async fn update_order_status(
         status: order.status,
         created_at: order.created_at,
         catering_enquiry_id: order.catering_enquiry_id,
+        event_id: order.event_id,
+        event_title: order.event_title,
     }))
 }
 
@@ -421,7 +490,10 @@ pub async fn orders_summary(
         r#"
         SELECT id, customer_name, delivery_type, total, status,
                created_at as "created_at: DateTime<Utc>",
-               (SELECT q.enquiry_id FROM catering_quotes q WHERE q.order_id = orders.id) as "catering_enquiry_id?"
+               (SELECT q.enquiry_id FROM catering_quotes q WHERE q.order_id = orders.id) as "catering_enquiry_id?",
+               (SELECT b.event_id FROM event_bookings b WHERE b.order_id = orders.id) as "event_id?",
+               (SELECT e.content->'en'->>'title' FROM event_bookings b JOIN events e ON e.id = b.event_id
+                 WHERE b.order_id = orders.id) as "event_title?"
         FROM orders
         ORDER BY created_at DESC, id DESC
         LIMIT $1

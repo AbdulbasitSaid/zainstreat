@@ -1,0 +1,70 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT b.customer_name, b.customer_email, b.customer_phone, b.locale, b.notes,\n               b.party_size, e.content, e.payment_hold_hours,\n               to_char(e.starts_at AT TIME ZONE 'Europe/Amsterdam', 'DD-MM-YYYY HH24:MI') as \"starts_at!\"\n        FROM event_bookings b\n        JOIN events e ON e.id = b.event_id\n        WHERE b.id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "customer_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "customer_email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "customer_phone",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "locale",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "notes",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "party_size",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "content",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 7,
+        "name": "payment_hold_hours",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 8,
+        "name": "starts_at!",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "b5c0a322281b29568af899b601525c57557364e8acd2d01c2a495ab3954fc95f"
+}

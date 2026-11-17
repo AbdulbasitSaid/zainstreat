@@ -18,6 +18,7 @@ export const FULFILMENT_LABELS: Record<FulfilmentType, string> = {
   pickup: "Pickup",
   delivery: "Delivery",
   on_site: "On-site",
+  event: "Event",
 };
 
 export const ORDERS_PAGE_SIZE = 25;
@@ -32,6 +33,9 @@ export interface OrderSummary {
   created_at: string;
   // Set when the order came from an accepted catering quote (Phase 23 Decision 7).
   catering_enquiry_id: number | null;
+  // Set for an event booking's meals (Phase 31 Decision 20).
+  event_id: number | null;
+  event_title: string | null;
 }
 
 export interface AdminOrderItem {
@@ -64,6 +68,8 @@ export interface AdminOrder {
   // Who completed it; a customer-completed order can be reopened (Phase 22 Decision 8).
   completed_by: "customer" | "admin" | null;
   catering_enquiry_id: number | null;
+  event_id: number | null;
+  event_title: string | null;
   // admin_next() in apps/api/src/order_status.rs, computed by the API so
   // there's no TypeScript copy of the transition rules (Phase 20 open risk 4).
   next_statuses: OrderStatus[];

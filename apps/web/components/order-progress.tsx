@@ -43,16 +43,18 @@ export function OrderProgress({ order }: { order: OrderResponse }) {
     pickup: t("readyForCollection"),
     delivery: t("onTheWay"),
     on_site: t("cateringInProgress"),
+    event: null,
   }[order.delivery_type];
 
+  // An event order has no handover step (Phase 31 Decision 2).
   const steps = [
     { label: t("placed"), at: order.created_at },
     { label: t("paymentSent"), at: order.payment_claimed_at },
     { label: t("paymentConfirmed"), at: order.payment_confirmed_at },
-    { label: handoverLabel, at: order.ready_at },
+    ...(handoverLabel ? [{ label: handoverLabel, at: order.ready_at }] : []),
     { label: t("completed"), at: order.completed_at },
   ];
-  const reached = STEP_REACHED[order.status];
+  const reached = handoverLabel || order.status !== "completed" ? STEP_REACHED[order.status] : steps.length - 1;
 
   return (
     <ol aria-label={t("progressLabel")} className="m-0 flex list-none flex-col gap-3 p-0 text-left">

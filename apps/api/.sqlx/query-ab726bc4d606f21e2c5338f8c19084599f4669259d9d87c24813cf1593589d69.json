@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT id, customer_name, delivery_type, total, status,\n               created_at as \"created_at: DateTime<Utc>\",\n               (SELECT q.enquiry_id FROM catering_quotes q WHERE q.order_id = orders.id) as \"catering_enquiry_id?\"\n        FROM orders\n        WHERE ($1::TEXT IS NULL OR status = $1)\n        ORDER BY created_at DESC, id DESC\n        LIMIT $2 OFFSET $3\n        ",
+  "query": "\n        SELECT id, customer_name, delivery_type, total, status,\n               created_at as \"created_at: DateTime<Utc>\",\n               (SELECT q.enquiry_id FROM catering_quotes q WHERE q.order_id = orders.id) as \"catering_enquiry_id?\",\n               (SELECT b.event_id FROM event_bookings b WHERE b.order_id = orders.id) as \"event_id?\",\n               (SELECT e.content->'en'->>'title' FROM event_bookings b JOIN events e ON e.id = b.event_id\n                 WHERE b.order_id = orders.id) as \"event_title?\"\n        FROM orders\n        ORDER BY created_at DESC, id DESC\n        LIMIT $1\n        ",
   "describe": {
     "columns": [
       {
@@ -37,12 +37,20 @@
         "ordinal": 6,
         "name": "catering_enquiry_id?",
         "type_info": "Int8"
+      },
+      {
+        "ordinal": 7,
+        "name": "event_id?",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 8,
+        "name": "event_title?",
+        "type_info": "Text"
       }
     ],
     "parameters": {
       "Left": [
-        "Text",
-        "Int8",
         "Int8"
       ]
     },
@@ -53,8 +61,10 @@
       false,
       false,
       false,
+      null,
+      null,
       null
     ]
   },
-  "hash": "3048a338a538d80fe0479c5e53ed886c64e0a10193d0a09f25cb7d9b3b5ee6c0"
+  "hash": "ab726bc4d606f21e2c5338f8c19084599f4669259d9d87c24813cf1593589d69"
 }

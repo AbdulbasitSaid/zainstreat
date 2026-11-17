@@ -7,6 +7,7 @@ import { OrderProgress } from "@/components/order-progress";
 import { OrderReceivedButton } from "@/components/order-received-button";
 import { PageHero } from "@/components/page-hero";
 import { PaymentClaimButton } from "@/components/payment-claim-button";
+import { Link } from "@/i18n/navigation";
 import { getOrderByToken } from "@/lib/api";
 
 // The link in the invoice email (Phase 20 Decision 4). The token is the only
@@ -46,6 +47,14 @@ export default async function OrderStatusPage({
         <h1 className="text-[clamp(2.5rem,5vw,4.25rem)]">{t("trackHeading", { id: order.id })}</h1>
       </PageHero>
       <div className="mx-auto flex max-w-[640px] flex-col gap-6 pb-16 text-center">
+        {order.event_booking_token && (
+          <p className="m-0 rounded-card bg-cream px-5 py-4">
+            {t("eventOrder")}{" "}
+            <Link href={`/events/booking/${order.event_booking_token}`} className="font-semibold text-primary">
+              {t("viewBooking")}
+            </Link>
+          </p>
+        )}
         <OrderProgress order={order} />
         <PaymentClaimButton token={order.public_token} status={order.status} />
         <OrderReceivedButton token={order.public_token} status={order.status} deliveryType={order.delivery_type} />

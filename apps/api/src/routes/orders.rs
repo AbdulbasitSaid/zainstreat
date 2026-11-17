@@ -87,6 +87,8 @@ pub struct OrderResponse {
     pub cancelled_at: Option<Timestamp>,
     /// `customer` or `admin`, once completed.
     pub completed_by: Option<String>,
+    /// For an `event` order: the booking it pays for (Phase 31 Decision 11).
+    pub event_booking_token: Option<Uuid>,
 }
 
 const NAME_MIN_LENGTH: usize = 2;
@@ -406,6 +408,7 @@ pub async fn create_order(
         completed_at: None,
         cancelled_at: None,
         completed_by: None,
+        event_booking_token: None,
     };
 
     send_invoice(&email, &pool, &response, &order.placed_at);
@@ -479,7 +482,8 @@ pub(crate) async fn load_order_by_token(
                payment_confirmed_at as "payment_confirmed_at: Timestamp",
                ready_at as "ready_at: Timestamp",
                completed_at as "completed_at: Timestamp",
-               cancelled_at as "cancelled_at: Timestamp"
+               cancelled_at as "cancelled_at: Timestamp",
+               (SELECT b.public_token FROM event_bookings b WHERE b.order_id = orders.id) as "event_booking_token?"
         FROM orders
         WHERE public_token = $1
         "#,
@@ -525,6 +529,7 @@ pub(crate) async fn load_order_by_token(
         completed_at: order.completed_at,
         cancelled_at: order.cancelled_at,
         completed_by: order.completed_by,
+        event_booking_token: order.event_booking_token,
     })
 }
 

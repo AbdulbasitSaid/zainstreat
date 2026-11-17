@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE events SET\n            slug = $2, content = $3,\n            starts_at = $4::text::timestamp AT TIME ZONE 'Europe/Amsterdam',\n            ends_at = $5::text::timestamp AT TIME ZONE 'Europe/Amsterdam',\n            area = $6, address = $7, capacity = $8, max_party_size = $9,\n            meal_orders_close_at = $10::text::timestamp AT TIME ZONE 'Europe/Amsterdam',\n            rsvp_closes_at = $11::text::timestamp AT TIME ZONE 'Europe/Amsterdam',\n            payment_hold_hours = $12, cover_image_url = $13, updated_at = now()\n        WHERE id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text",
+        "Jsonb",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Int4",
+        "Int4",
+        "Text",
+        "Text",
+        "Int4",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6dd9d0e375a7d4f775c9a60447d7f087c97e0213fda7ad31d45ba0e8760d3b94"
+}

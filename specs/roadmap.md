@@ -540,6 +540,35 @@ desktop. On phones the cart icon was hidden inside the menu.
   announced to screen readers.
 - With reduced motion: no fly or bounce, just the ✓ and the toast.
 
+## Phase 31 — Events: Bookings, Plates & Past Events
+
+Planned 2026-11-17 (see
+`specs/2026-11-17-phase-31-events/requirement.md`). The client wants to
+host her own ticketed events, starting with **The Abula Experience** on
+Sunday 27 December 2026.
+
+- Admin: an Events panel to create, edit, publish and archive events
+  (title, story, date/time, area, private address, capacity, plates and
+  prices, meal-order cutoff, cancellation terms, cover photo), see each
+  event's bookings and waitlist, and share it by link, WhatsApp or a
+  downloadable **QR code**.
+- Public `/events` (upcoming and past) and `/events/{slug}`, in the
+  site's liquid "soup" style, en/nl/fr.
+- One form for RSVP and meals: name, contact details, party size, and a
+  plate per person (or "attending without a meal", which still takes a
+  seat). Free entry, paid food.
+- A booking with meals gets an instant invoice and follows the existing
+  bank-transfer order flow (Phase 20/22): tracking link, "I've paid",
+  owner confirms. A free RSVP is confirmed at once. The private address
+  is only shown to confirmed guests.
+- Capacity is enforced. When full, guests join a waitlist that the owner
+  can offer seats to. Unpaid bookings are released automatically after
+  48 hours.
+- Past events: the admin adds a recap and a photo gallery and publishes
+  them.
+- The Abula Experience is seeded on staging (placeholder €15 plates);
+  production seeding waits for the real prices.
+
 ## Later — iDEAL Payments
 
 Agreed in the 2026-10-18 call but blocked on the client opening a

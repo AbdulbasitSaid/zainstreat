@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE event_bookings\n        SET status = 'confirmed', confirmed_at = now(), hold_expires_at = NULL,\n            cancel_reason = NULL, cancelled_at = NULL, updated_at = now()\n        WHERE id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0ee8c7a4c2febe173ad582435c8a8b1b473211c2ca3951b214e227ac5e293014"
+}

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT id, customer_name, customer_email, customer_phone, delivery_type,\n               delivery_address, notes, subtotal, delivery_fee, total, status, public_token,\n               completed_by,\n               created_at as \"created_at: Timestamp\",\n               payment_claimed_at as \"payment_claimed_at: Timestamp\",\n               payment_confirmed_at as \"payment_confirmed_at: Timestamp\",\n               ready_at as \"ready_at: Timestamp\",\n               completed_at as \"completed_at: Timestamp\",\n               cancelled_at as \"cancelled_at: Timestamp\"\n        FROM orders\n        WHERE public_token = $1\n        ",
+  "query": "\n        SELECT id, customer_name, customer_email, customer_phone, delivery_type,\n               delivery_address, notes, subtotal, delivery_fee, total, status, public_token,\n               completed_by,\n               created_at as \"created_at: Timestamp\",\n               payment_claimed_at as \"payment_claimed_at: Timestamp\",\n               payment_confirmed_at as \"payment_confirmed_at: Timestamp\",\n               ready_at as \"ready_at: Timestamp\",\n               completed_at as \"completed_at: Timestamp\",\n               cancelled_at as \"cancelled_at: Timestamp\",\n               (SELECT b.public_token FROM event_bookings b WHERE b.order_id = orders.id) as \"event_booking_token?\"\n        FROM orders\n        WHERE public_token = $1\n        ",
   "describe": {
     "columns": [
       {
@@ -97,6 +97,11 @@
         "ordinal": 18,
         "name": "cancelled_at: Timestamp",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 19,
+        "name": "event_booking_token?",
+        "type_info": "Uuid"
       }
     ],
     "parameters": {
@@ -123,8 +128,9 @@
       true,
       true,
       true,
-      true
+      true,
+      null
     ]
   },
-  "hash": "d426fb688df30254186b481f709b7e3cbf900e07f0b733fdcdc762f75b953593"
+  "hash": "204fe725abcb2dc52c21ea67cb98a4350e5ca4b3f4f9a4c8869f77f55330da81"
 }

@@ -2,6 +2,7 @@ pub mod admin;
 pub mod categories;
 pub mod catering_enquiries;
 pub mod contact_messages;
+pub mod events;
 pub mod health;
 pub mod media;
 pub mod menu_items;
@@ -48,6 +49,18 @@ pub fn api_router() -> Router<AppState> {
             "/contact-messages",
             post(contact_messages::create_contact_message)
                 .route_layer(crate::rate_limit::enquiry_rate_limiter()),
+        )
+        // Phase 31: events and bookings.
+        .route("/events", get(events::list_events))
+        .route("/events/{slug}", get(events::get_event))
+        .route(
+            "/events/{slug}/bookings",
+            post(events::create_booking).route_layer(crate::rate_limit::enquiry_rate_limiter()),
+        )
+        .route("/events/bookings/{token}", get(events::get_booking))
+        .route(
+            "/events/bookings/{token}/cancel",
+            post(events::cancel_booking).route_layer(crate::rate_limit::enquiry_rate_limiter()),
         )
         .route("/media/{key}", get(media::get_media))
         .nest("/admin", admin::admin_router())

@@ -424,6 +424,21 @@ No WhatsApp Business API/webhook integration is needed for the MVP — it's
 a link, not a service dependency. This keeps WhatsApp as a contact channel
 alongside, not a replacement for, the online ordering system.
 
+## Event QR Codes (Phase 31)
+
+- **`qrcode.react`** (`^4.2`) renders each event's public link as a QR
+  code in the admin, as an SVG on screen (`QRCodeSVG`) and a hidden
+  high-resolution canvas (`QRCodeCanvas`, 1024px, error correction `M`)
+  for a "Download PNG" button (`canvas.toDataURL`). It runs only in the
+  `cms.` admin, never on the public site. It ships its own TypeScript
+  types and has no dependencies besides React.
+- _Why client-side, not a Rust crate or a QR API:_ the QR code is only
+  needed when the owner shares or prints the link, so there's nothing to
+  store or serve. A third-party QR API would leak every event link and
+  break when offline. _Why `qrcode.react` over `qrcode`:_ it's a React
+  component with types included, while `qrcode` needs `@types/qrcode`
+  and hand-written canvas/SVG glue.
+
 ## Admin PWA & Web Push (Phase 27)
 
 - **Installable admin, no library.** A static `public/admin.webmanifest`
@@ -585,6 +600,7 @@ or recreated repo can't match.
 | Email | lettre (SMTP transport) + Amazon SES, fire-and-forget (Phase 17); inbound `contact@` is a Namecheap Private Email mailbox (2026-11-17) |
 | Spam/abuse mitigation | `tower_governor` (per-IP rate limit, custom `X-Forwarded-For` key extractor) + honeypot field (Phase 15) |
 | WhatsApp | `wa.me` deep links |
+| Event QR codes | `qrcode.react` in the admin only, SVG on screen + PNG download (Phase 31) |
 | Admin PWA / push | Static manifest + hand-written service worker on `cms.<host>`; Web Push with VAPID from the API via `web-push-native` + `reqwest` (rustls) (Phase 27) |
 | Hosting | AWS Lightsail VPS, 4 GB (`eu-central-1`, Frankfurt), Docker Compose with per-container memory/CPU limits |
 | Monitoring | Lightsail metric alarms + external HTTP uptime monitor + persistent systemd journal (Phase 18) |

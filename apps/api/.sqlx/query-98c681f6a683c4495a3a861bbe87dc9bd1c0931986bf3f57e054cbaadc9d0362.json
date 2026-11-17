@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE orders SET status = 'cancelled', cancelled_at = now(), updated_at = now()\n            WHERE id = $1 AND status NOT IN ('completed', 'cancelled')\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "98c681f6a683c4495a3a861bbe87dc9bd1c0931986bf3f57e054cbaadc9d0362"
+}

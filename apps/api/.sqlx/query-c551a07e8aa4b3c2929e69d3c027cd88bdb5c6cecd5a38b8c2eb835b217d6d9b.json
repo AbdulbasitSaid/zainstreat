@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT id, customer_name, customer_email, customer_phone, delivery_type,\n               delivery_address, notes, subtotal, delivery_fee, total, status,\n               payment_claimed_at as \"payment_claimed_at: DateTime<Utc>\",\n               payment_confirmed_at as \"payment_confirmed_at: DateTime<Utc>\",\n               ready_at as \"ready_at: DateTime<Utc>\",\n               completed_at as \"completed_at: DateTime<Utc>\",\n               cancelled_at as \"cancelled_at: DateTime<Utc>\",\n               completed_by,\n               created_at as \"created_at: DateTime<Utc>\",\n               updated_at as \"updated_at: DateTime<Utc>\",\n               (SELECT q.enquiry_id FROM catering_quotes q WHERE q.order_id = orders.id) as \"catering_enquiry_id?\"\n        FROM orders\n        WHERE id = $1\n        ",
+  "query": "\n        SELECT id, customer_name, customer_email, customer_phone, delivery_type,\n               delivery_address, notes, subtotal, delivery_fee, total, status,\n               payment_claimed_at as \"payment_claimed_at: DateTime<Utc>\",\n               payment_confirmed_at as \"payment_confirmed_at: DateTime<Utc>\",\n               ready_at as \"ready_at: DateTime<Utc>\",\n               completed_at as \"completed_at: DateTime<Utc>\",\n               cancelled_at as \"cancelled_at: DateTime<Utc>\",\n               completed_by,\n               created_at as \"created_at: DateTime<Utc>\",\n               updated_at as \"updated_at: DateTime<Utc>\",\n               (SELECT q.enquiry_id FROM catering_quotes q WHERE q.order_id = orders.id) as \"catering_enquiry_id?\",\n               (SELECT b.event_id FROM event_bookings b WHERE b.order_id = orders.id) as \"event_id?\",\n               (SELECT e.content->'en'->>'title' FROM event_bookings b JOIN events e ON e.id = b.event_id\n                 WHERE b.order_id = orders.id) as \"event_title?\"\n        FROM orders\n        WHERE id = $1\n        ",
   "describe": {
     "columns": [
       {
@@ -102,6 +102,16 @@
         "ordinal": 19,
         "name": "catering_enquiry_id?",
         "type_info": "Int8"
+      },
+      {
+        "ordinal": 20,
+        "name": "event_id?",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 21,
+        "name": "event_title?",
+        "type_info": "Text"
       }
     ],
     "parameters": {
@@ -129,8 +139,10 @@
       true,
       false,
       false,
+      null,
+      null,
       null
     ]
   },
-  "hash": "4c358a56e5689739f75695eef4982d7171fbd5466c334fa84da3a7e3f810998a"
+  "hash": "c551a07e8aa4b3c2929e69d3c027cd88bdb5c6cecd5a38b8c2eb835b217d6d9b"
 }

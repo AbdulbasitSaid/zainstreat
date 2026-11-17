@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE event_bookings\n        SET status = 'cancelled', cancel_reason = $2, cancelled_at = now(),\n            hold_expires_at = NULL, updated_at = now()\n        WHERE id = $1\n        RETURNING order_id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "order_id",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "66a9ebd698e0120a0e554a208d05379a5b29672fdb81be422a7ce48776db8462"
+}

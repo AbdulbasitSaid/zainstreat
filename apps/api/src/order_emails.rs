@@ -643,6 +643,7 @@ mod tests {
             completed_at: None,
             cancelled_at: None,
             completed_by: None,
+            event_booking_token: None,
         }
     }
 

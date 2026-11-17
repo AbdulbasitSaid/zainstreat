@@ -42,6 +42,11 @@ pub enum AppError {
     QuoteExpired,
     /// Accept/decline sent for an older quote version (Phase 23 Decision 13).
     QuoteChanged,
+    /// The party doesn't fit in an event's remaining seats (Phase 31
+    /// Decision 7); carries the seats left so the form can offer the waitlist.
+    NotEnoughSeats(i64),
+    /// RSVPs for the event have closed, or it has already started.
+    BookingClosed,
     Internal,
 }
 
@@ -177,6 +182,16 @@ impl IntoResponse for AppError {
             AppError::QuoteChanged => (
                 StatusCode::CONFLICT,
                 Json(json!({ "error": "quote_changed" })),
+            )
+                .into_response(),
+            AppError::NotEnoughSeats(seats_left) => (
+                StatusCode::CONFLICT,
+                Json(json!({ "error": "not_enough_seats", "seats_left": seats_left })),
+            )
+                .into_response(),
+            AppError::BookingClosed => (
+                StatusCode::CONFLICT,
+                Json(json!({ "error": "booking_closed" })),
             )
                 .into_response(),
             AppError::Internal => {

@@ -39,13 +39,13 @@ export function OrderInvoice({ order }: { order: OrderResponse }) {
     <div className="flex flex-col gap-6 text-left">
       <div className="flex flex-col gap-1 text-sm text-text-muted">
         <p className="m-0">{t("placedOn", { date: placedOn })}</p>
-        <p className="m-0">
+        {order.delivery_type !== "event" && <p className="m-0">
           {order.delivery_type === "delivery" && order.delivery_address
             ? t("deliveryLine", { address: order.delivery_address })
             : order.delivery_type === "on_site" && order.delivery_address
               ? t("servedAtLine", { address: order.delivery_address })
               : t("pickupLine")}
-        </p>
+        </p>}
       </div>
 
       <OrderLineSummary

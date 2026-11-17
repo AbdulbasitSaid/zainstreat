@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT g.booking_id, g.plate_name\n        FROM event_booking_guests g JOIN event_bookings b ON b.id = g.booking_id\n        WHERE b.event_id = $1\n        ORDER BY g.booking_id, g.position\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "booking_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "plate_name",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      true
+    ]
+  },
+  "hash": "6eb3cf9139b0066f808c45203d4751bb235d24ec9f72d712a5ffab410bffc66b"
+}

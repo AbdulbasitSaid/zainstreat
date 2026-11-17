@@ -7,9 +7,9 @@ export interface OrderItemRequest {
 export type DeliveryType = "pickup" | "delivery";
 
 // What an order can come back as: the cart's two, plus on-site for an
-// accepted catering quote (Phase 23 Decision 12). The cart keeps sending
-// DeliveryType only.
-export type FulfilmentType = DeliveryType | "on_site";
+// accepted catering quote (Phase 23 Decision 12), and an event booking's
+// meals (Phase 31 Decision 1). The cart keeps sending DeliveryType only.
+export type FulfilmentType = DeliveryType | "on_site" | "event";
 
 // Mirrors ORDER_STATUSES in apps/api/src/order_status.rs and the CHECK on
 // orders.status (Phase 20 Decision 1; serving_on_site from Phase 23).
@@ -99,6 +99,8 @@ export interface OrderResponse {
   completed_at: string | null;
   cancelled_at: string | null;
   completed_by: "customer" | "admin" | null;
+  // For an event order: the booking it pays for (Phase 31 Decision 11).
+  event_booking_token: string | null;
 }
 
 export interface UnavailableOrderItem {

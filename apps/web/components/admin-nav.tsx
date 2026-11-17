@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { label: "Site content", href: "/site", enabled: true },
   { label: "Changes", href: "/changes", enabled: true },
   { label: "Enquiries", href: "/enquiries", enabled: true },
+  { label: "Events", href: "/events", enabled: true },
   { label: "Settings", href: "/settings", enabled: true },
 ] as const;
 

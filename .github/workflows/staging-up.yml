@@ -175,6 +175,11 @@ jobs:
         run: |
           ssh target "cd /opt/zainstreat && $C exec -T postgres sh -c 'psql -v ON_ERROR_STOP=1 -U \"\$POSTGRES_USER\" -d \"\$POSTGRES_DB\"'" < apps/api/seed.sql
 
+      # Phase 31: The Abula Experience (idempotent; placeholder prices).
+      - name: Seed events
+        run: |
+          ssh target "cd /opt/zainstreat && $C exec -T postgres sh -c 'psql -v ON_ERROR_STOP=1 -U \"\$POSTGRES_USER\" -d \"\$POSTGRES_DB\"'" < apps/api/seed-events.sql
+
       - name: Create the staging admin
         env:
           ADMIN_EMAIL: ${{ vars.ADMIN_EMAIL }}

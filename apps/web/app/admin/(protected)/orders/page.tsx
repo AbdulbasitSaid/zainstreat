@@ -4,6 +4,7 @@ import { FULFILMENT_LABELS, isOrderStatus, ORDERS_PAGE_SIZE, ORDER_STATUSES, STA
 import { getAdminOrders, getAdminOrdersSummary } from "@/lib/admin-orders-api";
 import { AdminAutoRefresh, NewOrderHighlight } from "@/components/admin-auto-refresh";
 import { AdminCateringTag } from "@/components/admin-catering-tag";
+import { AdminEventTag } from "@/components/admin-event-tag";
 import { AdminStatusBadge } from "@/components/admin-status-badge";
 import { formatDateTime, formatPrice } from "@/lib/format";
 
@@ -85,11 +86,15 @@ export default async function AdminOrdersPage({
                         {order.payment_reference}
                       </Link>
                     </td>
-                    <td className="py-3 pr-4">{order.customer_name}</td>
+                    <td className="py-3 pr-4">
+                      {order.customer_name}
+                      {order.event_title && <span className="block text-xs text-text-muted">{order.event_title}</span>}
+                    </td>
                     <td className="py-3 pr-4">
                       <span className="flex flex-wrap items-center gap-2">
                         {FULFILMENT_LABELS[order.delivery_type]}
                         {order.catering_enquiry_id !== null && <AdminCateringTag />}
+                        {order.event_id !== null && <AdminEventTag />}
                       </span>
                     </td>
                     <td className="py-3 pr-4 font-semibold">{formatPrice(order.total)}</td>
