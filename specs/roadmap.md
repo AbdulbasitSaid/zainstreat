@@ -476,7 +476,8 @@ started.
 
 - Google Analytics (GA4) on the public site only (never the `cms.` admin), with a
   cookie-consent banner, which GDPR/Dutch rules require for analytics
-  cookies.
+  cookies. The banner links to Phase 33's `/privacy` page, and the
+  privacy page's cookie section gains the GA4 cookies.
 - Google Search Console: verify the domain and submit the sitemap. The
   client wants to be findable on Google but **without publishing the
   business address** for now, so no address in structured data or
@@ -588,6 +589,29 @@ production.
   production as a draft (placeholder prices, no address) and never
   overwrites it. The owner sets prices and address, then publishes. An
   event can't be published without an address.
+
+## Phase 33 — GDPR Compliance & Security Hardening
+
+Planned 2026-11-17 (see
+`specs/2026-11-17-phase-33-gdpr-security/requirement.md`, which holds the
+security audit). Events bring more personal data from the public, and
+the audit found a critical Next.js remote-code-execution bug in the
+deployed version.
+
+- Security: upgrade Next.js to 16.4.x and turn off SVG image
+  optimisation (critical), clear the Rust TLS advisories, rate-limit and
+  lock out admin login, hide the admin API on `api.`, add HSTS/CSP and
+  other headers in Caddy, rate-limit orders, reject cross-site admin
+  writes, pin and lock down Dozzle, purge expired sessions, keep emails
+  out of logs, and fail CI on high-severity advisories.
+- GDPR: a privacy policy at `/{locale}/privacy` in en/nl/fr (name, KvK,
+  contact@, no street address), a privacy note under every form (no
+  consent checkbox), retention enforced by a nightly sweeper (bookkeeping
+  records anonymised after 7 years, the rest after 12 months, email log
+  after 90 days), and an admin Privacy page to export or anonymise
+  everything for an email address, with each request logged.
+- `docs/privacy.md`: the record of processing, processors and a breach
+  checklist.
 
 ## Later — iDEAL Payments
 
