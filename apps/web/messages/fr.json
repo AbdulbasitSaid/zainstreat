@@ -433,7 +433,8 @@
     "openPhoto": "Ouvrir la photo {n} sur {total}",
     "previousPhoto": "Photo précédente",
     "nextPhoto": "Photo suivante",
-    "closePhoto": "Fermer"
+    "closePhoto": "Fermer",
+    "chooseGroup": "Choisissez votre {group} :"
   },
   "EventBooking": {
     "labels": {
@@ -451,6 +452,8 @@
     "guestN": "Invité {n}",
     "noMeal": "Présent sans repas",
     "noMealHint": "Occupe quand même une place",
+    "chooseOption": "Choisissez votre {group}",
+    "optionFallback": "options",
     "mealsClosed": "Les commandes de repas sont closes, mais vous pouvez encore vous inscrire sans repas.",
     "total": "Total",
     "totalFree": "Gratuit",
@@ -472,7 +475,8 @@
       "acceptTerms": "Confirmez que vous avez lu les conditions.",
       "meals_closed": "Les commandes de repas sont closes. Choisissez « Présent sans repas ».",
       "unavailable": "Une des assiettes n'est plus disponible. Faites un nouveau choix.",
-      "too_many": "C'est plus de personnes qu'une réservation ne le permet."
+      "too_many": "C'est plus de personnes qu'une réservation ne le permet.",
+      "option_required": "Veuillez choisir votre {group}."
     }
   },
   "BookingPage": {

@@ -3,6 +3,7 @@
 
 use crate::email::EmailConfig;
 use crate::error::{AppError, FieldError};
+use crate::event_options::{label_in, parse_groups, resolve_choices};
 use crate::events::{self, BookingEvent, localized, seats_taken};
 use crate::order_emails::Locale;
 use crate::payment::PaymentConfig;
@@ -18,6 +19,7 @@ use chrono::{DateTime, Utc};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
+use std::collections::BTreeMap;
 use uuid::Uuid;
 
 #[derive(Debug, Deserialize)]
@@ -104,6 +106,36 @@ pub struct PublicPlate {
     pub description: String,
     #[serde(with = "rust_decimal::serde::str")]
     pub price: Decimal,
+    pub options: Vec<PublicOptionGroup>,
+}
+
+/// A plate's option group in the page's language (Phase 32 Decision 8).
+#[derive(Debug, Serialize)]
+pub struct PublicOptionGroup {
+    pub key: String,
+    pub label: String,
+    pub choices: Vec<PublicOptionChoice>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PublicOptionChoice {
+    pub key: String,
+    pub label: String,
+}
+
+fn public_options(options: &serde_json::Value, locale: Locale) -> Vec<PublicOptionGroup> {
+    parse_groups(options)
+        .into_iter()
+        .map(|group| PublicOptionGroup {
+            label: label_in(&group.label, locale),
+            choices: group
+                .choices
+                .into_iter()
+                .map(|choice| PublicOptionChoice { label: label_in(&choice.label, locale), key: choice.key })
+                .collect(),
+            key: group.key,
+        })
+        .collect()
 }
 
 #[derive(Debug, Serialize)]
@@ -168,7 +200,7 @@ pub(crate) async fn load_public_event(
     .ok_or(AppError::NotFound)?;
 
     let plates = sqlx::query!(
-        "SELECT id, content, price FROM event_plates WHERE event_id = $1 AND is_available ORDER BY position, id",
+        "SELECT id, content, price, options FROM event_plates WHERE event_id = $1 AND is_available ORDER BY position, id",
         event.id
     )
     .fetch_all(pool)
@@ -179,6 +211,7 @@ pub(crate) async fn load_public_event(
         name: localized(&plate.content, locale, "name"),
         description: localized(&plate.content, locale, "description"),
         price: plate.price,
+        options: public_options(&plate.options, locale),
     })
     .collect();
 
@@ -227,8 +260,8 @@ pub struct CreateBookingRequest {
     pub customer_name: String,
     pub customer_email: String,
     pub customer_phone: String,
-    /// A plate id per person; `None` attends without a meal (Decision 17).
-    pub guests: Vec<Option<i64>>,
+    /// One entry per person (Decision 17).
+    pub guests: Vec<GuestInput>,
     pub notes: Option<String>,
     pub locale: Option<String>,
     #[serde(default)]
@@ -239,6 +272,35 @@ pub struct CreateBookingRequest {
     /// Honeypot (Phase 15): real visitors never fill it.
     #[serde(default)]
     pub website: String,
+}
+
+/// A guest's plate and its option picks (Phase 32). A bare plate id or
+/// `null` is the Phase 31 shape, still accepted from a cached page.
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+pub enum GuestInput {
+    WithChoices {
+        plate_id: Option<i64>,
+        #[serde(default)]
+        choices: BTreeMap<String, String>,
+    },
+    PlateOnly(Option<i64>),
+}
+
+impl GuestInput {
+    fn plate_id(&self) -> Option<i64> {
+        match self {
+            GuestInput::WithChoices { plate_id, .. } => *plate_id,
+            GuestInput::PlateOnly(plate_id) => *plate_id,
+        }
+    }
+
+    fn choices(&self) -> BTreeMap<String, String> {
+        match self {
+            GuestInput::WithChoices { choices, .. } => choices.clone(),
+            GuestInput::PlateOnly(_) => BTreeMap::new(),
+        }
+    }
 }
 
 #[derive(Debug, Serialize)]
@@ -333,7 +395,7 @@ pub async fn create_booking(
 
     let locale = payload.locale.as_deref().and_then(Locale::parse).unwrap_or(Locale::En);
     let plates = sqlx::query!(
-        "SELECT id, content, price FROM event_plates WHERE event_id = $1 AND is_available",
+        "SELECT id, content, price, options FROM event_plates WHERE event_id = $1 AND is_available",
         event.id
     )
     .fetch_all(&mut *tx)
@@ -342,25 +404,31 @@ pub async fn create_booking(
     if payload.guests.len() > event.max_party_size as usize {
         errors.push(field_error("guests", "too_many"));
     }
-    // (plate_id, name, price) per guest, in form order.
+    // (plate_id, name, price, choices) per guest, in form order.
     let mut guests = Vec::with_capacity(payload.guests.len());
-    for (index, choice) in payload.guests.iter().enumerate() {
-        match choice {
-            None => guests.push((None, None, None)),
-            Some(plate_id) => match plates.iter().find(|plate| plate.id == *plate_id) {
-                Some(plate) => guests.push((
-                    Some(plate.id),
-                    // English, the owner's language, so admin counts and
-                    // order lines group one plate under one name; guests
-                    // see it translated from the plate itself.
-                    Some(localized(&plate.content, Locale::En, "name")),
-                    Some(plate.price),
-                )),
+    for (index, guest) in payload.guests.iter().enumerate() {
+        let picked = guest.choices();
+        match guest.plate_id() {
+            None if picked.is_empty() => guests.push((None, None, None, Vec::new())),
+            None => errors.push(field_error(&format!("guests[{index}].choices"), "unknown_option")),
+            Some(plate_id) => match plates.iter().find(|plate| plate.id == plate_id) {
+                Some(plate) => match resolve_choices(&parse_groups(&plate.options), &picked) {
+                    Ok(choices) => guests.push((
+                        Some(plate.id),
+                        // English, the owner's language, so admin counts and
+                        // order lines group one plate under one name; guests
+                        // see it translated from the plate itself.
+                        Some(localized(&plate.content, Locale::En, "name")),
+                        Some(plate.price),
+                        choices,
+                    )),
+                    Err(message) => errors.push(field_error(&format!("guests[{index}].choices"), message)),
+                },
                 None => errors.push(field_error(&format!("guests[{index}]"), "unavailable")),
             },
         }
     }
-    let wants_meals = guests.iter().any(|(plate_id, _, _)| plate_id.is_some());
+    let wants_meals = guests.iter().any(|(plate_id, ..)| plate_id.is_some());
     if wants_meals && !event.meals_open {
         errors.push(field_error("guests", "meals_closed"));
     }
@@ -396,17 +464,18 @@ pub async fn create_booking(
     .fetch_one(&mut *tx)
     .await?;
 
-    for (position, (plate_id, plate_name, unit_price)) in guests.into_iter().enumerate() {
+    for (position, (plate_id, plate_name, unit_price, choices)) in guests.into_iter().enumerate() {
         sqlx::query!(
             r#"
-            INSERT INTO event_booking_guests (booking_id, position, plate_id, plate_name, unit_price)
-            VALUES ($1, $2, $3, $4, $5)
+            INSERT INTO event_booking_guests (booking_id, position, plate_id, plate_name, unit_price, choices)
+            VALUES ($1, $2, $3, $4, $5, $6)
             "#,
             booking.id,
             position as i32,
             plate_id,
             plate_name,
             unit_price,
+            serde_json::to_value(&choices).expect("choices serialize"),
         )
         .execute(&mut *tx)
         .await?;
@@ -448,6 +517,8 @@ pub struct BookingEventSummary {
 #[derive(Debug, Serialize)]
 pub struct BookingGuest {
     pub plate_name: Option<String>,
+    /// "Fried plantain, Chicken"; empty when the plate has no options.
+    pub choices: String,
     #[serde(with = "rust_decimal::serde::str_option")]
     pub unit_price: Option<Decimal>,
 }
@@ -515,7 +586,11 @@ async fn load_public_booking(
         guests: booking
             .guests
             .iter()
-            .map(|guest| BookingGuest { plate_name: guest.name_in(locale), unit_price: guest.unit_price })
+            .map(|guest| BookingGuest {
+                plate_name: guest.name_in(locale),
+                choices: guest.choices_in(locale),
+                unit_price: guest.unit_price,
+            })
             .collect(),
         total: booking.total,
         address: confirmed.then_some(booking.address),

@@ -137,6 +137,7 @@ export default async function BookingPage({ params }: { params: Promise<{ locale
               <li key={index} className="flex justify-between gap-3 border-b border-text/10 pb-2">
                 <span>
                   {t("guestN", { n: index + 1 })}: {guest.plate_name ?? t("noMeal")}
+                  {guest.choices && <span className="block text-sm text-text-muted">{guest.choices}</span>}
                 </span>
                 {guest.unit_price && <span className="font-semibold">{formatPrice(guest.unit_price)}</span>}
               </li>

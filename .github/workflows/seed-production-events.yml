@@ -1,0 +1,90 @@
+name: Seed production events
+
+# Phase 32 Decisions 13-14: adds The Abula Experience to production as a
+# draft (placeholder €15 plates, no address). Insert only: if the event
+# already exists nothing changes, so a re-run never overwrites the owner's
+# prices, address or text. Same safety as seed-production.yml: the
+# reviewer-gated production environment, a typed phrase, and a backup.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type SEED PRODUCTION EVENTS to confirm. Adds The Abula Experience as a draft; never overwrites it.'
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      C: docker compose -f docker-compose.yml -f docker-compose.prod.yml
+    steps:
+      - name: Verify confirmation phrase
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          if [ "$CONFIRM" != "SEED PRODUCTION EVENTS" ]; then
+            echo "Confirmation phrase did not match 'SEED PRODUCTION EVENTS'. Aborting." >&2
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up SSH
+        uses: ./.github/actions/ssh-target
+        with:
+          host: ${{ vars.DEPLOY_HOST }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: Check production has Phase 32
+        run: |
+          READY=$(ssh target "cd /opt/zainstreat && $C exec -T postgres sh -c 'psql -tA -U \"\$POSTGRES_USER\" -d \"\$POSTGRES_DB\" -c \"SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = '\''event_plates'\'' AND column_name = '\''options'\'')\"'")
+          if [ "$(echo "$READY" | tr -d '[:space:]')" != "t" ]; then
+            echo "::error::Promote Phase 32 to production first."
+            exit 1
+          fi
+
+      - name: Backup
+        run: |
+          ssh target 'set -euo pipefail
+            cd /opt/zainstreat
+            COMPOSE="docker compose -f docker-compose.yml -f docker-compose.prod.yml"
+            TS=$(date +%Y%m%d-%H%M%S)
+            mkdir -p backups
+            echo "Backing up to backups/backup-${TS}.sql"
+            $COMPOSE exec -T postgres sh -c '"'"'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB"'"'"' > "backups/backup-${TS}.sql"
+            test -s "backups/backup-${TS}.sql"
+            echo "Backup OK ($(wc -l < "backups/backup-${TS}.sql") lines)."'
+
+      - name: Seed the event as a draft
+        run: |
+          ssh target "cd /opt/zainstreat && $C exec -T postgres sh -c 'psql -v ON_ERROR_STOP=1 -v publish=false -v upsert=false -U \"\$POSTGRES_USER\" -d \"\$POSTGRES_DB\"'" < apps/api/seed-events.sql
+
+      - name: Show the event
+        run: |
+          ssh target "cd /opt/zainstreat && $C exec -T postgres sh -c 'psql -U \"\$POSTGRES_USER\" -d \"\$POSTGRES_DB\"'" <<'SQL'
+          SELECT e.id, e.slug, e.area, (e.address <> '') AS has_address, (e.published_at IS NOT NULL) AS published
+          FROM events e WHERE e.slug = 'the-abula-experience-2026';
+          SELECT p.position, p.content->'en'->>'name' AS plate, p.price, jsonb_array_length(p.options) AS option_groups
+          FROM event_plates p JOIN events e ON e.id = p.event_id
+          WHERE e.slug = 'the-abula-experience-2026' ORDER BY p.position;
+          SQL
+
+      - name: Summary
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" <<'EOF'
+          ### The Abula Experience is on production as a draft
+
+          Next, in the `cms.` admin → Events → The Abula Experience:
+
+          1. Set the real plate prices (both are €15 placeholders).
+          2. Fill in the address. Only confirmed guests see it, and the event can't be published without it.
+          3. Check the text in English, Dutch and French, and use Preview.
+          4. Press **Publish** once the client is ready to take bookings.
+
+          Re-running this workflow changes nothing once the event exists.
+          EOF

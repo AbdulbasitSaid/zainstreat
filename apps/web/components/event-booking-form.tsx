@@ -17,6 +17,12 @@ const FIELD_ERROR_CLASS = "mt-1 text-sm text-primary";
 type ContactField = "customer_name" | "customer_email" | "customer_phone" | "notes";
 type Errors = Partial<Record<ContactField | "accept_terms" | "guests", string>>;
 
+// A guest's plate (or NO_MEAL) and their pick per option group (Phase 32).
+interface GuestState {
+  plate: string;
+  picks: Record<string, string>;
+}
+
 function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
@@ -29,6 +35,7 @@ function errorKey(message: string): string {
     case "meals_closed":
     case "unavailable":
     case "too_many":
+    case "option_required":
       return message;
     case "too_long":
       return "tooLong";
@@ -39,8 +46,9 @@ function errorKey(message: string): string {
 
 /**
  * One form for the RSVP and the meals (Phase 31 Decision 17): contact
- * details, how many people, and a plate (or no meal) per person. A party
- * that doesn't fit gets the seats left and a "Join the waitlist" retry.
+ * details, how many people, and a plate (or no meal) per person, with the
+ * plate's options (Phase 32 Decision 8). A party that doesn't fit gets the
+ * seats left and a "Join the waitlist" retry.
  */
 export function EventBookingForm({
   slug,
@@ -67,7 +75,9 @@ export function EventBookingForm({
   const [phone, setPhone] = useState("");
   const [notes, setNotes] = useState("");
   const [website, setWebsite] = useState("");
-  const [choices, setChoices] = useState<string[]>([defaultChoice]);
+  const [guests, setGuests] = useState<GuestState[]>([{ plate: defaultChoice, picks: {} }]);
+  // `${guest}:${group}` for each option left unpicked on submit.
+  const [missing, setMissing] = useState<Set<string>>(new Set());
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
   const [submitting, setSubmitting] = useState(false);
@@ -76,18 +86,44 @@ export function EventBookingForm({
   // Starting full means the form is a waitlist form from the start.
   const waitlistOnly = seatsLeft === 0;
 
-  const priceOf = (choice: string) => plates.find((plate) => String(plate.id) === choice)?.price ?? null;
-  const total = choices.reduce((sum, choice) => sum + Number(priceOf(choice) ?? 0), 0);
-  const wantsMeals = choices.some((choice) => choice !== NO_MEAL);
+  const plateOf = (choice: string) => plates.find((plate) => String(plate.id) === choice);
+  const total = guests.reduce((sum, guest) => sum + Number(plateOf(guest.plate)?.price ?? 0), 0);
+  const wantsMeals = guests.some((guest) => guest.plate !== NO_MEAL);
 
   function resize(size: number) {
     const next = Math.max(1, Math.min(maxPartySize, size));
-    setChoices((current) =>
+    setGuests((current) =>
       next > current.length
-        ? [...current, ...Array.from({ length: next - current.length }, () => defaultChoice)]
+        ? [...current, ...Array.from({ length: next - current.length }, () => ({ plate: defaultChoice, picks: {} }))]
         : current.slice(0, next),
     );
     setSeatsShort(null);
+  }
+
+  // Changing plate clears the picks: the groups belong to the plate.
+  function choosePlate(index: number, plate: string) {
+    setGuests((current) => current.map((guest, i) => (i === index ? { plate, picks: {} } : guest)));
+  }
+
+  function pick(index: number, group: string, choice: string) {
+    setGuests((current) =>
+      current.map((guest, i) => (i === index ? { ...guest, picks: { ...guest.picks, [group]: choice } } : guest)),
+    );
+    setMissing((current) => {
+      const next = new Set(current);
+      next.delete(`${index}:${group}`);
+      return next;
+    });
+  }
+
+  function unpicked(): Set<string> {
+    const keys = new Set<string>();
+    guests.forEach((guest, index) => {
+      for (const group of plateOf(guest.plate)?.options ?? []) {
+        if (!guest.picks[group.key]) keys.add(`${index}:${group.key}`);
+      }
+    });
+    return keys;
   }
 
   function validate(): Errors {
@@ -103,8 +139,10 @@ export function EventBookingForm({
 
   async function submit(joinWaitlist: boolean) {
     const nextErrors = validate();
+    const nextMissing = unpicked();
     setErrors(nextErrors);
-    if (Object.keys(nextErrors).length > 0) return;
+    setMissing(nextMissing);
+    if (Object.keys(nextErrors).length > 0 || nextMissing.size > 0) return;
 
     setSubmitting(true);
     setFailure(null);
@@ -112,7 +150,9 @@ export function EventBookingForm({
       customer_name: name.trim(),
       customer_email: email.trim(),
       customer_phone: phone.trim(),
-      guests: choices.map((choice) => (choice === NO_MEAL ? null : Number(choice))),
+      guests: guests.map((guest) =>
+        guest.plate === NO_MEAL ? { plate_id: null, choices: {} } : { plate_id: Number(guest.plate), choices: guest.picks },
+      ),
       notes: notes.trim() ? notes.trim() : null,
       locale,
       accept_terms: acceptTerms,
@@ -195,9 +235,9 @@ export function EventBookingForm({
         </div>
         <div role="group" aria-labelledby="booking-party-label">
           <QuantityStepper
-            quantity={choices.length}
-            onDecrement={() => resize(choices.length - 1)}
-            onIncrement={() => resize(choices.length + 1)}
+            quantity={guests.length}
+            onDecrement={() => resize(guests.length - 1)}
+            onIncrement={() => resize(guests.length + 1)}
             decrementLabel={t("fewer")}
             incrementLabel={t("more")}
           />
@@ -207,42 +247,80 @@ export function EventBookingForm({
       {!mealsOpen && plates.length > 0 && <Notice>{t("mealsClosed")}</Notice>}
 
       <ol className="m-0 flex list-none flex-col gap-4 p-0">
-        {choices.map((choice, index) => (
+        {guests.map((guest, index) => (
           <li key={index}>
             <fieldset className="m-0 flex flex-col gap-2 rounded-card border border-text/10 p-4">
               <legend className="px-1 text-sm font-semibold">
                 {index === 0 ? t("guestYou") : t("guestN", { n: index + 1 })}
               </legend>
               {plates.map((plate) => (
-                <label
-                  key={plate.id}
-                  className={`flex items-center justify-between gap-3 rounded-xl px-3 py-2 ${
-                    choice === String(plate.id) ? "bg-background-soft" : ""
-                  } ${mealsOpen ? "cursor-pointer" : "opacity-50"}`}
-                >
-                  <span className="flex items-center gap-3">
-                    <input
-                      type="radio"
-                      name={`guest-${index}`}
-                      value={plate.id}
-                      checked={choice === String(plate.id)}
-                      disabled={!mealsOpen}
-                      onChange={() => setChoices((current) => current.map((c, i) => (i === index ? String(plate.id) : c)))}
-                      className="accent-primary"
-                    />
-                    {plate.name}
-                  </span>
-                  <span className="font-semibold text-primary">{formatPrice(plate.price)}</span>
-                </label>
+                <div key={plate.id} className={`rounded-xl ${guest.plate === String(plate.id) ? "bg-background-soft" : ""}`}>
+                  <label
+                    className={`flex items-center justify-between gap-3 px-3 py-2 ${mealsOpen ? "cursor-pointer" : "opacity-50"}`}
+                  >
+                    <span className="flex items-center gap-3">
+                      <input
+                        type="radio"
+                        name={`guest-${index}`}
+                        value={plate.id}
+                        checked={guest.plate === String(plate.id)}
+                        disabled={!mealsOpen}
+                        onChange={() => choosePlate(index, String(plate.id))}
+                        className="accent-primary"
+                      />
+                      {plate.name}
+                    </span>
+                    <span className="font-semibold text-primary">{formatPrice(plate.price)}</span>
+                  </label>
+                  {guest.plate === String(plate.id) &&
+                    plate.options.map((group) => {
+                      const errorId = `guest-${index}-${group.key}-error`;
+                      const isMissing = missing.has(`${index}:${group.key}`);
+                      return (
+                        <fieldset
+                          key={group.key}
+                          aria-describedby={isMissing ? errorId : undefined}
+                          className="m-0 flex flex-col gap-2 border-0 px-3 pb-3 sm:pl-10"
+                        >
+                          <legend className="mb-2 p-0 text-sm text-text-muted">
+                            {t("chooseOption", { group: group.label.toLowerCase() })}
+                          </legend>
+                          <div className="flex flex-wrap gap-2">
+                            {group.choices.map((choice) => (
+                              <label key={choice.key} className="cursor-pointer">
+                                <input
+                                  type="radio"
+                                  name={`guest-${index}-${group.key}`}
+                                  value={choice.key}
+                                  checked={guest.picks[group.key] === choice.key}
+                                  onChange={() => pick(index, group.key, choice.key)}
+                                  aria-describedby={isMissing ? errorId : undefined}
+                                  className="peer sr-only"
+                                />
+                                <span className="inline-block rounded-full border border-text/15 bg-background px-3.5 py-1.5 text-sm transition-colors peer-checked:border-primary peer-checked:bg-primary peer-checked:text-white peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary hover:border-primary/60">
+                                  {choice.label}
+                                </span>
+                              </label>
+                            ))}
+                          </div>
+                          {isMissing && (
+                            <p id={errorId} className="m-0 text-sm text-primary">
+                              {t("errors.option_required", { group: group.label.toLowerCase() })}
+                            </p>
+                          )}
+                        </fieldset>
+                      );
+                    })}
+                </div>
               ))}
-              <label className={`flex cursor-pointer items-center justify-between gap-3 rounded-xl px-3 py-2 ${choice === NO_MEAL ? "bg-background-soft" : ""}`}>
+              <label className={`flex cursor-pointer items-center justify-between gap-3 rounded-xl px-3 py-2 ${guest.plate === NO_MEAL ? "bg-background-soft" : ""}`}>
                 <span className="flex items-center gap-3">
                   <input
                     type="radio"
                     name={`guest-${index}`}
                     value={NO_MEAL}
-                    checked={choice === NO_MEAL}
-                    onChange={() => setChoices((current) => current.map((c, i) => (i === index ? NO_MEAL : c)))}
+                    checked={guest.plate === NO_MEAL}
+                    onChange={() => choosePlate(index, NO_MEAL)}
                     className="accent-primary"
                   />
                   {t("noMeal")}
@@ -253,7 +331,11 @@ export function EventBookingForm({
           </li>
         ))}
       </ol>
-      {errors.guests && <p className={FIELD_ERROR_CLASS}>{t(`errors.${errors.guests}`, { field: t("partyLabel") })}</p>}
+      {errors.guests && (
+        <p className={FIELD_ERROR_CLASS}>
+          {t(`errors.${errors.guests}`, { field: t("partyLabel"), group: t("optionFallback") })}
+        </p>
+      )}
 
       <div>
         <label htmlFor="booking-notes" className={FIELD_LABEL_CLASS}>
@@ -317,7 +399,7 @@ export function EventBookingForm({
 
       {seatsShort !== null ? (
         <div role="alert" className="flex flex-col gap-3 rounded-card bg-accent-light px-5 py-4">
-          <p className="m-0">{t("notEnoughSeats", { count: seatsShort, party: choices.length })}</p>
+          <p className="m-0">{t("notEnoughSeats", { count: seatsShort, party: guests.length })}</p>
           <div className="flex flex-wrap gap-3">
             <Button type="button" onClick={() => void submit(true)} disabled={submitting}>
               {t("joinWaitlist")}

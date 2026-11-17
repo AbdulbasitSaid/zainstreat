@@ -10,15 +10,18 @@ type Action = "publish" | "unpublish" | "archive" | "unarchive";
 export function AdminEventActions({ id, published, archived }: { id: number; published: boolean; archived: boolean }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<string | null>(null);
 
   async function run(action: Action) {
     setBusy(true);
-    setFailed(false);
+    setFailed(null);
     const response = await fetch(`/api/admin/events/${id}/${action}`, { method: "POST" });
     setBusy(false);
     if (!response.ok) {
-      setFailed(true);
+      // Publishing needs the private address (Phase 32 Decision 12).
+      const body: unknown = await response.json().catch(() => null);
+      const needsAddress = response.status === 400 && JSON.stringify(body).includes('"address"');
+      setFailed(needsAddress ? "Add the address on the details tab before publishing." : "That didn't work. Try again.");
       return;
     }
     router.refresh();
@@ -39,7 +42,11 @@ export function AdminEventActions({ id, published, archived }: { id: number; pub
       <Button type="button" variant="outline" disabled={busy} onClick={() => void run(archived ? "unarchive" : "archive")}>
         {archived ? "Unarchive" : "Archive"}
       </Button>
-      {failed && <span className="text-sm font-semibold text-primary">That didn&apos;t work. Try again.</span>}
+      {failed && (
+        <span role="alert" className="text-sm font-semibold text-primary">
+          {failed}
+        </span>
+      )}
     </div>
   );
 }

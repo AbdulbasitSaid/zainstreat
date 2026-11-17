@@ -569,6 +569,26 @@ Sunday 27 December 2026.
 - The Abula Experience is seeded on staging (placeholder €15 plates);
   production seeding waits for the real prices.
 
+## Phase 32 — Event Plate Options & Production Seed
+
+Planned 2026-11-17 (see
+`specs/2026-11-17-phase-32-event-plate-options/requirement.md`). The
+client's flyer adds per-plate choices, and the event needs to reach
+production.
+
+- Plate option groups (protein, side) that guests pick per person, with
+  no price change. The choices show on the invoice, the booking page,
+  emails, the admin's cook counts and the CSV. The owner edits them in
+  the plate editor.
+- The Abula Experience matches the flyer: Almere, **The Classic Abula**
+  (assorted meat or fish) and **The Smoky Jollof Experience** (plantain,
+  moin moin or salad; chicken or turkey), with the client's Abula photo
+  as cover.
+- A reviewer-gated `seed-production-events.yml` adds the event to
+  production as a draft (placeholder prices, no address) and never
+  overwrites it. The owner sets prices and address, then publishes. An
+  event can't be published without an address.
+
 ## Later — iDEAL Payments
 
 Agreed in the 2026-10-18 call but blocked on the client opening a

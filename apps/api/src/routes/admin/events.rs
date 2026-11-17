@@ -5,6 +5,7 @@
 
 use crate::email::EmailConfig;
 use crate::error::{AppError, FieldError};
+use crate::event_options::{OptionGroup, choices_summary, normalize_groups, parse_choices, validate_groups};
 use crate::events::{self, BookingEvent, localized, seats_taken, slugify};
 use crate::order_emails::Locale;
 use crate::payment::{PaymentConfig, payment_reference};
@@ -97,6 +98,10 @@ pub struct PlateInput {
     #[serde(with = "rust_decimal::serde::str")]
     pub price: Decimal,
     pub is_available: bool,
+    /// Option groups (Phase 32 Decision 7). New groups and choices come
+    /// without a key and get one from their English label.
+    #[serde(default)]
+    pub options: Vec<OptionGroup>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -213,6 +218,9 @@ fn validate(input: &EventInput) -> Vec<FieldError> {
         if plate.price < Decimal::ZERO || plate.price.scale() > 2 {
             errors.push(field_error(&format!("plates[{index}].price"), "invalid"));
         }
+        for (field, message) in validate_groups(&normalize_groups(&plate.options)) {
+            errors.push(field_error(&format!("plates[{index}].{field}"), message));
+        }
     }
     errors
 }
@@ -224,6 +232,7 @@ pub struct AdminPlate {
     #[serde(with = "rust_decimal::serde::str")]
     pub price: Decimal,
     pub is_available: bool,
+    pub options: Value,
 }
 
 #[derive(Debug, Serialize)]
@@ -285,7 +294,7 @@ async fn load_admin_event(pool: &PgPool, id: i64) -> Result<AdminEvent, AppError
 
     let plates = sqlx::query_as!(
         AdminPlate,
-        "SELECT id, content, price, is_available FROM event_plates WHERE event_id = $1 ORDER BY position, id",
+        "SELECT id, content, price, is_available, options FROM event_plates WHERE event_id = $1 ORDER BY position, id",
         id
     )
     .fetch_all(pool)
@@ -339,10 +348,11 @@ async fn save_plates(
     let mut kept = Vec::with_capacity(plates.len());
     for (position, plate) in plates.iter().enumerate() {
         let content = clean_content(&plate.content, &PLATE_KEYS);
+        let options = serde_json::to_value(normalize_groups(&plate.options)).expect("options serialize");
         let id = match plate.id {
             Some(id) => sqlx::query_scalar!(
                 r#"
-                UPDATE event_plates SET content = $3, price = $4, is_available = $5, position = $6
+                UPDATE event_plates SET content = $3, price = $4, is_available = $5, position = $6, options = $7
                 WHERE id = $1 AND event_id = $2
                 RETURNING id
                 "#,
@@ -352,14 +362,15 @@ async fn save_plates(
                 plate.price,
                 plate.is_available,
                 position as i32,
+                options,
             )
             .fetch_optional(&mut *tx)
             .await?
             .ok_or_else(|| AppError::Validation(vec![field_error(&format!("plates[{position}].id"), "not_found")]))?,
             None => sqlx::query_scalar!(
                 r#"
-                INSERT INTO event_plates (event_id, position, content, price, is_available)
-                VALUES ($1, $2, $3, $4, $5)
+                INSERT INTO event_plates (event_id, position, content, price, is_available, options)
+                VALUES ($1, $2, $3, $4, $5, $6)
                 RETURNING id
                 "#,
                 event_id,
@@ -367,6 +378,7 @@ async fn save_plates(
                 content,
                 plate.price,
                 plate.is_available,
+                options,
             )
             .fetch_one(&mut *tx)
             .await?,
@@ -555,7 +567,16 @@ async fn set_flags(pool: &PgPool, id: i64, published: Option<bool>, archived: Op
     Ok(Json(load_admin_event(pool, id).await?))
 }
 
+/// An event can't go live without the address confirmed guests receive
+/// (Phase 32 Decision 12); a production seed leaves it blank.
 pub async fn publish_event(State(pool): State<PgPool>, Path(id): Path<i64>) -> Result<Json<AdminEvent>, AppError> {
+    let address = sqlx::query_scalar!("SELECT address FROM events WHERE id = $1", id)
+        .fetch_optional(&pool)
+        .await?
+        .ok_or(AppError::NotFound)?;
+    if address.trim().is_empty() {
+        return Err(AppError::Validation(vec![field_error("address", "required")]));
+    }
     set_flags(&pool, id, Some(true), None).await
 }
 
@@ -615,6 +636,8 @@ pub async fn save_photos(
 #[derive(Debug, Serialize)]
 pub struct AdminBookingGuest {
     pub plate_name: Option<String>,
+    /// English, like the plate name: "Fried plantain, Chicken".
+    pub choices: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -640,11 +663,14 @@ pub struct AdminBooking {
 }
 
 /// Plates to cook: paid or free-confirmed guests, and those still on an
-/// unpaid hold, counted separately (Decision 18).
+/// unpaid hold, counted separately (Decision 18), per plate and choices
+/// (Phase 32 Decision 6).
 #[derive(Debug, Serialize)]
 pub struct PlateCount {
     /// `None` is "no meal".
     pub plate_name: Option<String>,
+    /// English; empty when the plate has no options.
+    pub choices: String,
     pub confirmed: i64,
     pub held: i64,
 }
@@ -685,7 +711,7 @@ async fn load_bookings(pool: &PgPool, event_id: i64) -> Result<AdminBookingsResp
 
     let guests = sqlx::query!(
         r#"
-        SELECT g.booking_id, g.plate_name
+        SELECT g.booking_id, g.plate_name, g.choices
         FROM event_booking_guests g JOIN event_bookings b ON b.id = g.booking_id
         WHERE b.event_id = $1
         ORDER BY g.booking_id, g.position
@@ -701,7 +727,10 @@ async fn load_bookings(pool: &PgPool, event_id: i64) -> Result<AdminBookingsResp
             guests: guests
                 .iter()
                 .filter(|guest| guest.booking_id == row.id)
-                .map(|guest| AdminBookingGuest { plate_name: guest.plate_name.clone() })
+                .map(|guest| AdminBookingGuest {
+                    plate_name: guest.plate_name.clone(),
+                    choices: choices_summary(&parse_choices(&guest.choices), &[], Locale::En),
+                })
                 .collect(),
             id: row.id,
             token: row.public_token,
@@ -722,21 +751,28 @@ async fn load_bookings(pool: &PgPool, event_id: i64) -> Result<AdminBookingsResp
         })
         .collect();
 
-    let plate_counts = sqlx::query_as!(
-        PlateCount,
+    let plate_counts = sqlx::query!(
         r#"
-        SELECT g.plate_name,
+        SELECT g.plate_name, g.choices,
                COUNT(*) FILTER (WHERE b.status = 'confirmed') as "confirmed!",
                COUNT(*) FILTER (WHERE b.status = 'awaiting_payment') as "held!"
         FROM event_booking_guests g JOIN event_bookings b ON b.id = g.booking_id
         WHERE b.event_id = $1 AND b.status IN ('confirmed', 'awaiting_payment')
-        GROUP BY g.plate_name
-        ORDER BY g.plate_name NULLS LAST
+        GROUP BY g.plate_name, g.choices
+        ORDER BY g.plate_name NULLS LAST, g.choices::TEXT
         "#,
         event_id
     )
     .fetch_all(pool)
-    .await?;
+    .await?
+    .into_iter()
+    .map(|row| PlateCount {
+        plate_name: row.plate_name,
+        choices: choices_summary(&parse_choices(&row.choices), &[], Locale::En),
+        confirmed: row.confirmed,
+        held: row.held,
+    })
+    .collect();
 
     let mut conn = pool.acquire().await?;
     Ok(AdminBookingsResponse {
@@ -775,7 +811,11 @@ pub async fn bookings_csv(State(pool): State<PgPool>, Path(id): Path<i64>) -> Re
         let plates = booking
             .guests
             .iter()
-            .map(|guest| guest.plate_name.clone().unwrap_or_else(|| "No meal".into()))
+            .map(|guest| match (&guest.plate_name, guest.choices.as_str()) {
+                (None, _) => "No meal".to_string(),
+                (Some(name), "") => name.clone(),
+                (Some(name), choices) => format!("{name} ({choices})"),
+            })
             .collect::<Vec<_>>()
             .join("; ");
         let row = [

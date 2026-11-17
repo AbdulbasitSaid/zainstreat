@@ -58,6 +58,8 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
   const taken = event.capacity - event.seats_left;
   const mealCutoff = event.meal_orders_close_at ? eventDateParts(event.meal_orders_close_at, locale).long : null;
   const hasPlates = event.plates.length > 0;
+  // "Assorted meat or Fish" / "Gemengd vlees of Vis" (Phase 32).
+  const orList = new Intl.ListFormat(locale, { type: "disjunction" });
 
   return (
     <main className="container">
@@ -134,6 +136,16 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
                         <span className="text-2xl font-semibold">{plate.name}</span>
                         {plate.description && (
                           <span className={index === 0 ? "text-on-dark-body" : "text-text-muted"}>{plate.description}</span>
+                        )}
+                        {plate.options.length > 0 && (
+                          <ul className="m-0 flex list-none flex-col gap-1 p-0 text-sm">
+                            {plate.options.map((group) => (
+                              <li key={group.key}>
+                                <span className="font-semibold">{t("chooseGroup", { group: group.label.toLowerCase() })}</span>{" "}
+                                {orList.format(group.choices.map((choice) => choice.label))}
+                              </li>
+                            ))}
+                          </ul>
                         )}
                         <span className={`mt-auto text-xl font-semibold ${index === 0 ? "text-accent-light" : "text-primary"}`}>
                           {formatPrice(plate.price)}

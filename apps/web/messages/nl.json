@@ -433,7 +433,8 @@
     "openPhoto": "Open foto {n} van {total}",
     "previousPhoto": "Vorige foto",
     "nextPhoto": "Volgende foto",
-    "closePhoto": "Sluiten"
+    "closePhoto": "Sluiten",
+    "chooseGroup": "Kies je {group}:"
   },
   "EventBooking": {
     "labels": {
@@ -451,6 +452,8 @@
     "guestN": "Gast {n}",
     "noMeal": "Aanwezig zonder maaltijd",
     "noMealHint": "Neemt wel een plek in",
+    "chooseOption": "Kies je {group}",
+    "optionFallback": "opties",
     "mealsClosed": "Maaltijden bestellen is gesloten, maar je kunt je nog aanmelden zonder maaltijd.",
     "total": "Totaal",
     "totalFree": "Gratis",
@@ -472,7 +475,8 @@
       "acceptTerms": "Bevestig dat je de voorwaarden hebt gelezen.",
       "meals_closed": "Maaltijden bestellen is gesloten. Kies \"Aanwezig zonder maaltijd\".",
       "unavailable": "Een van de borden is niet meer beschikbaar. Kies opnieuw.",
-      "too_many": "Dat zijn meer personen dan één reservering toestaat."
+      "too_many": "Dat zijn meer personen dan één reservering toestaat.",
+      "option_required": "Kies je {group}."
     }
   },
   "BookingPage": {

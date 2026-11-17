@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { AdminImageUpload } from "@/components/admin-image-upload";
+import { AdminPlateOptions } from "@/components/admin-plate-options";
 import { Button } from "@/components/button";
 import { Notice } from "@/components/notice";
 import {
@@ -37,10 +38,11 @@ const ERROR_MESSAGES: Record<string, string> = {
   after_start: "must be before the start",
   out_of_range: "is out of range",
   too_many: "has too many entries",
+  too_few: "needs at least two choices",
 };
 
 function newPlate(): PlateInput {
-  return { id: null, content: emptyContent(PLATE_TEXT_KEYS), price: "15.00", is_available: true };
+  return { id: null, content: emptyContent(PLATE_TEXT_KEYS), price: "15.00", is_available: true, options: [] };
 }
 
 function blankInput(): EventInput {
@@ -304,6 +306,13 @@ export function AdminEventForm({ event, initial }: { event: AdminEvent | null; i
                   }
                 />
               </div>
+              <AdminPlateOptions
+                groups={plate.options}
+                locale={locale}
+                localeName={LOCALE_NAMES[locale]}
+                idPrefix={`plate-${index}`}
+                onChange={(options) => setPlate(index, { ...plate, options })}
+              />
               <div className="flex flex-wrap items-center gap-3 text-sm">
                 <label className="flex items-center gap-2">
                   <input

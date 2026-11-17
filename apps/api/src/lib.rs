@@ -1,6 +1,7 @@
 pub mod email;
 pub mod error;
 pub mod event_emails;
+pub mod event_options;
 pub mod events;
 pub mod order_emails;
 pub mod order_status;

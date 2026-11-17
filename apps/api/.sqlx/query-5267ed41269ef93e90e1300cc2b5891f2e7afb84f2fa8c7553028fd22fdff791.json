@@ -1,0 +1,27 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO event_plates (event_id, position, content, price, is_available, options)\n                VALUES ($1, $2, $3, $4, $5, $6)\n                RETURNING id\n                ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int4",
+        "Jsonb",
+        "Numeric",
+        "Bool",
+        "Jsonb"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "5267ed41269ef93e90e1300cc2b5891f2e7afb84f2fa8c7553028fd22fdff791"
+}

@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT g.plate_name, g.choices,\n               COUNT(*) FILTER (WHERE b.status = 'confirmed') as \"confirmed!\",\n               COUNT(*) FILTER (WHERE b.status = 'awaiting_payment') as \"held!\"\n        FROM event_booking_guests g JOIN event_bookings b ON b.id = g.booking_id\n        WHERE b.event_id = $1 AND b.status IN ('confirmed', 'awaiting_payment')\n        GROUP BY g.plate_name, g.choices\n        ORDER BY g.plate_name NULLS LAST, g.choices::TEXT\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "plate_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "choices",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 2,
+        "name": "confirmed!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "held!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      true,
+      false,
+      null,
+      null
+    ]
+  },
+  "hash": "b0c4a2b72610bb1031f2c0ff4eb261465ee9909c17191ff7dac7119e3849e5b5"
+}

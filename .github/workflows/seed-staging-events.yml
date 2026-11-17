@@ -2,8 +2,8 @@ name: Seed staging events
 
 # Phase 31 Decision 21: (re)seed The Abula Experience on a staging instance
 # that's already up. "Staging up" runs the same file on every new instance.
-# Idempotent and staging only, so no confirmation phrase. Production
-# seeding waits for the client's real prices and address.
+# Idempotent and staging only, so no confirmation phrase. Production uses
+# seed-production-events.yml (Phase 32), which adds a draft instead.
 on:
   workflow_dispatch:
 
@@ -43,7 +43,7 @@ jobs:
 
       - name: Seed events
         run: |
-          ssh target "cd /opt/zainstreat && $C exec -T postgres sh -c 'psql -v ON_ERROR_STOP=1 -U \"\$POSTGRES_USER\" -d \"\$POSTGRES_DB\"'" < apps/api/seed-events.sql
+          ssh target "cd /opt/zainstreat && $C exec -T postgres sh -c 'psql -v ON_ERROR_STOP=1 -v publish=true -v upsert=true -v \"address=Staging test address, Almere\" -U \"\$POSTGRES_USER\" -d \"\$POSTGRES_DB\"'" < apps/api/seed-events.sql
 
       - name: Summary
         run: |

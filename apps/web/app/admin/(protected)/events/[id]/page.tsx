@@ -6,6 +6,7 @@ import { AdminEventBookings } from "@/components/admin-event-bookings";
 import { AdminEventForm } from "@/components/admin-event-form";
 import { AdminEventPast } from "@/components/admin-event-past";
 import { AdminEventShare } from "@/components/admin-event-share";
+import { Notice } from "@/components/notice";
 import { getAdminEvent, getAdminEventBookings } from "@/lib/admin-events-api";
 import { toInput } from "@/lib/admin-events";
 import { formatDateTime } from "@/lib/format";
@@ -67,6 +68,13 @@ export default async function AdminEventPage({
           <AdminEventActions id={event.id} published={event.published} archived={event.archived} />
         </div>
       </div>
+
+      {!event.published && !event.archived && (
+        <Notice>
+          This event is a draft. Check the plate prices, set the address and the text, then press Publish.
+          {!event.address.trim() && " The address is still empty."}
+        </Notice>
+      )}
 
       <nav aria-label="Event sections" className="flex flex-wrap gap-1 border-b border-text/10">
         {TABS.map(({ key, label }) => (

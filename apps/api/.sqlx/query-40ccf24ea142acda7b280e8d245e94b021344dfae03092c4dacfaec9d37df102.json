@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, content, price FROM event_plates WHERE event_id = $1 AND is_available ORDER BY position, id",
+  "query": "SELECT id, content, price, options FROM event_plates WHERE event_id = $1 AND is_available",
   "describe": {
     "columns": [
       {
@@ -17,6 +17,11 @@
         "ordinal": 2,
         "name": "price",
         "type_info": "Numeric"
+      },
+      {
+        "ordinal": 3,
+        "name": "options",
+        "type_info": "Jsonb"
       }
     ],
     "parameters": {
@@ -27,8 +32,9 @@
     "nullable": [
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "6eec9e0875ebcd7d126128682487c95fd525c57c3dad72234c02727f524e1835"
+  "hash": "40ccf24ea142acda7b280e8d245e94b021344dfae03092c4dacfaec9d37df102"
 }

@@ -21,11 +21,19 @@ export interface EventList {
   past: EventCardData[];
 }
 
+// A plate's pick-one group, e.g. "Protein: assorted meat or fish" (Phase 32).
+export interface EventOptionGroup {
+  key: string;
+  label: string;
+  choices: { key: string; label: string }[];
+}
+
 export interface EventPlate {
   id: number;
   name: string;
   description: string;
   price: string;
+  options: EventOptionGroup[];
 }
 
 export interface EventPhoto {
@@ -62,6 +70,8 @@ export type BookingStatus = (typeof BOOKING_STATUSES)[number];
 
 export interface BookingGuest {
   plate_name: string | null;
+  // "Fried plantain, Chicken"; empty when the plate has no options.
+  choices: string;
   unit_price: string | null;
 }
 
@@ -96,8 +106,9 @@ export interface CreateBookingRequest {
   customer_name: string;
   customer_email: string;
   customer_phone: string;
-  // A plate id per person; null attends without a meal.
-  guests: (number | null)[];
+  // One per person; a null plate attends without a meal. `choices` maps
+  // each of the plate's group keys to a choice key.
+  guests: { plate_id: number | null; choices: Record<string, string> }[];
   notes: string | null;
   locale: string;
   accept_terms: boolean;

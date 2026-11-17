@@ -5,6 +5,7 @@
 
 use crate::email::{DeliveryRef, EmailConfig, OutgoingEmail};
 use crate::event_emails::{BookingEmail, BookingEmailKind, GuestLine, LocalizedEvent, booking_email};
+use crate::event_options::{choices_summary, parse_choices, parse_groups};
 use crate::order_emails::Locale;
 use crate::payment::{PaymentConfig, payment_reference};
 use crate::push::{OwnerPush, PushConfig};
@@ -94,12 +95,14 @@ pub async fn start_payment(conn: &mut PgConnection, booking_id: i64) -> Result<i
     .fetch_one(&mut *conn)
     .await?;
 
+    // One line per plate and choices (Phase 32 Decision 5).
     let plates = sqlx::query!(
         r#"
-        SELECT plate_name as "plate_name!", unit_price as "unit_price!", COUNT(*)::INTEGER as "quantity!"
+        SELECT plate_name as "plate_name!", unit_price as "unit_price!", choices,
+               COUNT(*)::INTEGER as "quantity!"
         FROM event_booking_guests
         WHERE booking_id = $1 AND plate_name IS NOT NULL
-        GROUP BY plate_name, unit_price
+        GROUP BY plate_name, unit_price, choices
         ORDER BY MIN(position)
         "#,
         booking_id
@@ -140,13 +143,19 @@ pub async fn start_payment(conn: &mut PgConnection, booking_id: i64) -> Result<i
     .await?;
 
     for plate in &plates {
+        let choices = choices_summary(&parse_choices(&plate.choices), &[], Locale::En);
+        let item_name = if choices.is_empty() {
+            format!("{title} — {}", plate.plate_name)
+        } else {
+            format!("{title} — {} ({choices})", plate.plate_name)
+        };
         sqlx::query!(
             r#"
             INSERT INTO order_items (order_id, item_name, unit_price, quantity, subtotal)
             VALUES ($1, $2, $3, $4, $5)
             "#,
             order_id,
-            format!("{title} — {}", plate.plate_name),
+            item_name,
             plate.unit_price,
             plate.quantity,
             plate.unit_price * Decimal::from(plate.quantity),
@@ -290,7 +299,8 @@ pub async fn load_booking(pool: &PgPool, booking_id: i64) -> Result<Option<Booki
 
     let guests: Vec<GuestLine> = sqlx::query!(
         r#"
-        SELECT g.plate_name, g.unit_price, p.content as "plate_content?"
+        SELECT g.plate_name, g.unit_price, g.choices, p.content as "plate_content?",
+               p.options as "plate_options?"
         FROM event_booking_guests g
         LEFT JOIN event_plates p ON p.id = g.plate_id
         WHERE g.booking_id = $1
@@ -305,6 +315,8 @@ pub async fn load_booking(pool: &PgPool, booking_id: i64) -> Result<Option<Booki
         plate_name: guest.plate_name,
         unit_price: guest.unit_price,
         plate_content: guest.plate_content,
+        choices: parse_choices(&guest.choices),
+        plate_options: guest.plate_options.as_ref().map(parse_groups).unwrap_or_default(),
     })
     .collect();
     let total = guests

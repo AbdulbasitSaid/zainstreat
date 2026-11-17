@@ -22,7 +22,7 @@ type Pending = { booking: AdminBooking; action: "offer" | "cancel" };
 function plateSummary(booking: AdminBooking): string {
   const counts = new Map<string, number>();
   for (const guest of booking.guests) {
-    const name = guest.plate_name ?? "No meal";
+    const name = guest.plate_name ? (guest.choices ? `${guest.plate_name} (${guest.choices})` : guest.plate_name) : "No meal";
     counts.set(name, (counts.get(name) ?? 0) + 1);
   }
   return [...counts].map(([name, count]) => `${name} × ${count}`).join(", ");
@@ -79,8 +79,9 @@ export function AdminEventBookings({ eventId, initial }: { eventId: number; init
           ) : (
             <ul className="m-0 flex list-none flex-wrap gap-x-6 gap-y-1 p-0">
               {data.plate_counts.map((count) => (
-                <li key={count.plate_name ?? "none"}>
-                  <span className="font-semibold">{count.plate_name ?? "No meal"}</span>: {count.confirmed}
+                <li key={`${count.plate_name ?? "none"}-${count.choices}`}>
+                  <span className="font-semibold">{count.plate_name ?? "No meal"}</span>
+                  {count.choices && <span> — {count.choices}</span>}: {count.confirmed}
                   {count.held > 0 && <span className="text-text-muted"> + {count.held} held</span>}
                 </li>
               ))}

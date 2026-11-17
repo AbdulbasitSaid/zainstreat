@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT plate_name as \"plate_name!\", unit_price as \"unit_price!\", choices,\n               COUNT(*)::INTEGER as \"quantity!\"\n        FROM event_booking_guests\n        WHERE booking_id = $1 AND plate_name IS NOT NULL\n        GROUP BY plate_name, unit_price, choices\n        ORDER BY MIN(position)\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "plate_name!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "unit_price!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 2,
+        "name": "choices",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 3,
+        "name": "quantity!",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      true,
+      true,
+      false,
+      null
+    ]
+  },
+  "hash": "7fcc827c8bbd98c430eed26ab6fd12d64d799ad3b28233372173c54eff0dd7c5"
+}

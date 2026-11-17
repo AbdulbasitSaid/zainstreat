@@ -3,6 +3,7 @@
 //! same layout: one email with an English, Dutch and French section.
 //! Owner emails stay in `events.rs`, in English.
 
+use crate::event_options::{GuestChoice, OptionGroup, choices_summary};
 use crate::order_emails::Locale;
 use crate::payment::PaymentInstructions;
 use rust_decimal::Decimal;
@@ -31,6 +32,9 @@ pub struct GuestLine {
     /// The plate's per-locale content while it still exists, to show the
     /// name in the reader's language.
     pub plate_content: Option<serde_json::Value>,
+    /// The guest's picks (Phase 32), and the plate's groups to translate them.
+    pub choices: Vec<GuestChoice>,
+    pub plate_options: Vec<OptionGroup>,
 }
 
 impl GuestLine {
@@ -43,6 +47,11 @@ impl GuestLine {
                 .filter(|name| !name.is_empty())
                 .unwrap_or(snapshot),
         )
+    }
+
+    /// "Fried plantain, Chicken", or empty when the plate has no options.
+    pub fn choices_in(&self, locale: Locale) -> String {
+        choices_summary(&self.choices, &self.plate_options, locale)
     }
 }
 
@@ -242,7 +251,10 @@ fn section(locale: Locale, email: &BookingEmail, event: &LocalizedEvent, site_ur
         body.push_str(&format!("\n{}:\n", copy.guests));
         for (index, guest) in email.guests.iter().enumerate() {
             let line = match (guest.name_in(locale), guest.unit_price) {
-                (Some(name), Some(price)) => format!("{name} — €{price}"),
+                (Some(name), Some(price)) => match guest.choices_in(locale) {
+                    choices if choices.is_empty() => format!("{name} — €{price}"),
+                    choices => format!("{name} ({choices}) — €{price}"),
+                },
                 _ => copy.no_meal.to_string(),
             };
             body.push_str(&format!("{} {}: {line}\n", copy.guest, index + 1));
@@ -324,8 +336,30 @@ mod tests {
                 plate_name: Some("Abula".into()),
                 unit_price: Some(Decimal::new(1500, 2)),
                 plate_content: Some(serde_json::json!({ "en": { "name": "Abula" }, "fr": { "name": "Abula maison" } })),
+                choices: Vec::new(),
+                plate_options: Vec::new(),
             },
-            GuestLine { plate_name: None, unit_price: None, plate_content: None },
+            GuestLine {
+                plate_name: None,
+                unit_price: None,
+                plate_content: None,
+                choices: Vec::new(),
+                plate_options: Vec::new(),
+            },
+            GuestLine {
+                plate_name: Some("Jollof".into()),
+                unit_price: Some(Decimal::new(1500, 2)),
+                plate_content: None,
+                choices: vec![
+                    GuestChoice { group: "side".into(), choice: "plantain".into(), label: "Fried plantain".into() },
+                    GuestChoice { group: "protein".into(), choice: "fish".into(), label: "Fish".into() },
+                ],
+                plate_options: crate::event_options::parse_groups(&serde_json::json!([
+                    {"key": "side", "label": {"en": "Side"}, "choices": [
+                        {"key": "plantain", "label": {"en": "Fried plantain", "fr": "Bananes plantain frites"}},
+                        {"key": "salad", "label": {"en": "Salad"}}]}
+                ])),
+            },
         ];
         let payment = PaymentInstructions {
             account_name: "Zain's Treat n More".into(),
@@ -387,5 +421,15 @@ mod tests {
         assert!(body.contains("Gast 2: Aanwezig zonder maaltijd"));
         assert!(body.contains("Invité 1: Abula maison — €15.00"), "translated from the plate");
         assert!(body.contains("Gast 1: Abula — €15.00"), "nl falls back to English");
+    }
+
+    #[test]
+    fn lists_each_guests_choices_translated() {
+        let (_, body) = email(BookingEmailKind::Confirmed { offered: false });
+        assert!(body.contains("Guest 3: Jollof (Fried plantain, Fish) — €15.00"));
+        assert!(
+            body.contains("Invité 3: Jollof (Bananes plantain frites, Fish) — €15.00"),
+            "translated while the choice exists, else the English snapshot"
+        );
     }
 }

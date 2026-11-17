@@ -13,11 +13,28 @@ export const PLATE_TEXT_KEYS = ["name", "description"] as const;
 export type PlateTextKey = (typeof PLATE_TEXT_KEYS)[number];
 export type PlateContent = Record<EventLocale, Record<PlateTextKey, string>>;
 
+// A plate's pick-one option group (Phase 32 Decision 7). New groups and
+// choices have an empty key; the API makes one from the English label and
+// never changes it after, so bookings and counts stay stable.
+export type OptionLabels = Record<EventLocale, string>;
+
+export interface OptionChoiceInput {
+  key: string;
+  label: OptionLabels;
+}
+
+export interface OptionGroupInput {
+  key: string;
+  label: OptionLabels;
+  choices: OptionChoiceInput[];
+}
+
 export interface AdminPlate {
   id: number;
   content: PlateContent;
   price: string;
   is_available: boolean;
+  options: OptionGroupInput[];
 }
 
 export interface AdminPhoto {
@@ -69,6 +86,7 @@ export interface PlateInput {
   content: PlateContent;
   price: string;
   is_available: boolean;
+  options: OptionGroupInput[];
 }
 
 export interface EventInput {
@@ -106,11 +124,13 @@ export interface AdminBooking {
   order_status: string | null;
   payment_reference: string | null;
   total: string;
-  guests: { plate_name: string | null }[];
+  // `choices` is English, e.g. "Fried plantain, Chicken"; empty without options.
+  guests: { plate_name: string | null; choices: string }[];
 }
 
 export interface PlateCount {
   plate_name: string | null;
+  choices: string;
   confirmed: number;
   held: number;
 }
@@ -128,6 +148,10 @@ export const BOOKING_STATUS_LABELS: Record<AdminBookingStatus, string> = {
   confirmed: "Confirmed",
   cancelled: "Cancelled",
 };
+
+export function emptyLabels(): OptionLabels {
+  return { en: "", nl: "", fr: "" };
+}
 
 export function emptyContent<K extends string>(keys: readonly K[]): Record<EventLocale, Record<K, string>> {
   const fields = () => Object.fromEntries(keys.map((key) => [key, ""])) as Record<K, string>;
@@ -153,6 +177,7 @@ export function toInput(event: AdminEvent): EventInput {
       content: plate.content,
       price: plate.price,
       is_available: plate.is_available,
+      options: plate.options,
     })),
   };
 }

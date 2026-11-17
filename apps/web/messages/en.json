@@ -433,7 +433,8 @@
     "openPhoto": "Open photo {n} of {total}",
     "previousPhoto": "Previous photo",
     "nextPhoto": "Next photo",
-    "closePhoto": "Close"
+    "closePhoto": "Close",
+    "chooseGroup": "Choose your {group}:"
   },
   "EventBooking": {
     "labels": {
@@ -451,6 +452,8 @@
     "guestN": "Guest {n}",
     "noMeal": "Attending without a meal",
     "noMealHint": "Still takes a seat",
+    "chooseOption": "Choose your {group}",
+    "optionFallback": "options",
     "mealsClosed": "Meal orders have closed, but you can still RSVP without a meal.",
     "total": "Total",
     "totalFree": "Free",
@@ -472,7 +475,8 @@
       "acceptTerms": "Please confirm you've read the terms.",
       "meals_closed": "Meal orders have closed. Choose \"Attending without a meal\".",
       "unavailable": "One of the plates is no longer available. Please choose again.",
-      "too_many": "That's more people than one booking allows."
+      "too_many": "That's more people than one booking allows.",
+      "option_required": "Please choose your {group}."
     }
   },
   "BookingPage": {

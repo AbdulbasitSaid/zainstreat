@@ -2,7 +2,7 @@ mod common;
 
 use api::events::release_expired_holds;
 use axum::http::StatusCode;
-use common::{get, get_with_cookie, insert_admin, patch_with_cookie, post, post_with_cookie, put_with_cookie, session_cookie};
+use common::{get, get_raw_with_cookie, get_with_cookie, insert_admin, patch_with_cookie, post, post_with_cookie, put_with_cookie, session_cookie};
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
@@ -417,4 +417,153 @@ async fn admin_creates_publishes_and_previews_an_event(pool: PgPool) {
 
     let (status, _) = get(pool.clone(), "/api/admin/events").await;
     assert_eq!(status, StatusCode::UNAUTHORIZED);
+}
+
+/// Phase 32: gives the seeded plates the flyer's option groups.
+async fn add_options(pool: &PgPool, abula: i64, jollof: i64) {
+    let protein_abula = json!([{ "key": "protein", "label": { "en": "Protein", "nl": "Eiwit" }, "choices": [
+        { "key": "assorted-meat", "label": { "en": "Assorted meat", "nl": "Gemengd vlees" } },
+        { "key": "fish", "label": { "en": "Fish", "nl": "Vis" } }] }]);
+    let jollof_groups = json!([
+        { "key": "side", "label": { "en": "Side" }, "choices": [
+            { "key": "fried-plantain", "label": { "en": "Fried plantain", "nl": "Gebakken bakbanaan" } },
+            { "key": "moin-moin", "label": { "en": "Moin moin" } },
+            { "key": "fresh-salad", "label": { "en": "Fresh salad" } }] },
+        { "key": "protein", "label": { "en": "Protein" }, "choices": [
+            { "key": "chicken", "label": { "en": "Chicken", "nl": "Kip" } },
+            { "key": "turkey", "label": { "en": "Turkey" } }] }]);
+    for (id, options) in [(abula, protein_abula), (jollof, jollof_groups)] {
+        sqlx::query("UPDATE event_plates SET options = $2 WHERE id = $1")
+            .bind(id)
+            .bind(options)
+            .execute(pool)
+            .await
+            .unwrap();
+    }
+}
+
+fn guest(plate_id: i64, choices: Value) -> Value {
+    json!({ "plate_id": plate_id, "choices": choices })
+}
+
+#[sqlx::test]
+async fn plate_options_are_public_and_translated(pool: PgPool) {
+    let (_, abula, jollof) = seed_event(&pool, 16).await;
+    add_options(&pool, abula, jollof).await;
+    let (_, event) = get(pool.clone(), &format!("/api/events/{SLUG}?locale=nl")).await;
+    assert_eq!(event["plates"][0]["options"][0]["label"], "Eiwit");
+    assert_eq!(event["plates"][0]["options"][0]["choices"][1], json!({ "key": "fish", "label": "Vis" }));
+    assert_eq!(event["plates"][1]["options"][0]["choices"].as_array().unwrap().len(), 3);
+    assert_eq!(event["plates"][1]["options"][1]["label"], "Protein", "nl falls back to English");
+}
+
+#[sqlx::test]
+async fn choices_become_order_lines_and_show_on_the_booking(pool: PgPool) {
+    let (event_id, abula, jollof) = seed_event(&pool, 16).await;
+    add_options(&pool, abula, jollof).await;
+    let cookie = login(&pool).await;
+
+    let (status, created) = book(
+        &pool,
+        booking(json!([
+            guest(abula, json!({ "protein": "fish" })),
+            guest(abula, json!({ "protein": "assorted-meat" })),
+            guest(jollof, json!({ "protein": "chicken", "side": "fried-plantain" })),
+            guest(abula, json!({ "protein": "assorted-meat" })),
+            { "plate_id": null },
+        ])),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED, "{created}");
+
+    let page = booking_page(&pool, created["token"].as_str().unwrap()).await;
+    assert_eq!(page["total"], "60.00");
+    assert_eq!(page["guests"][0]["choices"], "Vis", "the booking's locale");
+    assert_eq!(page["guests"][2]["choices"], "Gebakken bakbanaan, Kip", "group order");
+    assert_eq!(page["guests"][4]["choices"], "");
+    let items = page["order"]["items"].as_array().unwrap();
+    let lines: Vec<(&str, i64)> = items
+        .iter()
+        .map(|item| (item["item_name"].as_str().unwrap(), item["quantity"].as_i64().unwrap()))
+        .collect();
+    assert_eq!(
+        lines,
+        [
+            ("The Abula Experience — Abula (Fish)", 1),
+            ("The Abula Experience — Abula (Assorted meat)", 2),
+            ("The Abula Experience — Smoky jollof rice with salad (Fried plantain, Chicken)", 1),
+        ]
+    );
+
+    let (_, bookings) =
+        get_with_cookie(pool.clone(), &format!("/api/admin/events/{event_id}/bookings"), Some(&cookie)).await;
+    let counts: Vec<(Value, &str, i64)> = bookings["plate_counts"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| (c["plate_name"].clone(), c["choices"].as_str().unwrap(), c["held"].as_i64().unwrap()))
+        .collect();
+    assert!(counts.contains(&(json!("Abula"), "Assorted meat", 2)), "{counts:?}");
+    assert!(counts.contains(&(json!("Abula"), "Fish", 1)), "{counts:?}");
+    assert_eq!(bookings["bookings"][0]["guests"][2]["choices"], "Fried plantain, Chicken");
+
+    let (status, _, csv) =
+        get_raw_with_cookie(pool.clone(), &format!("/api/admin/events/{event_id}/bookings.csv"), Some(&cookie)).await;
+    assert_eq!(status, StatusCode::OK);
+    let csv = String::from_utf8(csv).unwrap();
+    assert!(csv.contains("Abula (Fish); Abula (Assorted meat); Smoky jollof rice with salad (Fried plantain, Chicken)"), "{csv}");
+}
+
+#[sqlx::test]
+async fn choices_are_validated(pool: PgPool) {
+    let (_, abula, jollof) = seed_event(&pool, 16).await;
+    add_options(&pool, abula, jollof).await;
+    for (guests, message) in [
+        (json!([guest(jollof, json!({ "protein": "chicken" }))]), "option_required"),
+        (json!([guest(abula, json!({ "protein": "beef" }))]), "unknown_option"),
+        (json!([guest(abula, json!({ "protein": "fish", "side": "moin-moin" }))]), "unknown_option"),
+        (json!([{ "plate_id": null, "choices": { "protein": "fish" } }]), "unknown_option"),
+        (json!([abula]), "option_required"),
+    ] {
+        let (status, body) = book(&pool, booking(guests.clone())).await;
+        assert_eq!(status, StatusCode::BAD_REQUEST, "{guests}");
+        assert!(body.to_string().contains(message), "{guests}: {body}");
+    }
+    let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM event_bookings").fetch_one(&pool).await.unwrap();
+    assert_eq!(count, 0);
+}
+
+#[sqlx::test]
+async fn admin_saves_plate_options_and_needs_an_address_to_publish(pool: PgPool) {
+    let cookie = login(&pool).await;
+    let mut input = json!({
+        "content": { "en": { "title": "Jollof Sunday" } },
+        "starts_at": "2026-12-27T14:00",
+        "area": "Almere",
+        "address": ADDRESS,
+        "capacity": 16,
+        "max_party_size": 6,
+        "payment_hold_hours": 48,
+        "plates": [{ "id": null, "content": { "en": { "name": "Jollof" } }, "price": "15.00", "is_available": true,
+                     "options": [{ "label": { "en": "Protein" }, "choices": [{ "label": { "en": "Chicken" } }] }] }],
+    });
+    let (status, body, _) = post_with_cookie(pool.clone(), "/api/admin/events", input.clone(), Some(&cookie)).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST, "one choice isn't a choice");
+    assert!(body.to_string().contains("plates[0].options[0].choices"), "{body}");
+
+    input["plates"][0]["options"][0]["choices"] =
+        json!([{ "label": { "en": "Chicken" } }, { "label": { "en": "Turkey", "nl": "Kalkoen" } }]);
+    let (status, created, _) = post_with_cookie(pool.clone(), "/api/admin/events", input, Some(&cookie)).await;
+    assert_eq!(status, StatusCode::CREATED, "{created}");
+    let options = &created["plates"][0]["options"][0];
+    assert_eq!(options["key"], "protein");
+    assert_eq!(options["choices"][1]["key"], "turkey");
+    assert_eq!(options["choices"][1]["label"]["nl"], "Kalkoen");
+
+    let id = created["id"].as_i64().unwrap();
+    sqlx::query("UPDATE events SET address = '' WHERE id = $1").bind(id).execute(&pool).await.unwrap();
+    let (status, body, _) =
+        post_with_cookie(pool.clone(), &format!("/api/admin/events/{id}/publish"), json!({}), Some(&cookie)).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert!(body.to_string().contains("address"), "{body}");
 }
