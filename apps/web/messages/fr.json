@@ -384,5 +384,11 @@
   "ScrollCue": {
     "label": "Défiler",
     "ariaLabel": "Faites défiler pour en voir plus"
+  },
+  "CartFeedback": {
+    "added": "<strong>{name}</strong> ajouté à votre commande",
+    "addedOption": "<strong>{name} ({option})</strong> ajouté à votre commande",
+    "viewCart": "Voir le panier",
+    "dismiss": "Fermer"
   }
 }

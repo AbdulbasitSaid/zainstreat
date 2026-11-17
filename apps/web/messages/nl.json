@@ -384,5 +384,11 @@
   "ScrollCue": {
     "label": "Scroll",
     "ariaLabel": "Scroll naar beneden voor meer"
+  },
+  "CartFeedback": {
+    "added": "<strong>{name}</strong> toegevoegd aan je bestelling",
+    "addedOption": "<strong>{name} ({option})</strong> toegevoegd aan je bestelling",
+    "viewCart": "Bekijk winkelwagen",
+    "dismiss": "Sluiten"
   }
 }

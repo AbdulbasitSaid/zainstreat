@@ -217,18 +217,22 @@ SES SMTP; without credentials the API logs every send as a no-op.
 - **Receiving.** The domain's DNS is a **Lightsail DNS zone**
   (Lightsail → Domains & DNS) in the same AWS account as SES and the
   servers. Namecheap is only the registrar. Its `awsdns` nameservers look
-  like Route 53, but there's no Route 53 hosted zone. Inbound mail is
-  forwarded by **ImprovMX** (free plan):
-  - Apex records: `MX 10 mx1.improvmx.com`, `MX 20 mx2.improvmx.com`
-    (in the Lightsail console the priority is its own field), and the
-    only SPF TXT record
-    `v=spf1 include:spf.improvmx.com include:amazonses.com ~all`.
-    DMARC stays `p=none`. SES's DKIM signature survives forwarding, so
-    forwarded notifications pass DMARC.
-  - The ImprovMX alias `contact` forwards to the developer's inbox for
-    now. **Before production launch**, change the alias target to the
-    owner's inbox in the ImprovMX dashboard. It's a dashboard edit, with
-    no code or DNS change.
+  like Route 53, but there's no Route 53 hosted zone. Since 2026-11-17,
+  `contact@` is a real mailbox on **Namecheap Private Email**, with no
+  forwarding (ImprovMX was removed):
+  - Apex records: `MX 10 mx1.privateemail.com`, `MX 10
+    mx2.privateemail.com` (in the Lightsail console the priority is its
+    own field), and the only SPF TXT record
+    `v=spf1 include:spf.privateemail.com include:amazonses.com ~all`.
+    Keep `amazonses.com` in it, or the site's own emails fail SPF.
+    DMARC stays `p=none`.
+  - Mail-app setup: `mail`, `autodiscover` and `autoconfig` are CNAMEs
+    to `privateemail.com`, plus `SRV _autodiscover._tcp 0 0 443
+    privateemail.com`. Webmail is at `https://privateemail.com`.
+  - **DKIM for mail sent from the Private Email mailbox** is a TXT record
+    `default._domainkey` with the value from the Namecheap dashboard
+    (Private Email → Manage → DKIM). It's separate from SES's three DKIM
+    CNAMEs, which sign the site's own emails. Never remove those.
 - **Failed customer emails.** Each customer email is recorded in
   `email_deliveries` (`queued` → `sent`/`failed`). If the latest one for
   an order or quote failed, or is still unconfirmed after 5 minutes, the

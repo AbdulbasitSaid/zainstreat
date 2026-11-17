@@ -35,6 +35,23 @@ function getIsDesktopSnapshot() {
   return window.matchMedia(DESKTOP_QUERY).matches;
 }
 
+// The cart link. `data-cart-target` is where add-to-cart flies to; there's
+// one per breakpoint and only the visible one is used (Phase 30).
+function HeaderCartLink({ label }: { label: string }) {
+  return (
+    <Link
+      href="/cart"
+      aria-label={label}
+      data-cart-target
+      className="group/liquid relative isolate inline-flex h-10 w-10 items-center justify-center rounded-full text-primary hover:bg-background-soft"
+    >
+      <CartIcon className="h-5 w-5" />
+      <CartBadge />
+      <LiquidSurface pathClassName={GHOST_LIQUID_PATH} splashClassName="fill-primary" />
+    </Link>
+  );
+}
+
 export function SiteHeader({ logoSrc }: { logoSrc?: string | null }) {
   const t = useTranslations("SiteHeader");
   const pathname = usePathname();
@@ -100,18 +117,22 @@ export function SiteHeader({ logoSrc }: { logoSrc?: string | null }) {
     <header className="sticky top-0 z-50 bg-cream/90 shadow-[0_1px_0_rgba(43,17,20,0.08)] backdrop-blur-md">
       <nav className="container flex items-center justify-between py-3.5" aria-label={t("navLabel")}>
         <Logo src={logoSrc} />
-        <button
-          className="group/liquid relative isolate z-10 inline-flex h-10 w-10 flex-col items-center justify-center gap-1.5 rounded-full text-primary min-[769px]:hidden focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-accent focus-visible:outline-offset-2"
-          aria-expanded={isMenuOpen}
-          aria-controls="primary-navigation"
-          aria-label={t(isMenuOpen ? "closeMenu" : "openMenu")}
-          onClick={() => setIsMenuOpen((open) => !open)}
-        >
-          <span ref={bar1Ref} aria-hidden="true" className="block h-0.5 w-6 rounded-full bg-current" />
-          <span ref={bar2Ref} aria-hidden="true" className="block h-0.5 w-6 rounded-full bg-current" />
-          <span ref={bar3Ref} aria-hidden="true" className="block h-0.5 w-6 rounded-full bg-current" />
-          <LiquidSurface pathClassName={GHOST_LIQUID_PATH} splashClassName="fill-primary" />
-        </button>
+        <div className="flex items-center gap-2 min-[769px]:hidden">
+          {/* Always visible on phones (Phase 30 Decision 1). */}
+          <HeaderCartLink label={t("cart")} />
+          <button
+            className="group/liquid relative isolate z-10 inline-flex h-10 w-10 flex-col items-center justify-center gap-1.5 rounded-full text-primary min-[769px]:hidden focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-accent focus-visible:outline-offset-2"
+            aria-expanded={isMenuOpen}
+            aria-controls="primary-navigation"
+            aria-label={t(isMenuOpen ? "closeMenu" : "openMenu")}
+            onClick={() => setIsMenuOpen((open) => !open)}
+          >
+            <span ref={bar1Ref} aria-hidden="true" className="block h-0.5 w-6 rounded-full bg-current" />
+            <span ref={bar2Ref} aria-hidden="true" className="block h-0.5 w-6 rounded-full bg-current" />
+            <span ref={bar3Ref} aria-hidden="true" className="block h-0.5 w-6 rounded-full bg-current" />
+            <LiquidSurface pathClassName={GHOST_LIQUID_PATH} splashClassName="fill-primary" />
+          </button>
+        </div>
         <ul
           ref={navListRef}
           id="primary-navigation"
@@ -150,16 +171,9 @@ export function SiteHeader({ logoSrc }: { logoSrc?: string | null }) {
               </li>
             );
           })}
-          <li className="px-4 py-2 min-[769px]:px-0 min-[769px]:py-0">
-            <Link
-              href="/cart"
-              aria-label={t("cart")}
-              className="group/liquid relative isolate inline-flex h-10 w-10 items-center justify-center rounded-full text-primary hover:bg-background-soft"
-            >
-              <CartIcon className="h-5 w-5" />
-              <CartBadge />
-              <LiquidSurface pathClassName={GHOST_LIQUID_PATH} splashClassName="fill-primary" />
-            </Link>
+          {/* Phones get their own cart link beside the menu button. */}
+          <li className="px-4 py-2 max-[768px]:hidden min-[769px]:px-0 min-[769px]:py-0">
+            <HeaderCartLink label={t("cart")} />
           </li>
           <li className="px-4 py-2 min-[769px]:px-0 min-[769px]:py-0">
             <LocaleToggle />

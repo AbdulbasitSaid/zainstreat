@@ -14,6 +14,7 @@ import { LiquidScroll } from "@/components/liquid-scroll";
 import { WhatsAppFloatButton } from "@/components/whatsapp-float-button";
 import { PreviewBridge } from "@/components/preview-bridge";
 import { CartProvider } from "@/lib/cart-context";
+import { CartFeedbackProvider } from "@/lib/cart-feedback";
 import { getSiteContent } from "@/lib/api";
 import { PreviewProvider } from "@/lib/preview-context";
 import { siteImage } from "@/lib/site-content";
@@ -59,18 +60,20 @@ export default async function LocaleLayout({
         <NextIntlClientProvider>
           <PreviewProvider preview={preview}>
             <CartProvider>
-              <MotionProvider />
-              <CustomCursor />
-              <UtilityBar />
-              <SiteHeader logoSrc={siteImage(content, "logo")} />
-              <PageTransition>{children}</PageTransition>
-              <SiteFooter />
-              <WhatsAppFloatButton />
-              <LiquidScroll />
-              {/* The admin's preview frame navigates on its own terms. */}
-              {!preview && <LiquidPageTransition />}
-              {/* Draft mode only (cms host): no extra JS for visitors. */}
-              {preview && <PreviewBridge />}
+              <CartFeedbackProvider>
+                <MotionProvider />
+                <CustomCursor />
+                <UtilityBar />
+                <SiteHeader logoSrc={siteImage(content, "logo")} />
+                <PageTransition>{children}</PageTransition>
+                <SiteFooter />
+                <WhatsAppFloatButton />
+                <LiquidScroll />
+                {/* The admin's preview frame navigates on its own terms. */}
+                {!preview && <LiquidPageTransition />}
+                {/* Draft mode only (cms host): no extra JS for visitors. */}
+                {preview && <PreviewBridge />}
+              </CartFeedbackProvider>
             </CartProvider>
           </PreviewProvider>
         </NextIntlClientProvider>
