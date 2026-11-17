@@ -4,63 +4,63 @@
 
 ### Build and tests
 
-- [ ] `cargo test` and `cargo clippy -- -D warnings` pass in `apps/api`,
+- [x] `cargo test` and `cargo clippy -- -D warnings` pass in `apps/api`,
       including the new choices, publish-address and plate-count tests.
-- [ ] `apps/api/.sqlx/` is regenerated and the Docker build passes with
+- [x] `apps/api/.sqlx/` is regenerated and the Docker build passes with
       `SQLX_OFFLINE=true`.
-- [ ] The new migration applies on top of Phase 31 and its down
+- [x] The new migration applies on top of Phase 31 and its down
       migration reverts it. Phase 31's migration file is unchanged
       (`git diff master -- apps/api/migrations/20261117120000_events.*`
       is empty).
-- [ ] `pnpm check:messages`, `pnpm lint` and `pnpm build` pass in
+- [x] `pnpm check:messages`, `pnpm lint` and `pnpm build` pass in
       `apps/web`, with no `any`. No new packages.
-- [ ] `/validate` passes.
+- [x] `/validate` passes.
 
 ### Plate options
 
-- [ ] `curl /api/events/the-abula-experience-2026?locale=nl` lists The
+- [x] `curl /api/events/the-abula-experience-2026?locale=nl` lists The
       Classic Abula with a protein group (2 choices) and The Smoky Jollof
       Experience with side (3) and protein (2), labels in Dutch.
-- [ ] The event page's plate cards show the choices in en, nl and fr.
-- [ ] In the form, picking a plate shows its groups; booking without a
+- [x] The event page's plate cards show the choices in en, nl and fr.
+- [x] In the form, picking a plate shows its groups; booking without a
       pick shows an announced error. Switching plate clears the picks.
       Everything works by keyboard.
-- [ ] Booking 3 guests (Abula + fish, Abula + assorted meat, Jollof +
+- [x] Booking 3 guests (Abula + fish, Abula + assorted meat, Jollof +
       fried plantain + chicken) gives a €45 invoice with three order
       lines named with their choices.
-- [ ] Missing, unknown or extra choices, or choices on a no-meal guest,
+- [x] Missing, unknown or extra choices, or choices on a no-meal guest,
       give `400`.
-- [ ] The booking page and emails show each guest's choices in the
+- [x] The booking page and emails show each guest's choices in the
       booking's language.
-- [ ] The admin bookings tab splits counts by choice ("The Classic
+- [x] The admin bookings tab splits counts by choice ("The Classic
       Abula — Fish: 1 held"), and the CSV lists each plate with its choices.
-- [ ] In admin, a plate's groups and choices can be added, renamed per
+- [x] In admin, a plate's groups and choices can be added, renamed per
       locale, reordered and removed. A group with one choice won't save.
-- [ ] Bookings made before this phase still show without choices.
+- [x] Bookings made before this phase still show without choices.
 
 ### Cover photo
 
-- [ ] `apps/web/public/images/events/abula-experience.jpg` is the
+- [x] `apps/web/public/images/events/abula-experience.jpg` is the
       client's Abula bowl at 1000×750, with no phone buttons or green
       markings.
-- [ ] It looks right on the event page (4:3), the event card (16:10) and
+- [x] It looks right on the event page (4:3), the event card (16:10) and
       as the Open Graph image. The flyer image is nowhere in the repo.
 
 ### Seed
 
-- [ ] On a fresh local DB, the production-mode seed
+- [x] On a fresh local DB, the production-mode seed
       (`publish=false upsert=false address=''`) creates the event as a
       draft with area Almere, an empty address and the two plates with
       options. It's not on `/en/events`.
-- [ ] Publishing it in admin is refused until an address is set.
-- [ ] Running the production-mode seed again after editing a price and
+- [x] Publishing it in admin is refused until an address is set.
+- [x] Running the production-mode seed again after editing a price and
       the address in admin changes nothing.
-- [ ] The staging-mode seed publishes it and refreshes content, and on
+- [x] The staging-mode seed publishes it and refreshes content, and on
       an event with bookings updates plate content and options without
       touching prices or bookings.
-- [ ] `seed-staging-events.yml` runs green on staging, and the staging
+- [x] `seed-staging-events.yml` runs green on staging, and the staging
       event shows the new plates, choices and cover photo.
-- [ ] `seed-production-events.yml` refuses a wrong confirmation phrase,
+- [x] `seed-production-events.yml` refuses a wrong confirmation phrase,
       and stops with "Promote Phase 32 to production first." when the
       tables or column are missing.
 
