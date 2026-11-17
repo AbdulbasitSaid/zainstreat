@@ -1,11 +1,13 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { LiquidSurface } from "@/components/liquid-surface";
 import { useCart } from "@/lib/cart-context";
+import { useCartFeedback } from "@/lib/cart-feedback";
 import { formatPrice } from "@/lib/format";
 import { PREVIEW_DISABLED_TITLE, usePreview } from "@/lib/preview-context";
+import { useReducedMotion } from "@/lib/use-reduced-motion";
 import type { MenuItem, MenuItemPriceOption } from "@/lib/api";
 
 const FOCUS_CLASSES =
@@ -27,17 +29,26 @@ function addButtonClasses(onBrand: boolean) {
   );
 }
 
-// The "+" plus the button's liquid surface (mirrors addButtonClasses'
-// fill, border and hover inversion).
-function AddGlyph({ onBrand }: { onBrand: boolean }) {
+// How long the "✓" replaces the "+" after an add (Phase 30 Decision 3).
+const ADDED_MS = 1200;
+
+// The "+" (or "✓" just after an add) plus the button's liquid surface
+// (mirrors addButtonClasses' fill, border and hover inversion).
+function AddGlyph({ onBrand, checked = false }: { onBrand: boolean; checked?: boolean }) {
   return (
     <>
-      <span
-        aria-hidden="true"
-        className="inline-block transition-transform duration-500 ease-out-expo group-hover/add:rotate-360"
-      >
-        +
-      </span>
+      {checked ? (
+        <span aria-hidden="true" className="inline-block text-lg motion-safe:animate-add-pop">
+          ✓
+        </span>
+      ) : (
+        <span
+          aria-hidden="true"
+          className="inline-block transition-transform duration-500 ease-out-expo group-hover/add:rotate-360"
+        >
+          +
+        </span>
+      )}
       <LiquidSurface
         strokeWidth={2}
         pathClassName={`transition-[fill] duration-200 ${
@@ -54,13 +65,29 @@ function AddGlyph({ onBrand }: { onBrand: boolean }) {
 export function AddToCartControls({ item, onBrand = false }: { item: MenuItem; onBrand?: boolean }) {
   const t = useTranslations("MenuPage");
   const { addLine } = useCart();
+  const { announceAdd } = useCartFeedback();
+  const reducedMotion = useReducedMotion();
   const preview = usePreview();
   const dialogRef = useRef<HTMLDialogElement>(null);
+  // The tile's own button: the ✓, the ring and the fly all start here, even
+  // for an option chosen in the dialog (which closes straight away).
+  const anchorRef = useRef<HTMLButtonElement>(null);
+  const addedTimer = useRef<number | null>(null);
+  // Increments per add: shows the ✓ and replays the ring (its React key).
+  const [addCount, setAddCount] = useState(0);
+  const [justAdded, setJustAdded] = useState(false);
   const previewProps = preview ? { disabled: true, title: PREVIEW_DISABLED_TITLE } : {};
+
+  useEffect(
+    () => () => {
+      if (addedTimer.current !== null) window.clearTimeout(addedTimer.current);
+    },
+    [],
+  );
 
   if (!item.is_available) return null;
 
-  const addOption = (option: MenuItemPriceOption | null, unitPrice: string) =>
+  const addOption = (option: MenuItemPriceOption | null, unitPrice: string) => {
     addLine({
       itemId: item.id,
       priceOptionId: option?.id ?? null,
@@ -69,18 +96,46 @@ export function AddToCartControls({ item, onBrand = false }: { item: MenuItem; o
       unitPrice,
       imageUrl: item.image_url,
     });
+    const anchor = anchorRef.current;
+    if (anchor) {
+      announceAdd({
+        name: item.name,
+        optionLabel: option?.label ?? null,
+        imageUrl: item.image_url,
+        origin: anchor.getBoundingClientRect(),
+      });
+    }
+    setAddCount((count) => count + 1);
+    setJustAdded(true);
+    if (addedTimer.current !== null) window.clearTimeout(addedTimer.current);
+    addedTimer.current = window.setTimeout(() => setJustAdded(false), ADDED_MS);
+  };
+
+  // A ring bursting out of the button, replayed per add (off with reduced motion).
+  const ring =
+    justAdded && !reducedMotion ? (
+      <span
+        key={addCount}
+        aria-hidden="true"
+        className={`pointer-events-none absolute inset-0 -z-10 rounded-full border-2 animate-add-ring ${
+          onBrand ? "border-white" : "border-primary"
+        }`}
+      />
+    ) : null;
 
   if (item.price !== null) {
     const flatPrice = item.price;
     return (
       <button
+        ref={anchorRef}
         type="button"
         aria-label={`${t("addToCart")}: ${item.name}`}
         className={addButtonClasses(onBrand)}
         {...previewProps}
         onClick={() => addOption(null, flatPrice)}
       >
-        <AddGlyph onBrand={onBrand} />
+        <AddGlyph onBrand={onBrand} checked={justAdded} />
+        {ring}
       </button>
     );
   }
@@ -93,12 +148,14 @@ export function AddToCartControls({ item, onBrand = false }: { item: MenuItem; o
       <button
         type="button"
         aria-label={`${t("chooseOption")}: ${item.name}`}
+        ref={anchorRef}
         aria-haspopup="dialog"
         className={addButtonClasses(onBrand)}
         {...previewProps}
         onClick={() => dialogRef.current?.showModal()}
       >
-        <AddGlyph onBrand={onBrand} />
+        <AddGlyph onBrand={onBrand} checked={justAdded} />
+        {ring}
       </button>
       <dialog
         ref={dialogRef}

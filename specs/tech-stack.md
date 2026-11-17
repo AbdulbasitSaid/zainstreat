@@ -361,9 +361,10 @@ rationale) — the `minio` container ran unused since Phase 1 until then:
   posture as Phase 2's GHCR PAT), not something this phase's code does.
 
 - **Phase 25:** sender and owner-notification address
-  `contact@zainstreat.com`. Inbound mail to it is forwarded by
-  **ImprovMX** (free; MX and SPF records in the Route 53 zone), chosen
-  over Namecheap forwarding because the domain's DNS isn't on Namecheap.
+  `contact@zainstreat.com`. Inbound mail to it was first forwarded by
+  ImprovMX. Since 2026-11-17 it's a real mailbox on **Namecheap Private
+  Email** (MX, SPF and autodiscover records in the Lightsail DNS zone), so
+  there's no forwarding.
   Customer emails get `Reply-To: contact@`, and owner notifications get
   the customer's address. An optional `EMAIL_SUBJECT_PREFIX` tags
   staging mail. Customer email outcomes are recorded in
@@ -581,7 +582,7 @@ or recreated repo can't match.
 | Admin auth | argon2 + tower-sessions (Postgres-backed sessions) |
 | Image/object storage | MinIO (S3-compatible, self-hosted) via `aws-sdk-s3`, server-side upload/serve proxy (Phase 14) |
 | Image cropping | `react-easy-crop` — client-side fixed 1:1 crop before upload (Phase 14) |
-| Email | lettre (SMTP transport) + Amazon SES, fire-and-forget (Phase 17); inbound `contact@` via ImprovMX forwarding (Phase 25) |
+| Email | lettre (SMTP transport) + Amazon SES, fire-and-forget (Phase 17); inbound `contact@` is a Namecheap Private Email mailbox (2026-11-17) |
 | Spam/abuse mitigation | `tower_governor` (per-IP rate limit, custom `X-Forwarded-For` key extractor) + honeypot field (Phase 15) |
 | WhatsApp | `wa.me` deep links |
 | Admin PWA / push | Static manifest + hand-written service worker on `cms.<host>`; Web Push with VAPID from the API via `web-push-native` + `reqwest` (rustls) (Phase 27) |

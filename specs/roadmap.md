@@ -525,6 +525,21 @@ after 2026-10-18, so this phase may need to happen before Phases 27–28.
 - Update `docs/deployment.md`. Decommission the old instance only after
   the new one is verified live.
 
+## Phase 30 — Add-to-Cart Feedback
+
+Planned 2026-11-17 (see
+`specs/2026-11-17-phase-30-add-to-cart-feedback/requirement.md`). Raised
+after Phase 27: adding to the cart gave no visible feedback on mobile or
+desktop. On phones the cart icon was hidden inside the menu.
+
+- An always-visible cart icon with its count in the mobile header, next
+  to the menu button.
+- On add: a splash and a ✓ on the button, the dish photo flying into the
+  cart icon, and the cart count bouncing.
+- An "added to your order" toast with a View cart link, in en/nl/fr,
+  announced to screen readers.
+- With reduced motion: no fly or bounce, just the ✓ and the toast.
+
 ## Later — iDEAL Payments
 
 Agreed in the 2026-10-18 call but blocked on the client opening a

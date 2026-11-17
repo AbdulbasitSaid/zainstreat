@@ -30,6 +30,9 @@
   --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1);
   --animate-marquee: marquee-scroll 26s linear infinite;
   --animate-scroll-drip: scroll-drip 1.8s var(--ease-out-expo) infinite;
+  /* Add-to-cart feedback (Phase 30 Decision 3). */
+  --animate-add-pop: add-pop 220ms var(--ease-out-expo);
+  --animate-add-ring: add-ring 450ms ease-out forwards;
 }
 
 /* The wheel of .scroll-cue's mouse dripping down and fading, on a loop. */
@@ -77,6 +80,26 @@
   from {
     opacity: 0;
     transform: translateY(-6px) scale(0.9);
+  }
+}
+
+/* The add button's "+" → "✓" swap. */
+@keyframes add-pop {
+  from {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+}
+
+/* A ring bursting out of the add button. */
+@keyframes add-ring {
+  from {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  to {
+    transform: scale(2.2);
+    opacity: 0;
   }
 }
 

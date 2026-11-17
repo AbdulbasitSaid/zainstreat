@@ -384,5 +384,11 @@
   "ScrollCue": {
     "label": "Scroll",
     "ariaLabel": "Scroll down to see more"
+  },
+  "CartFeedback": {
+    "added": "<strong>{name}</strong> added to your order",
+    "addedOption": "<strong>{name} ({option})</strong> added to your order",
+    "viewCart": "View cart",
+    "dismiss": "Close"
   }
 }
