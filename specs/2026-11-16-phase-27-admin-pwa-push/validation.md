@@ -1,5 +1,10 @@
 # Phase 27 — Installable Admin (PWA) & Push Notifications: Validation
 
+Partly checked on 2026-11-16/17, against the local Docker stack and
+`cargo test`. Ticked items were verified there. The rest need staging,
+production's keys, a real browser or the owner's iPhone. Deviations are in
+plan.md's "Implementation notes".
+
 ## Pass/fail checklist
 
 ### Installable admin (Group 1)
@@ -12,30 +17,31 @@
       `<link rel="manifest" href="/admin.webmanifest">`,
       `apple-touch-icon`, `apple-mobile-web-app-capable`,
       `theme-color` `#72123C` and `viewport-fit=cover`.
-- [ ] The public site's HTML (`curl -s https://<staging-host>/en`) has
+- [x] The public site's HTML (`curl -s https://<staging-host>/en`) has
       **no** `rel="manifest"` link and no `apple-mobile-web-app-capable`.
 - [ ] `curl -sI https://cms.<staging-host>/sw.js` returns `200` with a
       JavaScript content type.
 - [ ] Chrome DevTools → Application on `cms.<staging-host>`: the manifest
       parses with no errors, the service worker is "activated and
       running" with scope `/`, and Chrome offers to install the app.
-- [ ] The service worker has no `fetch` listener
+- [x] The service worker has no `fetch` listener
       (`grep -c "\"fetch\"" apps/web/public/sw.js` → `0`).
 - [ ] The Settings nav item is a link and `cms.<host>/settings` renders.
 
 ### Subscriptions API (Group 2)
 
-- [ ] `cargo test` passes, including `tests/admin_push.rs`.
-- [ ] `cargo clippy --all-targets -- -D warnings` passes.
+- [x] `cargo test` passes, including `tests/admin_push.rs`.
+- [x] `cargo clippy --all-targets -- -D warnings` passes.
 - [ ] `curl -s -o /dev/null -w '%{http_code}' https://api.<staging-host>/api/admin/push/subscriptions`
       without a cookie → `401`.
-- [ ] `cargo run --bin generate_vapid_keys` prints a 65-byte (87-char)
+- [x] `cargo run --bin generate_vapid_keys` prints a 65-byte (87-char)
       public key and a 32-byte (43-char) private key, both unpadded
       base64url.
-- [ ] With the VAPID variables unset, the API starts, logs that push is
+- [x] With the VAPID variables unset, the API starts, logs that push is
       off once, and `GET /api/admin/push/public-key` (signed in) → `404`.
 - [ ] `apps/api/Cargo.lock` has no `openssl` or `openssl-sys` package
-      (`grep -c 'name = "openssl' apps/api/Cargo.lock` → `0`), and
+      (`grep -cE 'name = "openssl(-sys)?"$' apps/api/Cargo.lock` → `0`;
+      `openssl-probe`, a pure-Rust certificate path finder, is fine), and
       `docker compose build api` succeeds unchanged.
 - [ ] Admin session cookie lifetime: after login, the session row's
       expiry is about 30 days ahead
@@ -43,13 +49,13 @@
 
 ### Sending (Groups 3, 4)
 
-- [ ] The unit tests for each message builder, truncation and the
+- [x] The unit tests for each message builder, truncation and the
       `/`-path check pass.
-- [ ] The integration test with a local listener shows one encrypted
+- [x] The integration test with a local listener shows one encrypted
       `POST` per subscription with `TTL: 86400`, `Urgency: high`, a
       `vapid t=…, k=…` authorization header, and the row deleted on
       `410`.
-- [ ] With push configured and no `EMAIL_BUSINESS_NOTIFY_ADDRESS`, a new
+- [x] With push configured and no `EMAIL_BUSINESS_NOTIFY_ADDRESS`, a new
       order still sends a push (Decision 7).
 - [ ] A push to an unreachable endpoint doesn't slow `POST /api/orders`:
       it still answers in well under a second. The API logs a `warn!`
@@ -62,7 +68,7 @@ then the client on their iPhone.
 
 #### Setup
 
-- [ ] `gh variable list --env staging` shows `VAPID_PUBLIC_KEY` and
+- [x] `gh variable list --env staging` shows `VAPID_PUBLIC_KEY` and
       `VAPID_SUBJECT=mailto:contact@zainstreat.com`, and
       `gh secret list --env staging` shows `VAPID_PRIVATE_KEY`.
       Production has its own, different pair.
@@ -127,16 +133,16 @@ then the client on their iPhone.
 
 ### Repo and docs (Group 6)
 
-- [ ] `docker-compose.yml`, `_deploy.yml` and `.env.example` include the
+- [x] `docker-compose.yml`, `_deploy.yml` and `.env.example` include the
       three VAPID variables. The private key is only ever read from
       `secrets.`.
-- [ ] `git grep -n "VAPID_PRIVATE_KEY=" -- ':!*.example'` shows no
+- [x] `git grep -n "VAPID_PRIVATE_KEY=" -- ':!*.example'` shows no
       real key anywhere in the repo.
-- [ ] `specs/tech-stack.md` has the "Admin PWA & Web Push" section and
+- [x] `specs/tech-stack.md` has the "Admin PWA & Web Push" section and
       Summary Table row, and says 30-day sessions.
-- [ ] `docs/deployment.md` covers the VAPID keys, rotation and the
+- [x] `docs/deployment.md` covers the VAPID keys, rotation and the
       staging reinstall. The owner how-to exists.
-- [ ] `pnpm lint`, `pnpm build` and `pnpm check:messages` pass in
+- [x] `pnpm lint`, `pnpm build` and `pnpm check:messages` pass in
       `apps/web`, with no `any`.
 - [ ] `/validate` passes.
 

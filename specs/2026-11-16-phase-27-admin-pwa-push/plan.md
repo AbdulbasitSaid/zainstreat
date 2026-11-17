@@ -447,8 +447,22 @@ rounds.
   again (`lib/push-client.ts` `subscribe`).
 - **Step 6.1 done early** (`docker-compose.yml`, `.env.example`) so push
   can be tried locally. A local dev key pair is in the gitignored root
-  `.env`. `_deploy.yml` and the GitHub Environment keys (6.1–6.3) are
-  still to do.
+  `.env`.
+
+2026-11-17, Group 6:
+
+- `_deploy.yml` renders the three VAPID variables. The private key comes
+  from `secrets.` only, and none are in `required`.
+- **Staging's** key pair is set (`VAPID_PUBLIC_KEY` and `VAPID_SUBJECT`
+  variables, `VAPID_PRIVATE_KEY` secret). The private key was piped from
+  `generate_vapid_keys` straight into `gh secret set` and never printed.
+  **Production's** pair was set the same way after the user approved it
+  (2026-11-17). It's a different pair from staging's. It takes effect at
+  the next Promote, with the 6.3 allow list.
+- `docs/deployment.md` has a "Push notifications and the admin app"
+  section and a staging note. The owner how-to is the new
+  `docs/admin-app.md` (iPhone, Android, computer, what each notification
+  means, troubleshooting).
 - `tests/admin_push.rs` runs a fake push service on `127.0.0.1` and
   decrypts the payload with the browser-side key. It covers headers,
   payload, badge, `last_success_at`, and deleting a row on `410`.
