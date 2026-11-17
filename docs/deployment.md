@@ -75,6 +75,9 @@ database's password — only do that as part of a deliberate rotation.
 - Staging sends `X-Robots-Tag: noindex` everywhere. It notifies
   `contact@zainstreat.com` like production, but its
   `EMAIL_SUBJECT_PREFIX` (`[STAGING] `) tags every subject (Phase 25).
+- Each new staging instance has a new admin origin, so the installed admin
+  app and its push notifications need setting up again (see "Push
+  notifications and the admin app").
 - If sslip.io is down, set the `STAGING_DNS_SUFFIX` repository variable to
   `nip.io` and run Staging up again.
 
@@ -252,6 +255,48 @@ SES SMTP; without credentials the API logs every send as a no-op.
   version. It uses Next.js draft mode on the cms host only. If a frame
   says "Preview couldn't start here", log in again or use "Open in a new
   tab".
+
+## Push notifications and the admin app (Phase 27)
+
+- **What it does.** The admin at `cms.<host>` can be installed as an app
+  (Home Screen on iPhone, Chrome's "Install app" elsewhere). From
+  **Settings** each device can turn on push notifications for new orders,
+  quote acceptances, payment claims, catering enquiries, quote declines
+  and contact messages. Tapping one opens that page in the admin. Every
+  admin device gets every event. Email keeps working alongside. A failed
+  push is only logged.
+- **Keys.** The API signs pushes with a VAPID key pair: `VAPID_PUBLIC_KEY`
+  (variable), `VAPID_PRIVATE_KEY` (secret) and `VAPID_SUBJECT`
+  (`mailto:contact@zainstreat.com`, variable). Each environment has its
+  own pair. If any of the three is unset, push is off and Settings says
+  "Notifications aren't set up on this server". A pair that doesn't match
+  is refused at startup with `web push disabled: invalid VAPID keys` in
+  the API log. Generate a pair with:
+
+  ```bash
+  cd apps/api && cargo run --bin generate_vapid_keys
+  ```
+
+  Never commit or paste the private key. Set it with
+  `gh secret set VAPID_PRIVATE_KEY --env <env>` and pipe it in.
+- **First deploy after adding the keys**, and any change to them:
+  Promote with
+  `allow_env_changes: VAPID_PUBLIC_KEY,VAPID_PRIVATE_KEY,VAPID_SUBJECT`
+  (see "Changing a secret or setting").
+- **Rotating the keys** breaks every existing subscription. Each device
+  then has to open Settings and tap **Turn on notifications** again. Only
+  rotate if the private key leaked.
+- **Staging.** A new staging instance gets a new IP, so a new
+  `cms.<ip>.sslip.io` origin and a fresh database. Install the admin app
+  again and turn notifications on again after every **Staging up** that
+  creates a new instance.
+- **Devices.** Settings lists each device with when its last push got
+  through. A device whose browser dropped the subscription is removed on
+  the next push (the push service answers 404/410). Others show
+  "Delivery failing".
+- **iPhone** needs iOS 16.4 or later and the Home Screen app. Notifications
+  don't work in a Safari tab. The owner's steps are in
+  [`docs/admin-app.md`](admin-app.md).
 
 ## Resizing the production instance
 
