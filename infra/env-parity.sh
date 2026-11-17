@@ -11,7 +11,8 @@ set -euo pipefail
 cd /opt/zainstreat
 
 ENFORCE="${1:-true}"
-ALLOWED=",${2:-},"
+# Spaces are dropped, so "A, B" from the Promote form still matches B.
+ALLOWED=",$(printf '%s' "${2:-}" | tr -d '[:space:]'),"
 
 if [ ! -f .env ]; then
   echo "No live .env yet (fresh box): skipping parity check."
