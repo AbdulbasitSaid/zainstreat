@@ -1,0 +1,107 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT e.id, e.slug, e.content, e.area, e.cover_image_url, e.capacity, e.max_party_size,\n               e.starts_at as \"starts_at: DateTime<Utc>\",\n               e.ends_at as \"ends_at: DateTime<Utc>\",\n               e.meal_orders_close_at as \"meal_orders_close_at: DateTime<Utc>\",\n               (now() >= COALESCE(e.ends_at, e.starts_at)) as \"is_past!\",\n               (now() < COALESCE(e.rsvp_closes_at, e.starts_at)) as \"rsvp_open!\",\n               (now() < COALESCE(e.meal_orders_close_at, e.rsvp_closes_at, e.starts_at)) as \"meals_open!\",\n               (e.published_at IS NOT NULL) as \"published!\",\n               (SELECT COALESCE(SUM(b.party_size), 0) FROM event_bookings b\n                 WHERE b.event_id = e.id AND b.status IN ('awaiting_payment', 'confirmed'))::BIGINT as \"taken!\"\n        FROM events e\n        WHERE e.slug = $1 AND e.archived_at IS NULL\n          AND ($2 OR e.published_at IS NOT NULL)\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "slug",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "content",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 3,
+        "name": "area",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "cover_image_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "capacity",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "max_party_size",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 7,
+        "name": "starts_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "ends_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "meal_orders_close_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "is_past!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 11,
+        "name": "rsvp_open!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 12,
+        "name": "meals_open!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 13,
+        "name": "published!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 14,
+        "name": "taken!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Bool"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      true,
+      true,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "806f8c898da3de741f31a780e1f9ad518612f68983f85c37b7d1d8bcf4db19fc"
+}

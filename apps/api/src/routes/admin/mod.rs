@@ -2,6 +2,7 @@ pub mod auth;
 pub mod categories;
 pub mod drafts;
 pub mod enquiries;
+pub mod events;
 pub mod media;
 pub mod menu_items;
 pub mod middleware;
@@ -62,6 +63,19 @@ pub fn admin_router() -> Router<AppState> {
         .route("/publish", post(drafts::publish))
         .route("/drafts/site_content", delete(drafts::discard_site_content_draft))
         .route("/drafts/{kind}/{id}", delete(drafts::discard_draft))
+        // Phase 31: events.
+        .route("/events", get(events::list_events).post(events::create_event))
+        .route("/events/{id}", get(events::get_event).put(events::update_event))
+        .route("/events/{id}/publish", post(events::publish_event))
+        .route("/events/{id}/unpublish", post(events::unpublish_event))
+        .route("/events/{id}/archive", post(events::archive_event))
+        .route("/events/{id}/unarchive", post(events::unarchive_event))
+        .route("/events/{id}/photos", put(events::save_photos))
+        .route("/events/{id}/bookings", get(events::list_bookings))
+        .route("/events/{id}/bookings.csv", get(events::bookings_csv))
+        .route("/events/bookings/{id}/offer", post(events::offer_seats))
+        .route("/events/bookings/{id}/cancel", post(events::cancel_booking))
+        .route("/preview/events/{slug}", get(events::preview_event))
         // Phase 27: admin web push.
         .route("/push/public-key", get(push::get_public_key))
         .route("/push/subscriptions", get(push::list_subscriptions).post(push::subscribe))

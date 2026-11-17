@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        DELETE FROM event_plates\n        WHERE event_id = $1 AND id <> ALL($2)\n          AND NOT EXISTS (SELECT 1 FROM event_booking_guests g WHERE g.plate_id = event_plates.id)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8Array"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "8771c5debee7400998c995662439b029a8da239f17a58189cda09fbf42c01542"
+}

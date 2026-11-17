@@ -49,6 +49,7 @@ pub fn admin_next(
         ("awaiting_payment" | "payment_claimed", _, _) => &["processing", "cancelled"],
         ("processing", "pickup", _) => &["ready_for_collection", "cancelled"],
         ("processing", "on_site", _) => &["serving_on_site", "cancelled"],
+        ("processing", "event", _) => &["completed", "cancelled"],
         ("processing", _, _) => &["out_for_delivery", "cancelled"],
         ("ready_for_collection" | "out_for_delivery" | "serving_on_site", _, _) => {
             &["completed", "cancelled"]
@@ -174,6 +175,15 @@ mod tests {
         assert!(is_reopen("completed", "serving_on_site"));
         assert!(is_reopen("completed", "ready_for_collection"));
         assert!(!is_reopen("processing", "ready_for_collection"));
+    }
+
+    #[test]
+    fn event_orders_complete_straight_from_processing() {
+        assert!(allowed("awaiting_payment", "processing", "event"));
+        assert!(allowed("payment_claimed", "processing", "event"));
+        assert_eq!(admin_next("processing", "event", None), &["completed", "cancelled"]);
+        assert!(admin_next("completed", "event", None).is_empty());
+        assert!(admin_next("cancelled", "event", None).is_empty());
     }
 
     #[test]

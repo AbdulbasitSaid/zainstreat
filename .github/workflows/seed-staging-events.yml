@@ -1,0 +1,50 @@
+name: Seed staging events
+
+# Phase 31 Decision 21: (re)seed The Abula Experience on a staging instance
+# that's already up. "Staging up" runs the same file on every new instance.
+# Idempotent and staging only, so no confirmation phrase. Production
+# seeding waits for the client's real prices and address.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    environment: staging
+    env:
+      C: docker compose -f docker-compose.yml -f docker-compose.prod.yml
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Find staging
+        id: staging
+        uses: ./.github/actions/staging-host
+        with:
+          role-arn: ${{ vars.AWS_ROLE_ARN }}
+          region: ${{ vars.AWS_REGION }}
+          dns-suffix: ${{ vars.STAGING_DNS_SUFFIX }}
+
+      - name: Check staging is up
+        if: steps.staging.outputs.up != 'true'
+        run: |
+          echo "::error::Staging isn't up. Run the \"Staging up\" workflow instead; it seeds events too."
+          exit 1
+
+      - name: Set up SSH
+        uses: ./.github/actions/ssh-target
+        with:
+          host: ${{ steps.staging.outputs.ip }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: Seed events
+        run: |
+          ssh target "cd /opt/zainstreat && $C exec -T postgres sh -c 'psql -v ON_ERROR_STOP=1 -U \"\$POSTGRES_USER\" -d \"\$POSTGRES_DB\"'" < apps/api/seed-events.sql
+
+      - name: Summary
+        run: |
+          echo "Seeded events on staging: https://${{ steps.staging.outputs.domain }}/en/events/the-abula-experience-2026" >> "$GITHUB_STEP_SUMMARY"

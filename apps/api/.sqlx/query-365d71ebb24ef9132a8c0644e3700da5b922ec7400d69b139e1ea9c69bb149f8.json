@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT COALESCE(SUM(party_size), 0)::BIGINT as \"taken!\"\n        FROM event_bookings\n        WHERE event_id = $1 AND status IN ('awaiting_payment', 'confirmed')\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "taken!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "365d71ebb24ef9132a8c0644e3700da5b922ec7400d69b139e1ea9c69bb149f8"
+}

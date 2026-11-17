@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, image_url, caption FROM event_photos WHERE event_id = $1 ORDER BY position, id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "image_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "caption",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "aafd372515ab45e68f478a4f6f19f654fcb0bb2ded8d65bc5874aa2b6f5f7332"
+}

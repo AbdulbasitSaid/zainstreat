@@ -33,6 +33,8 @@ export function OrderReceivedButton({
     pickup: t("receivedPickup"),
     delivery: t("receivedDelivery"),
     on_site: t("receivedOnSite"),
+    // Never shown: event orders have no handover step (Phase 31 Decision 2).
+    event: t("receivedOnSite"),
   }[deliveryType];
 
   async function handleConfirm() {

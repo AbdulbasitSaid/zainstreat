@@ -106,6 +106,9 @@ async fn main() {
     let payment = api::payment::PaymentConfig::from_env();
     let push = api::push::PushConfig::from_env();
 
+    // Phase 31 Decision 8: release unpaid event bookings after their hold.
+    api::events::spawn_hold_sweeper(pool.clone(), email.clone(), push.clone(), payment.clone());
+
     let app = match api::build_app(pool, cookie_secure, media, email, payment, push).await {
         Ok(app) => app,
         Err(error) => {

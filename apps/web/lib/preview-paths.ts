@@ -5,6 +5,7 @@ import { routing, type AppLocale } from "@/i18n/routing";
 export const PREVIEW_PAGES = [
   { path: "", label: "Home" },
   { path: "/menu", label: "Menu" },
+  { path: "/events", label: "Events" },
   { path: "/about", label: "About" },
   { path: "/services", label: "Services" },
   { path: "/contact", label: "Contact" },
@@ -26,6 +27,8 @@ export function normalizePreviewPath(path: string | null): string | null {
 
   const [pathname, query = ""] = raw.split("?", 2);
   const normalized = pathname === "/" ? "" : pathname;
+  // One event's page, including an unpublished one (Phase 31 Decision 18).
+  if (query === "" && /^\/events\/[a-z0-9]+(-[a-z0-9]+)*$/.test(normalized)) return normalized;
   if (!PREVIEW_PATHS.includes(normalized)) return null;
   if (query === "") return normalized;
 

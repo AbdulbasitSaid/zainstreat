@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { FULFILMENT_LABELS } from "@/lib/admin-orders";
 import { getAdminOrder } from "@/lib/admin-orders-api";
 import { AdminCateringTag } from "@/components/admin-catering-tag";
+import { AdminEventTag } from "@/components/admin-event-tag";
 import { AdminStatusBadge } from "@/components/admin-status-badge";
 import { AdminOrderActions } from "@/components/admin-order-actions";
 import { AdminEmailDeliveryNotice } from "@/components/admin-email-delivery-notice";
@@ -45,6 +46,7 @@ export default async function AdminOrderDetailPage({
         <h1 className="m-0">Order #{order.id}</h1>
         <div className="flex flex-wrap items-center gap-2">
           {order.catering_enquiry_id !== null && <AdminCateringTag enquiryId={order.catering_enquiry_id} />}
+          {order.event_id !== null && <AdminEventTag eventId={order.event_id} title={order.event_title} />}
           <AdminStatusBadge status={order.status} />
         </div>
       </div>
@@ -79,7 +81,7 @@ export default async function AdminOrderDetailPage({
         {order.ready_at && (
           <Field
             label={
-              { pickup: "Ready for collection", delivery: "Out for delivery", on_site: "Catering started" }[
+              { pickup: "Ready for collection", delivery: "Out for delivery", on_site: "Catering started", event: "Ready" }[
                 order.delivery_type
               ]
             }
