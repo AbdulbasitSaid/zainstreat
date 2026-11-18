@@ -24,6 +24,8 @@ export interface MenuItem {
   image_url: string | null;
   is_available: boolean;
   is_featured: boolean;
+  // Phase 36 Decision 2: the cart and the API enforce it.
+  min_quantity: number;
   price_options: MenuItemPriceOption[];
 }
 
@@ -65,6 +67,19 @@ export async function getMenuItems(categoryId?: number): Promise<MenuItem[]> {
     (await previewFetch<MenuItem[]>(`/menu-items${query}`)) ??
     apiFetch<MenuItem[]>(`/api/menu-items${query}`)
   );
+}
+
+// Phase 36 Decision 10: available rentals, in the owner's order.
+export interface Rental {
+  id: number;
+  name: string;
+  description: string | null;
+  price: string;
+  image_url: string | null;
+}
+
+export async function getRentals(): Promise<Rental[]> {
+  return apiFetch<Rental[]>("/api/rentals");
 }
 
 // Fails soft to the bundled defaults. The published document is cached

@@ -3,7 +3,7 @@ import { routing } from "@/i18n/routing";
 
 // The indexable public pages, "" for home. The sitemap lists exactly these,
 // and each one's generateMetadata uses localeAlternates (Phase 24 Decision 8).
-export const PUBLIC_ROUTES = ["", "/about", "/services", "/menu", "/events", "/contact", "/terms", "/privacy", "/food-regulations"] as const;
+export const PUBLIC_ROUTES = ["", "/about", "/services", "/menu", "/rentals", "/events", "/contact", "/terms", "/privacy", "/food-regulations"] as const;
 
 export type PublicRoute = (typeof PUBLIC_ROUTES)[number];
 

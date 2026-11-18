@@ -140,6 +140,11 @@ export function MenuItemCard({ item, placement }: { item: MenuItem; placement: T
             {item.description}
           </p>
         )}
+        {item.min_quantity > 1 && (
+          <p className={`m-0 text-[0.8rem] font-semibold ${tintClass.price}`}>
+            {t("minimumOrder", { count: item.min_quantity })}
+          </p>
+        )}
         <div className="mt-auto flex items-center justify-between gap-3 pt-2">
           {price !== null && (
             <p className={`m-0 text-[1.05rem] font-semibold ${tintClass.price}`}>

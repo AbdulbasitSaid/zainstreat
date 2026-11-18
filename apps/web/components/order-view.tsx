@@ -8,7 +8,13 @@ import { OrderDetailsForm, type OrderDetailsValues } from "@/components/order-de
 import { OrderReview } from "@/components/order-review";
 import { OrderSuccess } from "@/components/order-success";
 import { useCart } from "@/lib/cart-context";
-import { submitOrder, type OrderResponse, type UnavailableOrderItem } from "@/lib/orders";
+import {
+  belowMinimumFromErrors,
+  submitOrder,
+  type BelowMinimumLine,
+  type OrderResponse,
+  type UnavailableOrderItem,
+} from "@/lib/orders";
 
 // v2 (Phase 20): orders now carry public_token/payment, so a stored v1 order
 // is never shown.
@@ -40,6 +46,7 @@ export function OrderView() {
   const [details, setDetails] = useState<OrderDetailsValues | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [unavailableItems, setUnavailableItems] = useState<UnavailableOrderItem[] | null>(null);
+  const [belowMinimumLines, setBelowMinimumLines] = useState<BelowMinimumLine[] | null>(null);
   const [submitError, setSubmitError] = useState(false);
   const [placedOrder, setPlacedOrder] = useState<OrderResponse | null>(null);
 
@@ -64,6 +71,7 @@ export function OrderView() {
   async function handlePlaceOrder(values: OrderDetailsValues) {
     setSubmitting(true);
     setUnavailableItems(null);
+    setBelowMinimumLines(null);
     setSubmitError(false);
 
     const result = await submitOrder({
@@ -99,6 +107,14 @@ export function OrderView() {
       return;
     }
 
+    if (result.kind === "validation_error") {
+      const belowMinimum = belowMinimumFromErrors(result.fields, lines);
+      if (belowMinimum.length > 0) {
+        setBelowMinimumLines(belowMinimum);
+        return;
+      }
+    }
+
     setSubmitError(true);
   }
 
@@ -127,6 +143,7 @@ export function OrderView() {
         }))}
         subtotal={subtotal}
         unavailableItems={unavailableItems}
+        belowMinimumLines={belowMinimumLines}
         submitting={submitting}
         submitError={submitError}
         onEdit={() => setStep("details")}
@@ -141,6 +158,7 @@ export function OrderView() {
       onSubmit={(values) => {
         setDetails(values);
         setUnavailableItems(null);
+        setBelowMinimumLines(null);
         setSubmitError(false);
         setStep("review");
       }}

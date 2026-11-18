@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE rentals SET deleted_at = now(), updated_at = now()\n        WHERE id = $1 AND updated_at = $2 AND deleted_at IS NULL\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9b484b386ea984c608e030e42f77a73f4b24221723b7f63b0734f7ce3c2e2f1c"
+}

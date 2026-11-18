@@ -7,6 +7,7 @@
     "about": "Over Ons",
     "services": "Diensten",
     "menu": "Menu",
+    "rentals": "Verhuur",
     "contact": "Contact",
     "orderNow": "Nu Bestellen",
     "navLabel": "Hoofdnavigatie",
@@ -22,6 +23,7 @@
     "about": "Over Ons",
     "services": "Diensten",
     "menu": "Menu",
+    "rentals": "Verhuur",
     "contact": "Contact",
     "terms": "Algemene Voorwaarden",
     "privacy": "Privacybeleid",
@@ -83,9 +85,25 @@
     "addToCart": "In Winkelwagen",
     "addToCartOption": "{option} Toevoegen",
     "fromPrice": "vanaf {price}",
+    "minimumOrder": "Minimale bestelling: {count}",
     "chooseOption": "Kies een optie",
     "closeDialog": "Sluiten",
     "loadingMenu": "Menu laden…"
+  },
+  "RentalsPage": {
+    "metaTitle": "Cateringverhuur",
+    "metaDescription": "Chafing dishes, kookpannen, koelboxen en meer te huur voor je evenement.",
+    "heading": "Cateringverhuur",
+    "intro": "Serveermateriaal en kookbenodigdheden",
+    "pricePerEvent": "{price} per evenement",
+    "reserve": "Reserveer via WhatsApp",
+    "whatsappMessage": "Hoi! Ik wil graag huren: {name}.",
+    "bookingHeading": "Reserveren",
+    "bookingNote": "Neem contact op via WhatsApp om huurartikelen te reserveren en de beschikbaarheid te bevestigen.",
+    "whatsappButton": "Stuur ons een WhatsApp",
+    "whatsappGeneral": "Hoi! Ik wil graag cateringmateriaal huren.",
+    "empty": "Er staat nu geen verhuur online. Stuur ons een WhatsApp-bericht.",
+    "loadError": "We konden de verhuur nu niet laden. Probeer het straks opnieuw."
   },
   "Cart": {
     "metaTitle": "Winkelwagen | Zain's Treat n More",
@@ -98,7 +116,8 @@
     "proceedToOrder": "Doorgaan naar Bestellen",
     "remove": "Verwijderen",
     "increaseQuantity": "Aantal {name} verhogen",
-    "decreaseQuantity": "Aantal {name} verlagen"
+    "decreaseQuantity": "Aantal {name} verlagen",
+    "minimumOrder": "Minimale bestelling: {count}"
   },
   "Order": {
     "metaTitle": "Bestelling Plaatsen | Zain's Treat n More",
@@ -118,6 +137,9 @@
     "editDetails": "Gegevens Bewerken",
     "total": "Totaal",
     "itemsUnavailable": "Sommige items in je bestelling zijn niet meer beschikbaar:",
+    "belowMinimum": "Sommige artikelen zitten onder de minimale bestelling. Pas je winkelwagen aan:",
+    "minimumOrder": "Minimale bestelling: {count}",
+    "updateCart": "Winkelwagen aanpassen",
     "unknownItem": "Een item",
     "submitError": "Er ging iets mis bij het verzenden van je bestelling. Probeer het opnieuw.",
     "placeOrder": "Bestelling Plaatsen",
@@ -260,6 +282,7 @@
     "requestCateringQuote": "Vraag Cateringofferte Aan",
     "eventRentalsHeading": "Evenementenverhuur",
     "eventRentalsCopy": "Verhuurdiensten rondom evenementen die klanten helpen onvergetelijke gelegenheden te organiseren.",
+    "seeRentals": "Bekijk verhuur",
     "requestQuote": "Vraag Offerte Aan"
   },
   "ContactPage": {

@@ -26,7 +26,7 @@ export function QuantityStepper({
         −
         <StepperLiquid />
       </button>
-      <span aria-live="polite" className="w-5 text-center text-sm font-semibold">
+      <span aria-live="polite" className="min-w-5 text-center text-sm font-semibold">
         {quantity}
       </span>
       <button

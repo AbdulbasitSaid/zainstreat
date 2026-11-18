@@ -45,6 +45,8 @@ export function AdminMenuItemForm({
   const [name, setName] = useState(start.name ?? "");
   const [description, setDescription] = useState(start.description ?? "");
   const [isFeatured, setIsFeatured] = useState(start.is_featured ?? false);
+  // Typed as text so the field can be cleared mid-edit (Phase 36 Decision 5).
+  const [minQuantity, setMinQuantity] = useState(String(start.min_quantity ?? 1));
   const startOptions = start.price_options?.map(({ label, price }) => ({ label, price })) ?? [];
   const [pricing, setPricing] = useState<PriceOptionsValue>({
     price: start.price ?? (startOptions.length > 0 ? null : ""),
@@ -78,6 +80,8 @@ export function AdminMenuItemForm({
     })),
     image_url: imageUrl,
     is_featured: isFeatured,
+    // Blank or not a number → 0, so the API's own range error shows inline.
+    min_quantity: Number.parseInt(minQuantity, 10) || 0,
   };
 
   const autosave = useAutosaveDraft({
@@ -237,6 +241,31 @@ export function AdminMenuItemForm({
           Set exactly one of a flat price or one-or-more sized price options, all positive.
         </p>
       )}
+
+      <div>
+        <label htmlFor="menu-item-min-quantity" className="mb-1.5 block text-sm font-semibold">
+          Minimum order
+        </label>
+        <input
+          id="menu-item-min-quantity"
+          type="number"
+          inputMode="numeric"
+          min={1}
+          max={999}
+          step={1}
+          className="field max-w-32"
+          value={minQuantity}
+          aria-describedby="menu-item-min-quantity-hint"
+          aria-invalid={fieldError("min_quantity") ? true : undefined}
+          onChange={(event) => setMinQuantity(event.target.value)}
+        />
+        <p id="menu-item-min-quantity-hint" className="m-0 mt-1 text-sm text-text-muted">
+          Customers can&apos;t order fewer than this.
+        </p>
+        {fieldError("min_quantity") && (
+          <p className="m-0 mt-1 text-sm text-primary-dark">Enter a whole number from 1 to 999.</p>
+        )}
+      </div>
 
       <AdminImageUpload currentImageUrl={imageUrl} onUploaded={setImageUrl} />
       {fieldError("image_url") && (

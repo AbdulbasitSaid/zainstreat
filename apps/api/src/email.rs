@@ -1,5 +1,6 @@
 use lettre::Address;
 use lettre::message::Mailbox;
+use lettre::message::header::ContentType;
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::{AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor};
 use chrono::{DateTime, Utc};
@@ -288,6 +289,9 @@ fn build_message(settings: &SesSettings, email: &OutgoingEmail) -> Result<Messag
         .reply_to(reply_to)
         .to(email.to.parse::<Mailbox>().map_err(|e| e.to_string())?)
         .subject(format!("{}{}", settings.subject_prefix, email.subject))
+        // Without a charset, mail clients read the UTF-8 body as
+        // Windows-1252 and € arrives as "â‚¬" (Phase 36 Decision 1).
+        .header(ContentType::TEXT_PLAIN)
         .body(email.body.clone())
         .map_err(|e| e.to_string())
 }
@@ -385,6 +389,27 @@ mod tests {
     fn email_subject_has_no_prefix_when_unset() {
         let message = build_message(&settings(""), &outgoing(None)).unwrap();
         assert_eq!(header(&message, "Subject").as_deref(), Some("New order"));
+    }
+
+    #[test]
+    fn email_body_is_declared_utf8() {
+        let message = build_message(&settings(""), &outgoing(None)).unwrap();
+        assert_eq!(header(&message, "Content-Type").as_deref(), Some("text/plain; charset=utf-8"));
+    }
+
+    #[test]
+    fn email_body_keeps_non_ascii() {
+        let email = OutgoingEmail { body: "Total: €40.00 — you’re 🤎".into(), ..outgoing(None) };
+        let raw = String::from_utf8(build_message(&settings(""), &email).unwrap().formatted()).unwrap();
+        assert!(raw.contains("Content-Type: text/plain; charset=utf-8"), "{raw}");
+        // Quoted-printable or base64, never raw 8-bit bytes the client
+        // would have to guess at.
+        assert!(raw.is_ascii(), "{raw}");
+        if raw.contains("Content-Transfer-Encoding: quoted-printable") {
+            assert!(raw.contains("=E2=82=AC40.00"), "{raw}");
+        } else {
+            assert!(raw.contains("Content-Transfer-Encoding: base64"), "{raw}");
+        }
     }
 
     #[test]

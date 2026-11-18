@@ -40,6 +40,9 @@ export function CartLineItem({ line }: { line: CartLine }) {
         <p className="m-0 font-semibold break-words">{line.name}</p>
         {line.optionLabel && <p className="m-0 text-xs text-text-muted">{line.optionLabel}</p>}
         <p className="m-0 text-sm text-text-muted">{formatPrice(line.unitPrice)}</p>
+        {line.minQuantity > 1 && (
+          <p className="m-0 text-xs font-semibold text-primary">{t("minimumOrder", { count: line.minQuantity })}</p>
+        )}
       </div>
       {/* On phones the controls drop to their own line under the name. */}
       <div className="flex w-full items-center justify-end gap-4 sm:w-auto">

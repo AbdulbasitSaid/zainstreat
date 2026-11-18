@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT id, category_id, name, description, price, image_url, is_available, is_featured,\n               draft, draft_updated_at as \"draft_updated_at: DateTime<Utc>\",\n               published_at as \"published_at: DateTime<Utc>\"\n        FROM menu_items\n        WHERE deleted_at IS NULL\n        ORDER BY display_order, id\n        ",
+  "query": "\n        SELECT id, category_id, name, description, price, image_url, is_available, is_featured, min_quantity,\n               draft, draft_updated_at as \"draft_updated_at: DateTime<Utc>\",\n               published_at as \"published_at: DateTime<Utc>\"\n        FROM menu_items\n        WHERE deleted_at IS NULL\n        ORDER BY display_order, id\n        ",
   "describe": {
     "columns": [
       {
@@ -45,16 +45,21 @@
       },
       {
         "ordinal": 8,
+        "name": "min_quantity",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 9,
         "name": "draft",
         "type_info": "Jsonb"
       },
       {
-        "ordinal": 9,
+        "ordinal": 10,
         "name": "draft_updated_at: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 10,
+        "ordinal": 11,
         "name": "published_at: DateTime<Utc>",
         "type_info": "Timestamptz"
       }
@@ -71,10 +76,11 @@
       true,
       false,
       false,
+      false,
       true,
       true,
       true
     ]
   },
-  "hash": "1fc65db317daa2b12e02c47bd22053993db793faaec9a9a5250b9e922461e3f7"
+  "hash": "fd00696487032feb75ba934c5d8c51f4ae64a580aa2e0d2e1211f525c57464f3"
 }

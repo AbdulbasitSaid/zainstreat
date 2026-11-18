@@ -38,6 +38,7 @@ struct MenuItemSourceRow {
     image_url: Option<String>,
     is_available: bool,
     is_featured: bool,
+    min_quantity: i32,
     draft: Option<Value>,
     draft_updated_at: Option<DateTime<Utc>>,
     published_at: Option<DateTime<Utc>>,
@@ -57,7 +58,7 @@ async fn load_menu_item_sources(
     let items = sqlx::query_as!(
         MenuItemSourceRow,
         r#"
-        SELECT id, category_id, name, description, price, image_url, is_available, is_featured,
+        SELECT id, category_id, name, description, price, image_url, is_available, is_featured, min_quantity,
                draft, draft_updated_at as "draft_updated_at: DateTime<Utc>",
                published_at as "published_at: DateTime<Utc>"
         FROM menu_items
@@ -99,6 +100,7 @@ fn live_fields(row: &MenuItemSourceRow, options: &[LiveOptionRow]) -> MenuItemFi
             .collect(),
         image_url: row.image_url.clone(),
         is_featured: row.is_featured,
+        min_quantity: row.min_quantity,
     }
 }
 
@@ -150,6 +152,7 @@ pub async fn preview_menu_items(
                 image_url: fields.image_url,
                 is_available: row.is_available,
                 is_featured: fields.is_featured,
+                min_quantity: fields.min_quantity,
                 price_options,
             })
         })
@@ -300,6 +303,7 @@ fn menu_item_values(fields: &MenuItemFields, category_names: &HashMap<i64, Strin
         ("price_options", price_options_text(&fields.price_options)),
         ("image_url", json!(fields.image_url)),
         ("is_featured", json!(fields.is_featured)),
+        ("min_quantity", json!(fields.min_quantity)),
     ]
 }
 
@@ -506,7 +510,7 @@ pub async fn publish(
             (KIND_MENU_ITEM, Some(id)) => {
                 let row = sqlx::query!(
                     r#"
-                    SELECT category_id, name, description, price, image_url, is_featured, draft,
+                    SELECT category_id, name, description, price, image_url, is_featured, min_quantity, draft,
                            draft_updated_at as "draft_updated_at: DateTime<Utc>",
                            deleted_at as "deleted_at: DateTime<Utc>"
                     FROM menu_items WHERE id = $1
@@ -540,6 +544,7 @@ pub async fn publish(
                     price_options: live_options,
                     image_url: row.image_url.clone(),
                     is_featured: row.is_featured,
+                    min_quantity: row.min_quantity,
                 };
                 let draft = row.draft.and_then(|draft| parse_draft(id, draft));
                 let has_draft = draft.is_some();

@@ -8,6 +8,7 @@ pub mod media;
 pub mod menu_items;
 pub mod orders;
 pub mod quotes;
+pub mod rentals;
 pub mod site_content;
 
 use crate::AppState;
@@ -21,6 +22,7 @@ pub fn api_router() -> Router<AppState> {
         .route("/categories", get(categories::list_categories))
         .route("/menu-items", get(menu_items::list_menu_items))
         .route("/site-content", get(site_content::get_site_content))
+        .route("/rentals", get(rentals::list_rentals))
         // Phase 33 Decision 6: every order emails an invoice to the typed
         // address, so it gets the same per-IP limit as the other forms.
         .route(

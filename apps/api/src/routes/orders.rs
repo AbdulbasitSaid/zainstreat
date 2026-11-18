@@ -197,6 +197,7 @@ struct MenuItemRow {
     name: String,
     price: Option<Decimal>,
     is_available: bool,
+    min_quantity: i32,
 }
 
 struct PriceOptionRow {
@@ -229,13 +230,14 @@ pub async fn create_order(
 
     let mut unavailable: Vec<UnavailableItem> = Vec::new();
     let mut priced_lines: Vec<PricedLine> = Vec::new();
+    let mut below_minimum: Vec<FieldError> = Vec::new();
 
-    for item in &payload.items {
+    for (index, item) in payload.items.iter().enumerate() {
         // An unpublished item can't be ordered, and a pending draft never
         // changes the price (Phase 25 Decision 17).
         let menu_item = sqlx::query_as!(
             MenuItemRow,
-            "SELECT name, price, is_available FROM menu_items \
+            "SELECT name, price, is_available, min_quantity FROM menu_items \
              WHERE id = $1 AND deleted_at IS NULL AND published_at IS NOT NULL",
             item.menu_item_id
         )
@@ -302,6 +304,15 @@ pub async fn create_order(
             }
         };
 
+        // Per line, so each price option has its own minimum (Phase 36
+        // Decision 4).
+        if item.quantity < menu_item.min_quantity {
+            below_minimum.push(FieldError {
+                field: format!("items[{index}].quantity"),
+                message: "below_minimum".into(),
+            });
+        }
+
         priced_lines.push(PricedLine {
             menu_item_id: item.menu_item_id,
             price_option_id: item.price_option_id,
@@ -314,6 +325,9 @@ pub async fn create_order(
 
     if !unavailable.is_empty() {
         return Err(AppError::ItemsUnavailable(unavailable));
+    }
+    if !below_minimum.is_empty() {
+        return Err(AppError::Validation(below_minimum));
     }
 
     let subtotal = priced_lines.iter().fold(Decimal::ZERO, |acc, line| {

@@ -45,6 +45,7 @@ pub struct AdminMenuItemResponse {
     pub image_url: Option<String>,
     pub is_available: bool,
     pub is_featured: bool,
+    pub min_quantity: i32,
     pub is_archived: bool,
     pub price_options: Vec<AdminPriceOptionResponse>,
     pub updated_at: DateTime<Utc>,
@@ -68,6 +69,7 @@ struct MenuItemRow {
     image_url: Option<String>,
     is_available: bool,
     is_featured: bool,
+    min_quantity: i32,
     deleted_at: Option<DateTime<Utc>>,
     updated_at: DateTime<Utc>,
     draft: Option<serde_json::Value>,
@@ -88,7 +90,17 @@ pub struct MenuItemFields {
     pub price_options: Vec<PriceOptionInput>,
     pub image_url: Option<String>,
     pub is_featured: bool,
+    /// Phase 36 Decision 2. Drafts saved before Phase 36 have no value.
+    #[serde(default = "default_min_quantity")]
+    pub min_quantity: i32,
 }
+
+fn default_min_quantity() -> i32 {
+    1
+}
+
+/// Phase 36 Decision 2: the column's CHECK range.
+const MIN_QUANTITY_RANGE: std::ops::RangeInclusive<i32> = 1..=999;
 
 #[derive(Debug, Deserialize)]
 pub struct SaveMenuItemDraftRequest {
@@ -166,6 +178,13 @@ pub(crate) async fn validate_menu_item(
             field: "price".into(),
             message: "required_unless_price_options".into(),
         }),
+    }
+
+    if !MIN_QUANTITY_RANGE.contains(&payload.min_quantity) {
+        errors.push(FieldError {
+            field: "min_quantity".into(),
+            message: "invalid".into(),
+        });
     }
 
     // requirement.md Decision 14 addendum (open risk 4) — close the
@@ -251,6 +270,7 @@ fn rows_to_responses(
             image_url: item.image_url,
             is_available: item.is_available,
             is_featured: item.is_featured,
+            min_quantity: item.min_quantity,
             is_archived: item.deleted_at.is_some(),
             updated_at: item.updated_at,
         })
@@ -264,7 +284,7 @@ pub async fn list_menu_items(
         MenuItemRow,
         r#"
         SELECT mi.id, mi.category_id, c.name as category_name, mi.name, mi.description,
-               mi.price, mi.image_url, mi.is_available, mi.is_featured,
+               mi.price, mi.image_url, mi.is_available, mi.is_featured, mi.min_quantity,
                mi.deleted_at as "deleted_at: DateTime<Utc>",
                mi.updated_at as "updated_at: DateTime<Utc>",
                mi.draft, mi.draft_updated_at as "draft_updated_at: DateTime<Utc>",
@@ -306,7 +326,7 @@ pub async fn get_menu_item(
         MenuItemRow,
         r#"
         SELECT mi.id, mi.category_id, c.name as category_name, mi.name, mi.description,
-               mi.price, mi.image_url, mi.is_available, mi.is_featured,
+               mi.price, mi.image_url, mi.is_available, mi.is_featured, mi.min_quantity,
                mi.deleted_at as "deleted_at: DateTime<Utc>",
                mi.updated_at as "updated_at: DateTime<Utc>",
                mi.draft, mi.draft_updated_at as "draft_updated_at: DateTime<Utc>",
@@ -390,8 +410,8 @@ pub async fn create_menu_item(
 
     let item_id: i64 = sqlx::query_scalar!(
         r#"
-        INSERT INTO menu_items (category_id, name, description, price, image_url, is_featured, display_order, published_at)
-        VALUES ($1, $2, $3, $4, $5, $6,
+        INSERT INTO menu_items (category_id, name, description, price, image_url, is_featured, min_quantity, display_order, published_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7,
             (SELECT COALESCE(MAX(display_order), -1) + 1 FROM menu_items WHERE category_id = $1), NULL)
         RETURNING id
         "#,
@@ -401,6 +421,7 @@ pub async fn create_menu_item(
         payload.price,
         payload.image_url,
         payload.is_featured,
+        payload.min_quantity,
     )
     .fetch_one(&mut *tx)
     .await?;
@@ -483,7 +504,7 @@ pub(crate) async fn apply_menu_item_fields(
         r#"
         UPDATE menu_items
         SET category_id = $2, name = $3, description = $4, price = $5,
-            image_url = $6, is_featured = $7, updated_at = now()
+            image_url = $6, is_featured = $7, min_quantity = $8, updated_at = now()
         WHERE id = $1
         "#,
         id,
@@ -493,6 +514,7 @@ pub(crate) async fn apply_menu_item_fields(
         fields.price,
         fields.image_url,
         fields.is_featured,
+        fields.min_quantity,
     )
     .execute(&mut **tx)
     .await?;

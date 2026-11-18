@@ -14,6 +14,7 @@ export interface AdminMenuItem {
   image_url: string | null;
   is_available: boolean;
   is_featured: boolean;
+  min_quantity: number;
   is_archived: boolean;
   price_options: AdminPriceOption[];
   updated_at: string;
@@ -35,4 +36,6 @@ export interface MenuItemFields {
   price_options: { label: string; price: string }[];
   image_url: string | null;
   is_featured: boolean;
+  // Phase 36 Decision 5; drafts saved before Phase 36 don't have it.
+  min_quantity?: number;
 }

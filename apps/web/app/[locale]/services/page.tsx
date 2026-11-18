@@ -97,8 +97,8 @@ export default async function ServicesPage() {
             <SplitRowIndex>04</SplitRowIndex>
             <h2>{t("eventRentalsHeading")}</h2>
             <p className={supportingClass}>{t("eventRentalsCopy")}</p>
-            <ButtonLink href="/contact?tab=catering" className="mt-4">
-              {t("requestQuote")}
+            <ButtonLink href="/rentals" className="mt-4">
+              {t("seeRentals")}
             </ButtonLink>
           </div>
         }
