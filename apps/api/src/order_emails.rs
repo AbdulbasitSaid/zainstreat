@@ -644,6 +644,7 @@ mod tests {
             cancelled_at: None,
             completed_by: None,
             event_booking_token: None,
+            tikkie: None,
         }
     }
 

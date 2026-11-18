@@ -4,6 +4,9 @@ name: Staging up
 # a stopped instance in full, so staging is deleted when not in use
 # (staging-down.yml) and rebuilt here from infra/bootstrap.sh, then
 # deployed, seeded and given an admin. No custom domain: <ip>.sslip.io.
+# Phase 34: copy an event the client edited here to production first
+# (copy-staging-event.yml); this re-seeds the event over them when it
+# redeploys.
 on:
   workflow_dispatch:
     inputs:
@@ -179,7 +182,7 @@ jobs:
       # run (staging mode of seed-events.sql; placeholder prices).
       - name: Seed events
         run: |
-          ssh target "cd /opt/zainstreat && $C exec -T postgres sh -c 'psql -v ON_ERROR_STOP=1 -v publish=true -v upsert=true -v \"address=Staging test address, Almere\" -U \"\$POSTGRES_USER\" -d \"\$POSTGRES_DB\"'" < apps/api/seed-events.sql
+          ssh target "cd /opt/zainstreat && $C exec -T postgres sh -c 'psql -v ON_ERROR_STOP=1 -v publish=true -v upsert=true -v \"address=Staging test address, Almere\" -v tikkie_url=https://tikkie.me/pay/staging-not-a-real-link -U \"\$POSTGRES_USER\" -d \"\$POSTGRES_DB\"'" < apps/api/seed-events.sql
 
       - name: Create the staging admin
         env:

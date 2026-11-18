@@ -58,6 +58,11 @@ export interface AdminEvent {
   max_party_size: number;
   payment_hold_hours: number;
   cover_image_url: string | null;
+  // An open-amount Tikkie request and its last valid day, yyyy-mm-dd
+  // (Phase 34 Decisions 12-13). Both null for bank transfer only.
+  tikkie_url: string | null;
+  tikkie_valid_until: string | null;
+  tikkie_expired: boolean;
   published: boolean;
   archived: boolean;
   is_past: boolean;
@@ -79,6 +84,7 @@ export interface AdminEventSummary {
   seats_taken: number;
   waitlist_count: number;
   paid_total: string;
+  tikkie_expired: boolean;
 }
 
 export interface PlateInput {
@@ -103,6 +109,8 @@ export interface EventInput {
   payment_hold_hours: number;
   cover_image_url: string | null;
   plates: PlateInput[];
+  tikkie_url: string | null;
+  tikkie_valid_until: string | null;
 }
 
 export type AdminBookingStatus = "waitlisted" | "awaiting_payment" | "confirmed" | "cancelled";
@@ -172,6 +180,8 @@ export function toInput(event: AdminEvent): EventInput {
     rsvp_closes_at: event.rsvp_closes_at,
     payment_hold_hours: event.payment_hold_hours,
     cover_image_url: event.cover_image_url,
+    tikkie_url: event.tikkie_url,
+    tikkie_valid_until: event.tikkie_valid_until,
     plates: event.plates.map((plate) => ({
       id: plate.id,
       content: plate.content,
@@ -180,6 +190,13 @@ export function toInput(event: AdminEvent): EventInput {
       options: plate.options,
     })),
   };
+}
+
+// Days from today (in Amsterdam) to a yyyy-mm-dd date: 0 on the last
+// valid day, negative once it has passed (Phase 34 Decision 18).
+export function daysUntil(date: string, now: Date = new Date()): number {
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Amsterdam" }).format(now);
+  return Math.round((Date.parse(`${date}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 86_400_000);
 }
 
 // The public site's origin, from the cms. host the admin is served on

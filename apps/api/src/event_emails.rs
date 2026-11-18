@@ -5,7 +5,8 @@
 
 use crate::event_options::{GuestChoice, OptionGroup, choices_summary};
 use crate::order_emails::Locale;
-use crate::payment::PaymentInstructions;
+use crate::payment::{PaymentInstructions, TikkieInstructions};
+use chrono::{Datelike, NaiveDate};
 use rust_decimal::Decimal;
 use uuid::Uuid;
 
@@ -77,6 +78,8 @@ pub struct BookingEmail<'a> {
     pub total: Decimal,
     pub hold_expires_at: Option<&'a str>,
     pub payment: Option<&'a PaymentInstructions>,
+    /// Shown first while valid (Phase 34 Decision 17).
+    pub tikkie: Option<&'a TikkieInstructions>,
 }
 
 struct Copy {
@@ -101,6 +104,10 @@ struct Copy {
     no_meal: &'static str,
     total: &'static str,
     pay_by_transfer: &'static str,
+    pay_by_tikkie: &'static str,
+    tikkie_amount: &'static str,
+    or_by_transfer: &'static str,
+    months: [&'static str; 12],
     account_name: &'static str,
     reference: &'static str,
     use_reference: &'static str,
@@ -132,6 +139,13 @@ const EN: Copy = Copy {
     no_meal: "Attending without a meal",
     total: "Total",
     pay_by_transfer: "Please pay by bank transfer:",
+    pay_by_tikkie: "Pay with Tikkie:",
+    tikkie_amount: "Enter €{amount} in Tikkie. The link is valid until {date}.",
+    or_by_transfer: "Or pay by bank transfer:",
+    months: [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December",
+    ],
     account_name: "Account name",
     reference: "Reference",
     use_reference: "Please use this exact reference so we can match your payment.",
@@ -163,6 +177,13 @@ const NL: Copy = Copy {
     no_meal: "Aanwezig zonder maaltijd",
     total: "Totaal",
     pay_by_transfer: "Betaal via bankoverschrijving:",
+    pay_by_tikkie: "Betaal met Tikkie:",
+    tikkie_amount: "Vul €{amount} in bij Tikkie. De link is geldig t/m {date}.",
+    or_by_transfer: "Of betaal via bankoverschrijving:",
+    months: [
+        "januari", "februari", "maart", "april", "mei", "juni",
+        "juli", "augustus", "september", "oktober", "november", "december",
+    ],
     account_name: "Naam rekeninghouder",
     reference: "Kenmerk",
     use_reference: "Gebruik precies dit kenmerk, zodat we je betaling kunnen koppelen.",
@@ -194,6 +215,13 @@ const FR: Copy = Copy {
     no_meal: "Présent sans repas",
     total: "Total",
     pay_by_transfer: "Veuillez payer par virement bancaire :",
+    pay_by_tikkie: "Payer avec Tikkie :",
+    tikkie_amount: "Saisissez €{amount} dans Tikkie. Le lien est valable jusqu'au {date}.",
+    or_by_transfer: "Ou payez par virement bancaire :",
+    months: [
+        "janvier", "février", "mars", "avril", "mai", "juin",
+        "juillet", "août", "septembre", "octobre", "novembre", "décembre",
+    ],
     account_name: "Titulaire du compte",
     reference: "Référence",
     use_reference: "Merci d'utiliser exactement cette référence, afin que nous puissions retrouver votre paiement.",
@@ -209,6 +237,11 @@ fn copy(locale: Locale) -> &'static Copy {
         Locale::Nl => &NL,
         Locale::Fr => &FR,
     }
+}
+
+/// "2 December", "2 december", "2 décembre".
+fn day_month(copy: &Copy, date: NaiveDate) -> String {
+    format!("{} {}", date.day(), copy.months[date.month0() as usize])
 }
 
 /// The guest's booking page, in their language (Decision 11).
@@ -266,11 +299,19 @@ fn section(locale: Locale, email: &BookingEmail, event: &LocalizedEvent, site_ur
 
     if let BookingEmailKind::AwaitingPayment { .. } = email.kind {
         body.push('\n');
+        if let Some(tikkie) = email.tikkie {
+            let amount = copy
+                .tikkie_amount
+                .replace("{amount}", &tikkie.amount.to_string())
+                .replace("{date}", &day_month(copy, tikkie.valid_until));
+            body.push_str(&format!("{} {}\n{amount}\n\n", copy.pay_by_tikkie, tikkie.url));
+        }
         match email.payment {
             Some(payment) => {
+                let heading = if email.tikkie.is_some() { copy.or_by_transfer } else { copy.pay_by_transfer };
                 body.push_str(&format!(
-                    "{}\n{}: {}\nIBAN: {}\n",
-                    copy.pay_by_transfer, copy.account_name, payment.account_name, payment.iban,
+                    "{heading}\n{}: {}\nIBAN: {}\n",
+                    copy.account_name, payment.account_name, payment.iban,
                 ));
                 if let Some(bic) = &payment.bic {
                     body.push_str(&format!("BIC: {bic}\n"));
@@ -280,6 +321,7 @@ fn section(locale: Locale, email: &BookingEmail, event: &LocalizedEvent, site_ur
                     copy.reference, payment.reference, copy.use_reference
                 ));
             }
+            None if email.tikkie.is_some() => {}
             None => body.push_str(&format!("{}\n", copy.whatsapp_fallback)),
         }
         if let Some(deadline) = email.hold_expires_at {
@@ -331,6 +373,10 @@ mod tests {
     }
 
     fn email(kind: BookingEmailKind) -> (String, String) {
+        email_with(kind, None)
+    }
+
+    fn email_with(kind: BookingEmailKind, tikkie: Option<&TikkieInstructions>) -> (String, String) {
         let guests = [
             GuestLine {
                 plate_name: Some("Abula".into()),
@@ -382,6 +428,7 @@ mod tests {
                 total: Decimal::new(1500, 2),
                 hold_expires_at: Some("19-11-2026 10:00"),
                 payment: Some(&payment),
+                tikkie,
             },
             "https://example.com",
         )
@@ -431,5 +478,42 @@ mod tests {
             body.contains("Invité 3: Jollof (Bananes plantain frites, Fish) — €15.00"),
             "translated while the choice exists, else the English snapshot"
         );
+    }
+
+    fn tikkie() -> TikkieInstructions {
+        TikkieInstructions {
+            url: "https://tikkie.me/pay/test123".into(),
+            valid_until: NaiveDate::from_ymd_opt(2026, 12, 2).unwrap(),
+            amount: Decimal::new(4500, 2),
+        }
+    }
+
+    #[test]
+    fn tikkie_comes_first_with_the_amount_in_every_language() {
+        let tikkie = tikkie();
+        let (_, body) = email_with(BookingEmailKind::AwaitingPayment { offered: false }, Some(&tikkie));
+        assert_eq!(body.matches("https://tikkie.me/pay/test123").count(), 3);
+        assert!(body.contains("Pay with Tikkie: https://tikkie.me/pay/test123\nEnter €45.00 in Tikkie. The link is valid until 2 December."));
+        assert!(body.contains("Vul €45.00 in bij Tikkie. De link is geldig t/m 2 december."));
+        assert!(body.contains("Saisissez €45.00 dans Tikkie. Le lien est valable jusqu'au 2 décembre."));
+        assert!(body.contains("Or pay by bank transfer:"));
+        assert!(!body.contains("Please pay by bank transfer:"));
+        let tikkie_at = body.find("Pay with Tikkie").unwrap();
+        assert!(tikkie_at < body.find("NL91ABNA0417164300").unwrap(), "Tikkie before the bank details");
+        assert_eq!(body.matches("ZTM-7").count(), 3, "bank details stay");
+    }
+
+    #[test]
+    fn no_tikkie_leaves_the_bank_block_as_it_was() {
+        let (_, body) = email(BookingEmailKind::AwaitingPayment { offered: false });
+        assert!(!body.contains("Tikkie"));
+        assert!(body.contains("Please pay by bank transfer:"));
+    }
+
+    #[test]
+    fn tikkie_only_in_the_payment_request() {
+        let tikkie = tikkie();
+        let (_, body) = email_with(BookingEmailKind::Confirmed { offered: false }, Some(&tikkie));
+        assert!(!body.contains("Tikkie"));
     }
 }

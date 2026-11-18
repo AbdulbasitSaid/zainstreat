@@ -1,12 +1,16 @@
 -- The Abula Experience (Phase 31 Decision 21, Phase 32 Decisions 9-11),
 -- from the client's flyer. Never truncates and never touches bookings.
 --
--- Run with three psql variables (the workflows pass them):
+-- Run with psql variables (the workflows pass them):
 --   staging:    -v publish=true  -v upsert=true  -v address='Staging test address, Almere'
+--               -v tikkie_url=https://tikkie.me/pay/staging-not-a-real-link
 --   production: -v publish=false -v upsert=false -v address=''
 -- publish: published at once, or a draft for the owner to publish.
 -- upsert:  re-runs refresh the text, settings and plates; with false, an
 --          existing event is left exactly as the owner edited it.
+-- tikkie_url: a fake link for staging, valid for a year (Phase 34
+--          Decision 20). Empty leaves the event's link as it is. Never
+--          the client's real link: that's set in production admin.
 -- Without them it runs in the safe production mode.
 --
 -- PLACEHOLDER: both plates are €15 until the client sets the real prices
@@ -23,6 +27,10 @@
 \if :{?address}
 \else
 \set address ''
+\endif
+\if :{?tikkie_url}
+\else
+\set tikkie_url ''
 \endif
 
 BEGIN;
@@ -85,6 +93,11 @@ WITH upserted AS (
     RETURNING id, (xmax = 0) AS created
 )
 INSERT INTO seed_event SELECT id, created FROM upserted;
+
+UPDATE events e
+SET tikkie_url = :'tikkie_url', tikkie_valid_until = (now() + interval '1 year')::date
+FROM seed_event s
+WHERE e.id = s.id AND :'tikkie_url' <> '';
 
 -- The flyer's two plates, with their option groups (Phase 32 Decision 9).
 CREATE TEMP TABLE seed_plates (position INTEGER, content JSONB, options JSONB, price NUMERIC(10, 2)) ON COMMIT DROP;

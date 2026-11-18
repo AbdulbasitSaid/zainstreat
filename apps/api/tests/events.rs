@@ -567,3 +567,111 @@ async fn admin_saves_plate_options_and_needs_an_address_to_publish(pool: PgPool)
     assert_eq!(status, StatusCode::BAD_REQUEST);
     assert!(body.to_string().contains("address"), "{body}");
 }
+
+/// Phase 34: an admin event body with a Tikkie link.
+fn tikkie_event(url: &str, valid_until: Value) -> Value {
+    json!({
+        "content": { "en": { "title": "Tikkie Sunday" } },
+        "starts_at": "2026-12-27T14:00",
+        "area": "Almere",
+        "address": ADDRESS,
+        "capacity": 16,
+        "max_party_size": 6,
+        "payment_hold_hours": 48,
+        "plates": [],
+        "tikkie_url": url,
+        "tikkie_valid_until": valid_until,
+    })
+}
+
+#[sqlx::test]
+async fn admin_saves_and_validates_the_tikkie_link(pool: PgPool) {
+    let cookie = login(&pool).await;
+
+    for (url, date, field) in [
+        ("http://tikkie.me/pay/abc", json!("2026-12-02"), "tikkie_url"),
+        ("https://tikkie.me.evil.com/pay/abc", json!("2026-12-02"), "tikkie_url"),
+        ("https://tikkie.me/pay/abc?x=1", json!("2026-12-02"), "tikkie_url"),
+        ("https://example.com", json!("2026-12-02"), "tikkie_url"),
+        ("https://tikkie.me/pay/abc", Value::Null, "tikkie_valid_until"),
+        ("", json!("2026-12-02"), "tikkie_url"),
+    ] {
+        let (status, body, _) =
+            post_with_cookie(pool.clone(), "/api/admin/events", tikkie_event(url, date), Some(&cookie)).await;
+        assert_eq!(status, StatusCode::BAD_REQUEST, "{url}");
+        assert!(body.to_string().contains(field), "{url}: {body}");
+    }
+
+    let (status, created, _) = post_with_cookie(
+        pool.clone(),
+        "/api/admin/events",
+        tikkie_event(" https://tikkie.me/pay/abc123 ", json!("2026-12-02")),
+        Some(&cookie),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED, "{created}");
+    assert_eq!(created["tikkie_url"], "https://tikkie.me/pay/abc123");
+    assert_eq!(created["tikkie_valid_until"], "2026-12-02");
+    let id = created["id"].as_i64().unwrap();
+
+    let (status, updated) = put_with_cookie(
+        pool.clone(),
+        &format!("/api/admin/events/{id}"),
+        tikkie_event("https://tikkie.me/pay/new456", json!("2020-01-01")),
+        Some(&cookie),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{updated}");
+    assert_eq!(updated["tikkie_url"], "https://tikkie.me/pay/new456");
+    assert_eq!(updated["tikkie_expired"], true, "a past date saves, with a warning");
+    let (_, list) = get_with_cookie(pool.clone(), "/api/admin/events", Some(&cookie)).await;
+    assert_eq!(list[0]["tikkie_expired"], true);
+
+    let (status, cleared) =
+        put_with_cookie(pool.clone(), &format!("/api/admin/events/{id}"), tikkie_event("", Value::Null), Some(&cookie))
+            .await;
+    assert_eq!(status, StatusCode::OK, "{cleared}");
+    assert_eq!(cleared["tikkie_url"], Value::Null);
+    assert_eq!(cleared["tikkie_valid_until"], Value::Null);
+    assert_eq!(cleared["tikkie_expired"], false);
+}
+
+async fn set_tikkie(pool: &PgPool, valid_until: &str) {
+    sqlx::query(&format!(
+        "UPDATE events SET tikkie_url = 'https://tikkie.me/pay/abc123', tikkie_valid_until = {valid_until}"
+    ))
+    .execute(pool)
+    .await
+    .unwrap();
+}
+
+#[sqlx::test]
+async fn unpaid_event_orders_offer_tikkie_with_the_total(pool: PgPool) {
+    let (_, abula, jollof) = seed_event(&pool, 16).await;
+    let (_, created) = book(&pool, booking(json!([abula, abula, jollof]))).await;
+    let token = created["token"].as_str().unwrap().to_string();
+
+    let page = booking_page(&pool, &token).await;
+    assert_eq!(page["order"]["tikkie"], Value::Null, "no link set");
+
+    set_tikkie(&pool, "(now() + interval '10 days')::date").await;
+    let page = booking_page(&pool, &token).await;
+    let tikkie = &page["order"]["tikkie"];
+    assert_eq!(tikkie["url"], "https://tikkie.me/pay/abc123");
+    assert_eq!(tikkie["amount"], "45.00");
+    let order_token = page["order"]["public_token"].as_str().unwrap().to_string();
+    let (_, order) = get(pool.clone(), &format!("/api/orders/by-token/{order_token}")).await;
+    assert_eq!(order["tikkie"]["amount"], "45.00", "the tracking page too");
+
+    // Valid through the end of the day in Amsterdam.
+    set_tikkie(&pool, "(now() AT TIME ZONE 'Europe/Amsterdam')::date").await;
+    assert_eq!(booking_page(&pool, &token).await["order"]["tikkie"]["amount"], "45.00");
+
+    set_tikkie(&pool, "(now() AT TIME ZONE 'Europe/Amsterdam')::date - 1").await;
+    assert_eq!(booking_page(&pool, &token).await["order"]["tikkie"], Value::Null, "expired");
+
+    set_tikkie(&pool, "(now() + interval '10 days')::date").await;
+    let (status, _) = post(pool.clone(), &format!("/api/orders/by-token/{order_token}/payment-claim"), json!({})).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(booking_page(&pool, &token).await["order"]["tikkie"], Value::Null, "nothing left to pay");
+}

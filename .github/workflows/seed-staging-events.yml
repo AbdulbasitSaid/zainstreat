@@ -4,6 +4,8 @@ name: Seed staging events
 # that's already up. "Staging up" runs the same file on every new instance.
 # Idempotent and staging only, so no confirmation phrase. Production uses
 # seed-production-events.yml (Phase 32), which adds a draft instead.
+# Phase 34: copy an event the client edited here to production first
+# (copy-staging-event.yml); this overwrites those edits.
 on:
   workflow_dispatch:
 
@@ -43,7 +45,7 @@ jobs:
 
       - name: Seed events
         run: |
-          ssh target "cd /opt/zainstreat && $C exec -T postgres sh -c 'psql -v ON_ERROR_STOP=1 -v publish=true -v upsert=true -v \"address=Staging test address, Almere\" -U \"\$POSTGRES_USER\" -d \"\$POSTGRES_DB\"'" < apps/api/seed-events.sql
+          ssh target "cd /opt/zainstreat && $C exec -T postgres sh -c 'psql -v ON_ERROR_STOP=1 -v publish=true -v upsert=true -v \"address=Staging test address, Almere\" -v tikkie_url=https://tikkie.me/pay/staging-not-a-real-link -U \"\$POSTGRES_USER\" -d \"\$POSTGRES_DB\"'" < apps/api/seed-events.sql
 
       - name: Summary
         run: |

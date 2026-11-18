@@ -8,7 +8,7 @@ use crate::error::{AppError, FieldError};
 use crate::event_options::{OptionGroup, choices_summary, normalize_groups, parse_choices, validate_groups};
 use crate::events::{self, BookingEvent, localized, seats_taken, slugify};
 use crate::order_emails::Locale;
-use crate::payment::{PaymentConfig, payment_reference};
+use crate::payment::{PaymentConfig, normalize_tikkie_url, payment_reference};
 use crate::push::PushConfig;
 use crate::routes::events::{LocaleQuery, PublicEvent, load_public_event};
 use axum::{
@@ -17,7 +17,7 @@ use axum::{
     http::{StatusCode, header},
     response::IntoResponse,
 };
-use chrono::{DateTime, NaiveDateTime, Utc};
+use chrono::{DateTime, NaiveDate, NaiveDateTime, Utc};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -46,6 +46,8 @@ pub struct AdminEventSummary {
     pub waitlist_count: i64,
     #[serde(with = "rust_decimal::serde::str")]
     pub paid_total: Decimal,
+    /// The Tikkie link's date has passed (Phase 34 Decision 18).
+    pub tikkie_expired: bool,
 }
 
 pub async fn list_events(State(pool): State<PgPool>) -> Result<Json<Vec<AdminEventSummary>>, AppError> {
@@ -61,7 +63,8 @@ pub async fn list_events(State(pool): State<PgPool>) -> Result<Json<Vec<AdminEve
                (SELECT COUNT(*) FROM event_bookings b
                  WHERE b.event_id = e.id AND b.status = 'waitlisted') as "waitlist_count!",
                (SELECT COALESCE(SUM(o.total), 0) FROM event_bookings b JOIN orders o ON o.id = b.order_id
-                 WHERE b.event_id = e.id AND o.status IN ('processing', 'completed')) as "paid_total!"
+                 WHERE b.event_id = e.id AND o.status IN ('processing', 'completed')) as "paid_total!",
+               COALESCE(now() >= ((e.tikkie_valid_until + 1)::timestamp AT TIME ZONE 'Europe/Amsterdam'), false) as "tikkie_expired!"
         FROM events e
         ORDER BY (now() >= COALESCE(e.ends_at, e.starts_at)),
                  CASE WHEN now() < COALESCE(e.ends_at, e.starts_at) THEN e.starts_at END ASC,
@@ -85,6 +88,7 @@ pub async fn list_events(State(pool): State<PgPool>) -> Result<Json<Vec<AdminEve
                 seats_taken: row.seats_taken,
                 waitlist_count: row.waitlist_count,
                 paid_total: row.paid_total,
+                tikkie_expired: row.tikkie_expired,
             })
             .collect(),
     ))
@@ -120,6 +124,20 @@ pub struct EventInput {
     pub payment_hold_hours: i32,
     pub cover_image_url: Option<String>,
     pub plates: Vec<PlateInput>,
+    /// An open-amount Tikkie request and the last day it works (Phase 34
+    /// Decisions 12-13). Both blank for bank transfer only.
+    #[serde(default)]
+    pub tikkie_url: Option<String>,
+    #[serde(default)]
+    pub tikkie_valid_until: Option<NaiveDate>,
+}
+
+/// The Tikkie pair as stored: both set or both null.
+fn tikkie(input: &EventInput) -> (Option<String>, Option<NaiveDate>) {
+    match (blank_to_none(&input.tikkie_url).and_then(|url| normalize_tikkie_url(&url)), input.tikkie_valid_until) {
+        (Some(url), Some(date)) => (Some(url), Some(date)),
+        _ => (None, None),
+    }
 }
 
 const CONTENT_KEYS: [&str; 5] = ["title", "summary", "story", "terms", "recap"];
@@ -207,6 +225,12 @@ fn validate(input: &EventInput) -> Vec<FieldError> {
     {
         errors.push(field_error("slug", "invalid"));
     }
+    match (blank_to_none(&input.tikkie_url), input.tikkie_valid_until) {
+        (Some(url), _) if normalize_tikkie_url(&url).is_none() => errors.push(field_error("tikkie_url", "invalid")),
+        (Some(_), None) => errors.push(field_error("tikkie_valid_until", "required")),
+        (None, Some(_)) => errors.push(field_error("tikkie_url", "required")),
+        _ => {}
+    }
     if input.plates.len() > MAX_PLATES {
         errors.push(field_error("plates", "too_many"));
     }
@@ -259,6 +283,9 @@ pub struct AdminEvent {
     pub max_party_size: i32,
     pub payment_hold_hours: i32,
     pub cover_image_url: Option<String>,
+    pub tikkie_url: Option<String>,
+    pub tikkie_valid_until: Option<NaiveDate>,
+    pub tikkie_expired: bool,
     pub published: bool,
     pub archived: bool,
     pub is_past: bool,
@@ -273,7 +300,8 @@ async fn load_admin_event(pool: &PgPool, id: i64) -> Result<AdminEvent, AppError
     let row = sqlx::query!(
         r#"
         SELECT e.id, e.slug, e.content, e.area, e.address, e.capacity, e.max_party_size,
-               e.payment_hold_hours, e.cover_image_url,
+               e.payment_hold_hours, e.cover_image_url, e.tikkie_url, e.tikkie_valid_until as "tikkie_valid_until: NaiveDate",
+               COALESCE(now() >= ((e.tikkie_valid_until + 1)::timestamp AT TIME ZONE 'Europe/Amsterdam'), false) as "tikkie_expired!",
                to_char(e.starts_at AT TIME ZONE 'Europe/Amsterdam', 'YYYY-MM-DD"T"HH24:MI') as "starts_at!",
                to_char(e.ends_at AT TIME ZONE 'Europe/Amsterdam', 'YYYY-MM-DD"T"HH24:MI') as ends_at,
                to_char(e.meal_orders_close_at AT TIME ZONE 'Europe/Amsterdam', 'YYYY-MM-DD"T"HH24:MI') as meal_orders_close_at,
@@ -324,6 +352,9 @@ async fn load_admin_event(pool: &PgPool, id: i64) -> Result<AdminEvent, AppError
         max_party_size: row.max_party_size,
         payment_hold_hours: row.payment_hold_hours,
         cover_image_url: row.cover_image_url,
+        tikkie_url: row.tikkie_url,
+        tikkie_valid_until: row.tikkie_valid_until,
+        tikkie_expired: row.tikkie_expired,
         published: row.published,
         archived: row.archived,
         is_past: row.is_past,
@@ -442,6 +473,7 @@ pub async fn create_event(
     }
     let content = clean_content(&input.content, &CONTENT_KEYS);
     let base = blank_to_none(&input.slug).unwrap_or_else(|| slugify(&localized(&content, Locale::En, "title")));
+    let (tikkie_url, tikkie_valid_until) = tikkie(&input);
 
     let mut tx = pool.begin().await?;
     let slug = free_slug(&mut tx, &base, None).await?;
@@ -449,14 +481,15 @@ pub async fn create_event(
         r#"
         INSERT INTO events
             (slug, content, starts_at, ends_at, area, address, capacity, max_party_size,
-             meal_orders_close_at, rsvp_closes_at, payment_hold_hours, cover_image_url)
+             meal_orders_close_at, rsvp_closes_at, payment_hold_hours, cover_image_url,
+             tikkie_url, tikkie_valid_until)
         VALUES ($1, $2,
                 $3::text::timestamp AT TIME ZONE 'Europe/Amsterdam',
                 $4::text::timestamp AT TIME ZONE 'Europe/Amsterdam',
                 $5, $6, $7, $8,
                 $9::text::timestamp AT TIME ZONE 'Europe/Amsterdam',
                 $10::text::timestamp AT TIME ZONE 'Europe/Amsterdam',
-                $11, $12)
+                $11, $12, $13, $14)
         RETURNING id
         "#,
         slug,
@@ -471,6 +504,9 @@ pub async fn create_event(
         blank_to_none(&input.rsvp_closes_at),
         input.payment_hold_hours,
         blank_to_none(&input.cover_image_url),
+        tikkie_url,
+        // DATE decodes as `time::Date` by default; the column is a chrono date here.
+        tikkie_valid_until as _,
     )
     .fetch_one(&mut *tx)
     .await?;
@@ -509,6 +545,7 @@ pub async fn update_event(
         return Err(AppError::Validation(errors));
     }
     let slug = if requested == current.slug { requested } else { free_slug(&mut tx, &requested, Some(id)).await? };
+    let (tikkie_url, tikkie_valid_until) = tikkie(&input);
 
     sqlx::query!(
         r#"
@@ -519,7 +556,8 @@ pub async fn update_event(
             area = $6, address = $7, capacity = $8, max_party_size = $9,
             meal_orders_close_at = $10::text::timestamp AT TIME ZONE 'Europe/Amsterdam',
             rsvp_closes_at = $11::text::timestamp AT TIME ZONE 'Europe/Amsterdam',
-            payment_hold_hours = $12, cover_image_url = $13, updated_at = now()
+            payment_hold_hours = $12, cover_image_url = $13,
+            tikkie_url = $14, tikkie_valid_until = $15, updated_at = now()
         WHERE id = $1
         "#,
         id,
@@ -535,6 +573,9 @@ pub async fn update_event(
         blank_to_none(&input.rsvp_closes_at),
         input.payment_hold_hours,
         blank_to_none(&input.cover_image_url),
+        tikkie_url,
+        // DATE decodes as `time::Date` by default; the column is a chrono date here.
+        tikkie_valid_until as _,
     )
     .execute(&mut *tx)
     .await?;

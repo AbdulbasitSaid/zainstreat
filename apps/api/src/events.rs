@@ -7,7 +7,7 @@ use crate::email::{DeliveryRef, EmailConfig, OutgoingEmail};
 use crate::event_emails::{BookingEmail, BookingEmailKind, GuestLine, LocalizedEvent, booking_email};
 use crate::event_options::{choices_summary, parse_choices, parse_groups};
 use crate::order_emails::Locale;
-use crate::payment::{PaymentConfig, payment_reference};
+use crate::payment::{PaymentConfig, TikkieInstructions, payment_reference};
 use crate::push::{OwnerPush, PushConfig};
 use rust_decimal::Decimal;
 use serde_json::Value;
@@ -355,6 +355,27 @@ pub async fn load_booking(pool: &PgPool, booking_id: i64) -> Result<Option<Booki
     }))
 }
 
+/// The event's Tikkie request for an event order that's still unpaid,
+/// while the link is valid: through the end of `tikkie_valid_until` in
+/// Amsterdam (Phase 34 Decisions 14-15). `None` for every other order.
+pub async fn tikkie_for_order(pool: &PgPool, order_id: i64) -> Result<Option<TikkieInstructions>, sqlx::Error> {
+    sqlx::query_as!(
+        TikkieInstructions,
+        r#"
+        SELECT e.tikkie_url as "url!", e.tikkie_valid_until as "valid_until!: chrono::NaiveDate", o.total as amount
+        FROM orders o
+        JOIN event_bookings b ON b.order_id = o.id
+        JOIN events e ON e.id = b.event_id
+        WHERE o.id = $1 AND o.status = 'awaiting_payment'
+          AND e.tikkie_url IS NOT NULL
+          AND now() < ((e.tikkie_valid_until + 1)::timestamp AT TIME ZONE 'Europe/Amsterdam')
+        "#,
+        order_id
+    )
+    .fetch_optional(pool)
+    .await
+}
+
 /// What happened to a booking, for `notify`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BookingEvent {
@@ -405,6 +426,13 @@ pub async fn notify(
 
     if let Some(kind) = kind {
         let instructions = booking.order_id.and_then(|id| payment.instructions(id));
+        let tikkie = match booking.order_id {
+            Some(order_id) => tikkie_for_order(pool, order_id).await.unwrap_or_else(|error| {
+                tracing::error!(%error, booking_id, "failed to load the Tikkie link; sending bank details only");
+                None
+            }),
+            None => None,
+        };
         let event = Locale::ALL.map(|locale| LocalizedEvent {
             title: localized(&booking.event_content, locale, "title"),
             terms: localized(&booking.event_content, locale, "terms"),
@@ -423,6 +451,7 @@ pub async fn notify(
                 total: booking.total,
                 hold_expires_at: booking.hold_expires_local.as_deref(),
                 payment: instructions.as_ref(),
+                tikkie: tikkie.as_ref(),
             },
             email.site_url(),
         );

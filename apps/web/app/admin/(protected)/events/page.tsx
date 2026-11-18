@@ -27,6 +27,10 @@ function EventRow({ event }: { event: AdminEventSummary }) {
           <span className="text-sm text-text-muted">{formatDateTime(event.starts_at)}</span>
         </span>
         <StatusBadge event={event} />
+        {/* Phase 34 Decision 18: guests are back to bank transfer only. */}
+        {event.tikkie_expired && event.published && !event.archived && !event.is_past && (
+          <span className="rounded-full bg-accent-light px-3 py-1 text-xs font-semibold text-primary-dark">Tikkie expired</span>
+        )}
         <span className="text-sm">
           <span className="font-semibold">{event.seats_taken}</span> / {event.capacity} seats
         </span>

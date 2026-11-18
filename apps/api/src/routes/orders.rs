@@ -2,7 +2,7 @@ use crate::email::{DeliveryRef, EmailConfig, OutgoingEmail};
 use crate::error::{AppError, FieldError, UnavailableItem};
 use crate::order_emails::{Locale, invoice_email};
 use crate::order_status::CUSTOMER_COMPLETABLE;
-use crate::payment::{PaymentConfig, PaymentInstructions, payment_reference};
+use crate::payment::{PaymentConfig, PaymentInstructions, TikkieInstructions, payment_reference};
 use crate::push::{self, PushConfig};
 use crate::validation::{is_valid_email, is_valid_phone};
 use axum::{
@@ -89,6 +89,10 @@ pub struct OrderResponse {
     pub completed_by: Option<String>,
     /// For an `event` order: the booking it pays for (Phase 31 Decision 11).
     pub event_booking_token: Option<Uuid>,
+    /// For an unpaid `event` order whose event has a valid Tikkie link
+    /// (Phase 34 Decision 15). Separate from `payment`, so it shows even
+    /// without bank details.
+    pub tikkie: Option<TikkieInstructions>,
 }
 
 const NAME_MIN_LENGTH: usize = 2;
@@ -409,6 +413,7 @@ pub async fn create_order(
         cancelled_at: None,
         completed_by: None,
         event_booking_token: None,
+        tikkie: None,
     };
 
     send_invoice(&email, &pool, &response, &order.placed_at);
@@ -530,6 +535,10 @@ pub(crate) async fn load_order_by_token(
         cancelled_at: order.cancelled_at,
         completed_by: order.completed_by,
         event_booking_token: order.event_booking_token,
+        tikkie: match order.event_booking_token {
+            Some(_) => crate::events::tikkie_for_order(pool, order.id).await?,
+            None => None,
+        },
     })
 }
 
