@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT e.slug, e.content, e.area, e.cover_image_url, e.capacity,\n               e.starts_at as \"starts_at: DateTime<Utc>\",\n               e.ends_at as \"ends_at: DateTime<Utc>\",\n               (now() >= COALESCE(e.ends_at, e.starts_at)) as \"is_past!\",\n               (now() < COALESCE(e.rsvp_closes_at, e.starts_at)) as \"rsvp_open!\",\n               (SELECT COALESCE(SUM(b.party_size), 0) FROM event_bookings b\n                 WHERE b.event_id = e.id AND b.status IN ('awaiting_payment', 'confirmed'))::BIGINT as \"taken!\",\n               EXISTS (SELECT 1 FROM event_photos p WHERE p.event_id = e.id) as \"has_gallery!\"\n        FROM events e\n        WHERE e.published_at IS NOT NULL AND e.archived_at IS NULL\n        ORDER BY e.starts_at\n        ",
+  "query": "\n        SELECT e.slug, e.content, e.area, e.cover_image_url, e.capacity,\n               e.starts_at as \"starts_at: DateTime<Utc>\",\n               e.ends_at as \"ends_at: DateTime<Utc>\",\n               (now() >= COALESCE(e.ends_at, e.starts_at)) as \"is_past!\",\n               (now() < LEAST(e.meal_orders_close_at, e.rsvp_closes_at, e.starts_at)) as \"rsvp_open!\",\n               (SELECT COALESCE(SUM(b.party_size), 0) FROM event_bookings b\n                 WHERE b.event_id = e.id AND b.status IN ('awaiting_payment', 'confirmed'))::BIGINT as \"taken!\",\n               EXISTS (SELECT 1 FROM event_photos p WHERE p.event_id = e.id) as \"has_gallery!\"\n        FROM events e\n        WHERE e.published_at IS NOT NULL AND e.archived_at IS NULL\n        ORDER BY e.starts_at\n        ",
   "describe": {
     "columns": [
       {
@@ -76,5 +76,5 @@
       null
     ]
   },
-  "hash": "a18a776a8c714b0dabcad47e862e816180e6d3a36eba96f6ab523c72ab4f29c4"
+  "hash": "371d27f7cecf76adefb6fbc6c0c752ddfd9049804c92a40eea61611b1222bf75"
 }

@@ -21,11 +21,35 @@ export interface EventList {
   past: EventCardData[];
 }
 
-// A plate's pick-one group, e.g. "Protein: assorted meat or fish" (Phase 32).
+// A plate's option group, e.g. "Protein: assorted meat or fish" (Phase 32),
+// with the fewest and most picks per guest (Phase 35 Decision 7).
 export interface EventOptionGroup {
   key: string;
   label: string;
   choices: { key: string; label: string }[];
+  min: number;
+  max: number;
+}
+
+export type OptionRuleKey = "chooseOne" | "chooseExactly" | "chooseUpTo" | "chooseRange" | "chooseOptional";
+
+// The `EventOptions` message and values that state a group's limits
+// (Phase 35 Decision 10): "Choose your protein", "Side: choose up to 3".
+export function optionRule(group: Pick<EventOptionGroup, "label" | "min" | "max">): {
+  key: OptionRuleKey;
+  values: { group: string; count: number; min: number; max: number };
+} {
+  const values = { group: group.label, count: group.max, min: group.min, max: group.max };
+  if (group.min === 1 && group.max === 1) return { key: "chooseOne", values: { ...values, group: group.label.toLowerCase() } };
+  if (group.min === group.max) return { key: "chooseExactly", values };
+  if (group.min === 0) return { key: "chooseOptional", values };
+  if (group.min === 1) return { key: "chooseUpTo", values };
+  return { key: "chooseRange", values };
+}
+
+// Exactly-one groups are radios; every other group is limited checkboxes.
+export function isPickOne(group: Pick<EventOptionGroup, "min" | "max">): boolean {
+  return group.min === 1 && group.max === 1;
 }
 
 export interface EventPlate {
@@ -57,6 +81,8 @@ export interface PublicEvent {
   max_party_size: number;
   seats_left: number;
   meal_orders_close_at: string | null;
+  // The earlier of the meal and booking cutoffs (Phase 35 Decision 4).
+  bookings_close_at: string | null;
   meals_open: boolean;
   rsvp_open: boolean;
   is_past: boolean;
@@ -106,9 +132,9 @@ export interface CreateBookingRequest {
   customer_name: string;
   customer_email: string;
   customer_phone: string;
-  // One per person; a null plate attends without a meal. `choices` maps
-  // each of the plate's group keys to a choice key.
-  guests: { plate_id: number | null; choices: Record<string, string> }[];
+  // One plate per person (Phase 35 Decision 3). `choices` maps each of the
+  // plate's group keys to the picked choice keys.
+  guests: { plate_id: number; choices: Record<string, string[]> }[];
   notes: string | null;
   locale: string;
   accept_terms: boolean;

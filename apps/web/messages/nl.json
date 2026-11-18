@@ -480,14 +480,15 @@
     "metaTitle": "{title} | Zain's Treat n More",
     "draftNotice": "Voorbeeld: dit evenement is nog niet gepubliceerd. Alleen jij kunt het zien.",
     "backToEvents": "Alle evenementen",
-    "freeEntry": "Gratis toegang · Betaalde maaltijden",
+    "eyebrow": "Beperkte plekken · Maaltijden op bestelling",
     "pastEyebrow": "Eerder evenement",
     "platesHeading": "Op tafel",
     "seatsLeft": "{count, plural, one {# van de {capacity} plekken over} other {# van de {capacity} plekken over}}",
     "full": "Volgeboekt: zet je op de wachtlijst",
-    "mealCutoff": "Maaltijden bestellen kan tot {date}.",
+    "bookingCutoff": "Reserveren kan tot {date}.",
     "bookHeading": "Reserveer je plek",
-    "guestWording": "De toegang is gratis en de plekken zijn beperkt. Meld je aan om je plek te reserveren. Wil je mee-eten? Kies dan je bord bij het aanmelden. Je krijgt meteen een betaalverzoek, en je maaltijd is gereserveerd zodra je betaling binnen is.",
+    "guestTagline": "JE PLEK AAN TAFEL STAAT KLAAR",
+    "guestWording": "Hoor er niet alleen over, maak het zelf mee!",
     "rsvpClosed": "Reserveren voor dit evenement is gesloten.",
     "addressPrivate": "Het adres delen we alleen met bevestigde gasten.",
     "recapHeading": "Hoe het was",
@@ -496,8 +497,7 @@
     "openPhoto": "Open foto {n} van {total}",
     "previousPhoto": "Vorige foto",
     "nextPhoto": "Volgende foto",
-    "closePhoto": "Sluiten",
-    "chooseGroup": "Kies je {group}:"
+    "closePhoto": "Sluiten"
   },
   "EventBooking": {
     "labels": {
@@ -514,12 +514,8 @@
     "guestYou": "Gast 1 (jij)",
     "guestN": "Gast {n}",
     "noMeal": "Aanwezig zonder maaltijd",
-    "noMealHint": "Neemt wel een plek in",
-    "chooseOption": "Kies je {group}",
     "optionFallback": "opties",
-    "mealsClosed": "Maaltijden bestellen is gesloten, maar je kunt je nog aanmelden zonder maaltijd.",
     "total": "Totaal",
-    "totalFree": "Gratis",
     "termsHeading": "Annuleren en terugbetaling",
     "acceptTerms": "Ik heb de voorwaarden voor annuleren en terugbetaling gelezen.",
     "paymentNote": "Je krijgt meteen een betaalverzoek via bankoverschrijving. Je plekken worden vastgehouden terwijl je betaalt.",
@@ -536,11 +532,20 @@
       "invalid": "Controleer je {field}.",
       "tooLong": "{field} is te lang.",
       "acceptTerms": "Bevestig dat je de voorwaarden hebt gelezen.",
-      "meals_closed": "Maaltijden bestellen is gesloten. Kies \"Aanwezig zonder maaltijd\".",
       "unavailable": "Een van de borden is niet meer beschikbaar. Kies opnieuw.",
       "too_many": "Dat zijn meer personen dan één reservering toestaat.",
-      "option_required": "Kies je {group}."
+      "option_required": "Kies je {group}.",
+      "option_min": "Kies er minstens {min} voor {group}.",
+      "too_many_options": "Bij een van de borden zijn te veel opties gekozen. Controleer je keuzes."
     }
+  },
+  "EventOptions": {
+    "chooseOne": "Kies je {group}",
+    "chooseExactly": "{group}: kies er {count}",
+    "chooseUpTo": "{group}: kies er maximaal {max}",
+    "chooseRange": "{group}: kies er {min} tot {max}",
+    "chooseOptional": "{group}: optioneel, maximaal {max}",
+    "pickedCount": "{count} van {max} gekozen"
   },
   "BookingPage": {
     "metaTitle": "Je reservering | Zain's Treat n More",

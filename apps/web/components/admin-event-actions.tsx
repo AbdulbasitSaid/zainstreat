@@ -18,10 +18,15 @@ export function AdminEventActions({ id, published, archived }: { id: number; pub
     const response = await fetch(`/api/admin/events/${id}/${action}`, { method: "POST" });
     setBusy(false);
     if (!response.ok) {
-      // Publishing needs the private address (Phase 32 Decision 12).
+      // Publishing needs the private address (Phase 32 Decision 12) and a
+      // plate (Phase 35 Decision 6).
       const body: unknown = await response.json().catch(() => null);
-      const needsAddress = response.status === 400 && JSON.stringify(body).includes('"address"');
-      setFailed(needsAddress ? "Add the address on the details tab before publishing." : "That didn't work. Try again.");
+      const fields = response.status === 400 ? JSON.stringify(body) : "";
+      const missing = [
+        fields.includes('"address"') ? "the address" : null,
+        fields.includes('"plates"') ? "a plate" : null,
+      ].filter((item): item is string => item !== null);
+      setFailed(missing.length > 0 ? `Add ${missing.join(" and ")} on the details tab before publishing.` : "That didn't work. Try again.");
       return;
     }
     router.refresh();

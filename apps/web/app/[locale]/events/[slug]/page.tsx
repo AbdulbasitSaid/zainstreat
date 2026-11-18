@@ -12,7 +12,7 @@ import { LiquidCard } from "@/components/liquid-card";
 import { Notice } from "@/components/notice";
 import { Reveal } from "@/components/reveal";
 import { SiteImage } from "@/components/site-image";
-import { eventDateParts } from "@/lib/events";
+import { eventDateParts, optionRule } from "@/lib/events";
 import { getEvent } from "@/lib/events-api";
 import { formatPrice } from "@/lib/format";
 
@@ -54,12 +54,15 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
   if (!event) notFound();
 
   const t = await getTranslations("EventPage");
+  const tRule = await getTranslations("EventOptions");
   const { long, time } = eventDateParts(event.starts_at, locale);
   const taken = event.capacity - event.seats_left;
-  const mealCutoff = event.meal_orders_close_at ? eventDateParts(event.meal_orders_close_at, locale).long : null;
+  const bookingCutoff = event.bookings_close_at ? eventDateParts(event.bookings_close_at, locale).long : null;
   const hasPlates = event.plates.length > 0;
-  // "Assorted meat or Fish" / "Gemengd vlees of Vis" (Phase 32).
+  // "Assorted meat or Fish" / "Gemengd vlees of Vis" (Phase 32); a
+  // multi-pick group lists its choices plainly.
   const orList = new Intl.ListFormat(locale, { type: "disjunction" });
+  const plainList = new Intl.ListFormat(locale, { type: "unit" });
 
   return (
     <main className="container">
@@ -71,7 +74,7 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
             ← {t("backToEvents")}
           </Link>
           <div className="mt-4">
-            <Eyebrow>{event.is_past ? t("pastEyebrow") : t("freeEntry")}</Eyebrow>
+            <Eyebrow>{event.is_past ? t("pastEyebrow") : t("eyebrow")}</Eyebrow>
           </div>
           <h1 className="text-[clamp(2.5rem,6vw,4.75rem)] leading-[1.02]">{event.title}</h1>
           {event.summary && <p className="text-lg text-text-muted">{event.summary}</p>}
@@ -139,12 +142,16 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
                         )}
                         {plate.options.length > 0 && (
                           <ul className="m-0 flex list-none flex-col gap-1 p-0 text-sm">
-                            {plate.options.map((group) => (
-                              <li key={group.key}>
-                                <span className="font-semibold">{t("chooseGroup", { group: group.label.toLowerCase() })}</span>{" "}
-                                {orList.format(group.choices.map((choice) => choice.label))}
-                              </li>
-                            ))}
+                            {plate.options.map((group) => {
+                              const rule = optionRule(group);
+                              const labels = group.choices.map((choice) => choice.label);
+                              return (
+                                <li key={group.key}>
+                                  <span className="font-semibold">{tRule(rule.key, rule.values)}:</span>{" "}
+                                  {group.max === 1 ? orList.format(labels) : plainList.format(labels)}
+                                </li>
+                              );
+                            })}
                           </ul>
                         )}
                         <span className={`mt-auto text-xl font-semibold ${index === 0 ? "text-accent-light" : "text-primary"}`}>
@@ -171,22 +178,24 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
                         : t("full")
                     }
                   />
-                  {mealCutoff && event.meals_open && hasPlates && (
-                    <p className="m-0 text-center text-sm text-text-muted">{t("mealCutoff", { date: mealCutoff })}</p>
+                  {bookingCutoff && event.rsvp_open && (
+                    <p className="m-0 text-center text-sm text-text-muted">{t("bookingCutoff", { date: bookingCutoff })}</p>
                   )}
                 </div>
                 <div className="flex flex-col gap-5">
                   <h2 id="event-book" className="m-0">
                     {t("bookHeading")}
                   </h2>
-                  <p className="m-0 text-lg text-text-muted">{t("guestWording")}</p>
+                  <p className="m-0 text-lg text-text-muted">
+                    <strong className="block font-semibold tracking-wide text-text">{t("guestTagline")}</strong>
+                    {t("guestWording")}
+                  </p>
                   {event.rsvp_open ? (
                     <EventBookingForm
                       slug={event.slug}
                       plates={event.plates}
                       maxPartySize={event.max_party_size}
                       seatsLeft={event.seats_left}
-                      mealsOpen={event.meals_open}
                       terms={event.terms}
                     />
                   ) : (

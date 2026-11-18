@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/button";
 import { emptyLabels, type EventLocale, type OptionGroupInput, type OptionLabels } from "@/lib/admin-events";
+import { isPickOne } from "@/lib/events";
 
 const SMALL_BUTTON = "px-3 py-1.5 text-sm";
 
@@ -13,13 +14,35 @@ function move<T>(items: T[], index: number, delta: number): T[] {
 }
 
 function newGroup(): OptionGroupInput {
-  return { key: "", label: emptyLabels(), choices: [{ key: "", label: emptyLabels() }, { key: "", label: emptyLabels() }] };
+  return {
+    key: "",
+    label: emptyLabels(),
+    choices: [{ key: "", label: emptyLabels() }, { key: "", label: emptyLabels() }],
+    min: 1,
+    max: 1,
+  };
+}
+
+// The rule as guests read it, in English (Phase 35 Decision 12), or why
+// the limits can't be saved.
+function limitsPreview(group: OptionGroupInput): { ok: boolean; text: string } {
+  const { min, max } = group;
+  const count = group.choices.length;
+  if (max < 1 || min > max || max > count) {
+    return { ok: false, text: `Min must be 0–${Math.min(max, count)} and max 1–${count} (the number of choices).` };
+  }
+  if (isPickOne(group)) return { ok: true, text: "Guests choose exactly one." };
+  if (min === max) return { ok: true, text: `Guests choose exactly ${max}.` };
+  if (min === 0) return { ok: true, text: `Optional: guests choose up to ${max}.` };
+  if (min === 1) return { ok: true, text: `Guests choose up to ${max}.` };
+  return { ok: true, text: `Guests choose ${min} to ${max}.` };
 }
 
 /**
  * A plate's option groups, e.g. "Protein: assorted meat, fish" (Phase 32
- * Decision 7). Guests pick one choice in every group, per person. Labels
- * follow the form's language tabs; blank nl/fr labels show the English.
+ * Decision 7), each with how many choices a guest picks (Phase 35
+ * Decision 12). Labels follow the form's language tabs; blank nl/fr labels
+ * show the English.
  */
 export function AdminPlateOptions({
   groups,
@@ -42,7 +65,8 @@ export function AdminPlateOptions({
       <div>
         <p className="m-0 text-sm font-semibold">Options</p>
         <p className="m-0 text-xs text-text-muted">
-          Guests choose one in each group, per person, e.g. protein or side. Choices don&apos;t change the price.
+          Guests choose in each group, per person, e.g. protein or side. Min and max set how many. Choices don&apos;t change the
+          price.
         </p>
       </div>
       {groups.map((group, g) => (
@@ -77,6 +101,36 @@ export function AdminPlateOptions({
             <Button type="button" variant="outline" className={SMALL_BUTTON} onClick={() => onChange(groups.filter((_, i) => i !== g))}>
               Remove group
             </Button>
+          </div>
+          <div className="flex flex-wrap items-end gap-3">
+            {(["min", "max"] as const).map((limit) => (
+              <div key={limit} className="w-20">
+                <label htmlFor={`${idPrefix}-group-${g}-${limit}`} className="mb-1 block text-xs font-semibold">
+                  {limit === "min" ? "Min" : "Max"}
+                </label>
+                <input
+                  id={`${idPrefix}-group-${g}-${limit}`}
+                  type="number"
+                  min={limit === "min" ? 0 : 1}
+                  max={group.choices.length}
+                  className="field"
+                  value={group[limit]}
+                  aria-describedby={`${idPrefix}-group-${g}-limits`}
+                  onChange={(e) => setGroup(g, { ...group, [limit]: Math.max(0, Math.trunc(Number(e.target.value))) })}
+                />
+              </div>
+            ))}
+            {(() => {
+              const preview = limitsPreview(group);
+              return (
+                <p
+                  id={`${idPrefix}-group-${g}-limits`}
+                  className={`m-0 pb-2 text-xs ${preview.ok ? "text-text-muted" : "font-semibold text-primary"}`}
+                >
+                  {preview.text}
+                </p>
+              );
+            })()}
           </div>
           <ol className="m-0 flex list-none flex-col gap-2 p-0 sm:pl-4">
             {group.choices.map((choice, c) => (

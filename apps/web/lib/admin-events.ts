@@ -13,9 +13,10 @@ export const PLATE_TEXT_KEYS = ["name", "description"] as const;
 export type PlateTextKey = (typeof PLATE_TEXT_KEYS)[number];
 export type PlateContent = Record<EventLocale, Record<PlateTextKey, string>>;
 
-// A plate's pick-one option group (Phase 32 Decision 7). New groups and
-// choices have an empty key; the API makes one from the English label and
-// never changes it after, so bookings and counts stay stable.
+// A plate's option group (Phase 32 Decision 7) with its min and max picks
+// (Phase 35 Decision 12). New groups and choices have an empty key; the API
+// makes one from the English label and never changes it after, so bookings
+// and counts stay stable.
 export type OptionLabels = Record<EventLocale, string>;
 
 export interface OptionChoiceInput {
@@ -27,6 +28,8 @@ export interface OptionGroupInput {
   key: string;
   label: OptionLabels;
   choices: OptionChoiceInput[];
+  min: number;
+  max: number;
 }
 
 export interface AdminPlate {

@@ -7,10 +7,9 @@ import { Button } from "@/components/button";
 import { FormPrivacyNote } from "@/components/form-privacy-note";
 import { Notice } from "@/components/notice";
 import { QuantityStepper } from "@/components/quantity-stepper";
-import { createBooking, type EventPlate } from "@/lib/events";
+import { createBooking, isPickOne, optionRule, type EventOptionGroup, type EventPlate } from "@/lib/events";
 import { formatPrice } from "@/lib/format";
 
-const NO_MEAL = "none";
 const NOTES_MAX_LENGTH = 500;
 const FIELD_LABEL_CLASS = "mb-1.5 block text-sm font-semibold text-text";
 const FIELD_ERROR_CLASS = "mt-1 text-sm text-primary";
@@ -18,10 +17,11 @@ const FIELD_ERROR_CLASS = "mt-1 text-sm text-primary";
 type ContactField = "customer_name" | "customer_email" | "customer_phone" | "notes";
 type Errors = Partial<Record<ContactField | "accept_terms" | "guests", string>>;
 
-// A guest's plate (or NO_MEAL) and their pick per option group (Phase 32).
+// A guest's plate and their picks per option group (Phase 32, Phase 35
+// Decision 10).
 interface GuestState {
   plate: string;
-  picks: Record<string, string>;
+  picks: Record<string, string[]>;
 }
 
 function isValidEmail(value: string): boolean {
@@ -37,6 +37,7 @@ function errorKey(message: string): string {
     case "unavailable":
     case "too_many":
     case "option_required":
+    case "too_many_options":
       return message;
     case "too_long":
       return "tooLong";
@@ -46,30 +47,30 @@ function errorKey(message: string): string {
 }
 
 /**
- * One form for the RSVP and the meals (Phase 31 Decision 17): contact
- * details, how many people, and a plate (or no meal) per person, with the
- * plate's options (Phase 32 Decision 8). A party that doesn't fit gets the
- * seats left and a "Join the waitlist" retry.
+ * One form for the seats and the meals (Phase 31 Decision 17): contact
+ * details, how many people, and a plate per person (Phase 35 Decision 2),
+ * with the plate's options within their limits (Phase 32 Decision 8,
+ * Phase 35 Decision 10). A party that doesn't fit gets the seats left and a
+ * "Join the waitlist" retry.
  */
 export function EventBookingForm({
   slug,
   plates,
   maxPartySize,
   seatsLeft,
-  mealsOpen,
   terms,
 }: {
   slug: string;
   plates: EventPlate[];
   maxPartySize: number;
   seatsLeft: number;
-  mealsOpen: boolean;
   terms: string;
 }) {
   const t = useTranslations("EventBooking");
+  const tRule = useTranslations("EventOptions");
   const locale = useLocale();
   const router = useRouter();
-  const defaultChoice = mealsOpen && plates[0] ? String(plates[0].id) : NO_MEAL;
+  const defaultChoice = plates[0] ? String(plates[0].id) : "";
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -89,7 +90,6 @@ export function EventBookingForm({
 
   const plateOf = (choice: string) => plates.find((plate) => String(plate.id) === choice);
   const total = guests.reduce((sum, guest) => sum + Number(plateOf(guest.plate)?.price ?? 0), 0);
-  const wantsMeals = guests.some((guest) => guest.plate !== NO_MEAL);
 
   function resize(size: number) {
     const next = Math.max(1, Math.min(maxPartySize, size));
@@ -106,22 +106,35 @@ export function EventBookingForm({
     setGuests((current) => current.map((guest, i) => (i === index ? { plate, picks: {} } : guest)));
   }
 
-  function pick(index: number, group: string, choice: string) {
+  // Pick-one groups swap the pick; others add or remove it, up to `max`.
+  function toggle(index: number, group: EventOptionGroup, choice: string) {
     setGuests((current) =>
-      current.map((guest, i) => (i === index ? { ...guest, picks: { ...guest.picks, [group]: choice } } : guest)),
+      current.map((guest, i) => {
+        if (i !== index) return guest;
+        const picked = guest.picks[group.key] ?? [];
+        const next = isPickOne(group)
+          ? [choice]
+          : picked.includes(choice)
+            ? picked.filter((key) => key !== choice)
+            : picked.length < group.max
+              ? [...picked, choice]
+              : picked;
+        return { ...guest, picks: { ...guest.picks, [group.key]: next } };
+      }),
     );
     setMissing((current) => {
       const next = new Set(current);
-      next.delete(`${index}:${group}`);
+      next.delete(`${index}:${group.key}`);
       return next;
     });
   }
 
+  // `${guest}:${group}` for each group with fewer than `min` picks.
   function unpicked(): Set<string> {
     const keys = new Set<string>();
     guests.forEach((guest, index) => {
       for (const group of plateOf(guest.plate)?.options ?? []) {
-        if (!guest.picks[group.key]) keys.add(`${index}:${group.key}`);
+        if ((guest.picks[group.key] ?? []).length < group.min) keys.add(`${index}:${group.key}`);
       }
     });
     return keys;
@@ -134,7 +147,7 @@ export function EventBookingForm({
     else if (!isValidEmail(email.trim())) next.customer_email = "invalid";
     if (!phone.trim()) next.customer_phone = "required";
     if (notes.length > NOTES_MAX_LENGTH) next.notes = "tooLong";
-    if (wantsMeals && !acceptTerms) next.accept_terms = "required";
+    if (!acceptTerms) next.accept_terms = "required";
     return next;
   }
 
@@ -151,9 +164,7 @@ export function EventBookingForm({
       customer_name: name.trim(),
       customer_email: email.trim(),
       customer_phone: phone.trim(),
-      guests: guests.map((guest) =>
-        guest.plate === NO_MEAL ? { plate_id: null, choices: {} } : { plate_id: Number(guest.plate), choices: guest.picks },
-      ),
+      guests: guests.map((guest) => ({ plate_id: Number(guest.plate), choices: guest.picks })),
       notes: notes.trim() ? notes.trim() : null,
       locale,
       accept_terms: acceptTerms,
@@ -245,8 +256,6 @@ export function EventBookingForm({
         </div>
       </div>
 
-      {!mealsOpen && plates.length > 0 && <Notice>{t("mealsClosed")}</Notice>}
-
       <ol className="m-0 flex list-none flex-col gap-4 p-0">
         {guests.map((guest, index) => (
           <li key={index}>
@@ -256,16 +265,13 @@ export function EventBookingForm({
               </legend>
               {plates.map((plate) => (
                 <div key={plate.id} className={`rounded-xl ${guest.plate === String(plate.id) ? "bg-background-soft" : ""}`}>
-                  <label
-                    className={`flex items-center justify-between gap-3 px-3 py-2 ${mealsOpen ? "cursor-pointer" : "opacity-50"}`}
-                  >
+                  <label className="flex cursor-pointer items-center justify-between gap-3 px-3 py-2">
                     <span className="flex items-center gap-3">
                       <input
                         type="radio"
                         name={`guest-${index}`}
                         value={plate.id}
                         checked={guest.plate === String(plate.id)}
-                        disabled={!mealsOpen}
                         onChange={() => choosePlate(index, String(plate.id))}
                         className="accent-primary"
                       />
@@ -277,36 +283,50 @@ export function EventBookingForm({
                     plate.options.map((group) => {
                       const errorId = `guest-${index}-${group.key}-error`;
                       const isMissing = missing.has(`${index}:${group.key}`);
+                      const pickOne = isPickOne(group);
+                      const picked = guest.picks[group.key] ?? [];
+                      const full = picked.length >= group.max;
+                      const rule = optionRule(group);
                       return (
                         <fieldset
                           key={group.key}
                           aria-describedby={isMissing ? errorId : undefined}
                           className="m-0 flex flex-col gap-2 border-0 px-3 pb-3 sm:pl-10"
                         >
-                          <legend className="mb-2 p-0 text-sm text-text-muted">
-                            {t("chooseOption", { group: group.label.toLowerCase() })}
-                          </legend>
+                          <legend className="mb-2 p-0 text-sm text-text-muted">{tRule(rule.key, rule.values)}</legend>
                           <div className="flex flex-wrap gap-2">
-                            {group.choices.map((choice) => (
-                              <label key={choice.key} className="cursor-pointer">
-                                <input
-                                  type="radio"
-                                  name={`guest-${index}-${group.key}`}
-                                  value={choice.key}
-                                  checked={guest.picks[group.key] === choice.key}
-                                  onChange={() => pick(index, group.key, choice.key)}
-                                  aria-describedby={isMissing ? errorId : undefined}
-                                  className="peer sr-only"
-                                />
-                                <span className="inline-block rounded-full border border-text/15 bg-background px-3.5 py-1.5 text-sm transition-colors peer-checked:border-primary peer-checked:bg-primary peer-checked:text-white peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary hover:border-primary/60">
-                                  {choice.label}
-                                </span>
-                              </label>
-                            ))}
+                            {group.choices.map((choice) => {
+                              const checked = picked.includes(choice.key);
+                              const disabled = !pickOne && full && !checked;
+                              return (
+                                <label key={choice.key} className={disabled ? "cursor-not-allowed" : "cursor-pointer"}>
+                                  <input
+                                    type={pickOne ? "radio" : "checkbox"}
+                                    name={`guest-${index}-${group.key}`}
+                                    value={choice.key}
+                                    checked={checked}
+                                    disabled={disabled}
+                                    onChange={() => toggle(index, group, choice.key)}
+                                    aria-describedby={isMissing ? errorId : undefined}
+                                    className="peer sr-only"
+                                  />
+                                  <span className="inline-block rounded-full border border-text/15 bg-background px-3.5 py-1.5 text-sm transition-colors peer-checked:border-primary peer-checked:bg-primary peer-checked:text-white peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary peer-disabled:opacity-50 hover:border-primary/60 peer-disabled:hover:border-text/15">
+                                    {choice.label}
+                                  </span>
+                                </label>
+                              );
+                            })}
                           </div>
+                          {!pickOne && (
+                            <p className="m-0 text-xs text-text-muted" aria-live="polite">
+                              {tRule("pickedCount", { count: picked.length, max: group.max })}
+                            </p>
+                          )}
                           {isMissing && (
                             <p id={errorId} className="m-0 text-sm text-primary">
-                              {t("errors.option_required", { group: group.label.toLowerCase() })}
+                              {pickOne
+                                ? t("errors.option_required", { group: group.label.toLowerCase() })
+                                : t("errors.option_min", { min: group.min, group: group.label.toLowerCase() })}
                             </p>
                           )}
                         </fieldset>
@@ -314,20 +334,6 @@ export function EventBookingForm({
                     })}
                 </div>
               ))}
-              <label className={`flex cursor-pointer items-center justify-between gap-3 rounded-xl px-3 py-2 ${guest.plate === NO_MEAL ? "bg-background-soft" : ""}`}>
-                <span className="flex items-center gap-3">
-                  <input
-                    type="radio"
-                    name={`guest-${index}`}
-                    value={NO_MEAL}
-                    checked={guest.plate === NO_MEAL}
-                    onChange={() => choosePlate(index, NO_MEAL)}
-                    className="accent-primary"
-                  />
-                  {t("noMeal")}
-                </span>
-                <span className="text-sm text-text-muted">{t("noMealHint")}</span>
-              </label>
             </fieldset>
           </li>
         ))}
@@ -367,36 +373,34 @@ export function EventBookingForm({
 
       <div className="flex items-baseline justify-between border-t border-text/10 pt-4 text-lg">
         <span className="font-semibold">{t("total")}</span>
-        <span className="font-semibold text-primary">{wantsMeals ? formatPrice(total.toFixed(2)) : t("totalFree")}</span>
+        <span className="font-semibold text-primary">{formatPrice(total.toFixed(2))}</span>
       </div>
 
-      {wantsMeals && (
-        <div className="flex flex-col gap-3">
-          {terms && (
-            <details className="rounded-card bg-cream px-5 py-4">
-              <summary className="cursor-pointer font-semibold">{t("termsHeading")}</summary>
-              <p className="m-0 mt-3 text-sm whitespace-pre-line text-text-muted">{terms}</p>
-            </details>
-          )}
-          <label className="flex items-start gap-3">
-            <input
-              type="checkbox"
-              checked={acceptTerms}
-              onChange={(event) => setAcceptTerms(event.target.checked)}
-              aria-invalid={!!errors.accept_terms}
-              aria-describedby={errors.accept_terms ? "booking-terms-error" : undefined}
-              className="mt-1 accent-primary"
-            />
-            <span>{t("acceptTerms")}</span>
-          </label>
-          {errors.accept_terms && (
-            <p id="booking-terms-error" className={FIELD_ERROR_CLASS}>
-              {t("errors.acceptTerms")}
-            </p>
-          )}
-          <p className="m-0 text-sm text-text-muted">{t("paymentNote")}</p>
-        </div>
-      )}
+      <div className="flex flex-col gap-3">
+        {terms && (
+          <details className="rounded-card bg-cream px-5 py-4">
+            <summary className="cursor-pointer font-semibold">{t("termsHeading")}</summary>
+            <p className="m-0 mt-3 text-sm whitespace-pre-line text-text-muted">{terms}</p>
+          </details>
+        )}
+        <label className="flex items-start gap-3">
+          <input
+            type="checkbox"
+            checked={acceptTerms}
+            onChange={(event) => setAcceptTerms(event.target.checked)}
+            aria-invalid={!!errors.accept_terms}
+            aria-describedby={errors.accept_terms ? "booking-terms-error" : undefined}
+            className="mt-1 accent-primary"
+          />
+          <span>{t("acceptTerms")}</span>
+        </label>
+        {errors.accept_terms && (
+          <p id="booking-terms-error" className={FIELD_ERROR_CLASS}>
+            {t("errors.acceptTerms")}
+          </p>
+        )}
+        <p className="m-0 text-sm text-text-muted">{t("paymentNote")}</p>
+      </div>
 
       {seatsShort !== null ? (
         <div role="alert" className="flex flex-col gap-3 rounded-card bg-accent-light px-5 py-4">
