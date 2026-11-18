@@ -185,7 +185,9 @@ impl EmailConfig {
     /// is logged and never surfaces (Phase 25 Decision 6a).
     pub fn spawn_send(&self, email: OutgoingEmail) {
         let Some(settings) = self.settings.clone() else {
-            tracing::debug!(to = email.to, "email disabled, skipping send");
+            // No recipient or subject in logs: both can hold personal data
+            // (Phase 33 Decision 10).
+            tracing::debug!("email disabled, skipping send");
             return;
         };
 
@@ -197,7 +199,11 @@ impl EmailConfig {
 
             let result = send(&settings, &email).await;
             if let Err(error) = &result {
-                tracing::error!(%error, to = email.to, subject = email.subject, "failed to send email");
+                let (kind, order_id, quote_id) = match &email.track {
+                    Some(track) => (Some(track.kind), track.order_id, track.quote_id),
+                    None => (None, None, None),
+                };
+                tracing::error!(%error, delivery_id, kind, order_id, quote_id, "failed to send email");
             }
 
             if let (Some(track), Some(id)) = (&email.track, delivery_id) {

@@ -52,6 +52,9 @@ pub async fn get_media(
             // the web app can use them as WebGL textures (the homepage
             // hero's boil-out shader) without tainting the canvas.
             (header::ACCESS_CONTROL_ALLOW_ORIGIN, "*".to_string()),
+            // Phase 33: never let a browser guess a type other than the
+            // stored one (Caddy sends it too; this keeps the API safe alone).
+            (header::X_CONTENT_TYPE_OPTIONS, "nosniff".to_string()),
         ],
         bytes,
     )

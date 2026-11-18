@@ -125,3 +125,26 @@ async fn contact_message_create_rate_limits_after_burst_size_requests(pool: PgPo
     .await;
     assert_eq!(status, StatusCode::TOO_MANY_REQUESTS);
 }
+
+// Phase 33 Decision 3: burst of 5 per IP on admin login, refilling one a
+// minute, so the 6th quick attempt is limited even with a wrong password.
+#[sqlx::test]
+async fn admin_login_rate_limits_after_burst_size_requests(pool: PgPool) {
+    let app = build_test_app(pool).await;
+    let attempt = || {
+        post_on_with_header(
+            app.clone(),
+            "/api/admin/login",
+            json!({ "email": "owner@example.com", "password": "guess" }),
+            "x-forwarded-for",
+            "198.51.100.7",
+        )
+    };
+
+    for _ in 0..5 {
+        let (status, _body) = attempt().await;
+        assert_eq!(status, StatusCode::UNAUTHORIZED);
+    }
+    let (status, _body) = attempt().await;
+    assert_eq!(status, StatusCode::TOO_MANY_REQUESTS);
+}

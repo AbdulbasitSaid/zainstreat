@@ -1,6 +1,7 @@
 import { hasLocale } from "next-intl";
 import createMiddleware from "next-intl/middleware";
 import { NextResponse, type NextRequest } from "next/server";
+import { rejectCrossSite } from "./lib/same-origin";
 import { routing } from "./i18n/routing";
 
 const intlMiddleware = createMiddleware(routing);
@@ -20,8 +21,9 @@ export default function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
   if (host.startsWith("cms.")) {
-    // Same-origin route handlers (app/api/admin/*) stay where they are.
-    if (pathname.startsWith("/api/")) return NextResponse.next();
+    // Same-origin route handlers (app/api/admin/*) stay where they are,
+    // but only take writes from the admin itself (Phase 33 Decision 7).
+    if (pathname.startsWith("/api/")) return rejectCrossSite(request) ?? NextResponse.next();
     // Live preview (Phase 25 Decision 21): /preview/{locale}/... renders the
     // public page; it only shows draft data once /api/preview/enable has
     // checked the admin session and turned draft mode on.

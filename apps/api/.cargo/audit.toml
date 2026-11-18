@@ -1,0 +1,15 @@
+# cargo audit exceptions (Phase 33 Decision 2). Each needs a reason; review
+# on every dependency upgrade.
+[advisories]
+ignore = [
+  # rsa (Marvin attack): needs a decryption oracle. Pulled in only by
+  # web-push-native -> jwt-simple -> superboring; we sign ES256 VAPID JWTs
+  # and never use RSA. No fixed jwt-simple on web-push-native 0.5's range.
+  "RUSTSEC-2023-0071",
+  # crypto-bigint 0.5 timing variability: same path. Only used to sign our
+  # own VAPID JWTs locally; an attacker can't time those operations.
+  "RUSTSEC-2026-0387",
+  # libsqlite3-sys: listed in Cargo.lock through sqlx's optional SQLite
+  # driver, but never compiled (`cargo tree -i libsqlite3-sys` is empty).
+  "RUSTSEC-2026-0459",
+]

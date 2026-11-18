@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/button";
+import { FormPrivacyNote } from "@/components/form-privacy-note";
 import { PREVIEW_DISABLED_TITLE, usePreview } from "@/lib/preview-context";
 import { Notice } from "@/components/notice";
 import { submitCateringEnquiry, type CreateCateringEnquiryRequest } from "@/lib/catering";
@@ -385,6 +386,7 @@ export function CateringEnquiryForm() {
       >
         {submitting ? t("submittingEnquiry") : t("submitEnquiry")}
       </Button>
+      <FormPrivacyNote form="catering" />
     </form>
   );
 }

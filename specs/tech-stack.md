@@ -584,13 +584,38 @@ leak. The role trusts GitHub's immutable subject for this repo
 (`repo:AbdulbasitSaid@16627656/zainstreat@1400619975:*`), which a renamed
 or recreated repo can't match.
 
+## Security & Privacy (Phase 33)
+
+- **Headers at Caddy**, not in Next, so every host and every response
+  (static files too) gets them: HSTS (no preload yet), `nosniff`,
+  `Referrer-Policy`, `Permissions-Policy`, and a CSP per host. The CSP
+  allows `'unsafe-inline'` scripts because Next's App Router inlines its
+  bootstrap scripts and nonces would make every page dynamic; the value
+  of the CSP here is `frame-ancestors`, `object-src`, `base-uri` and
+  `form-action`. `CSP_HEADER` switches between Report-Only and enforcing.
+- **Admin login:** a `tower_governor` limiter (5 burst, one per 60 s) plus
+  a per-email lockout in Postgres (`login_failures`, 10 in 15 minutes).
+  `/api/admin/*` is blocked on `api.${DOMAIN}`.
+- **CSRF:** an `Origin`/`Sec-Fetch-Site` check in `proxy.ts` on every
+  write to the `cms.` host's `/api/*`; session cookies stay `SameSite=Lax`
+  so owner-email links keep working.
+- **Retention:** a nightly sweeper in `apps/api/src/retention.rs`
+  (behind `RETENTION_SWEEP_ENABLED`) anonymises bookkeeping records after
+  7 years and other personal data after 12 months; `privacy_requests`
+  logs admin exports and erasures by email hash.
+- **Dependency audits in CI:** `pnpm audit --prod --audit-level=high` and
+  `cargo audit`; exceptions, each with a reason, in
+  `apps/api/.cargo/audit.toml` and `apps/web/pnpm-workspace.yaml`. Next.js
+  is pinned to an exact version. `aws-sdk-s3` runs without default
+  features so it uses its hyper 1 / rustls 0.23 client.
+
 ## Summary Table
 
 | Concern | Choice |
 |---|---|
 | Frontend | Next.js (App Router) + React + TypeScript + Tailwind CSS v4 |
 | Animation | GSAP + ScrollTrigger + CustomEase (scroll/transitions/cursor/float) + Lenis (smooth scroll) + three.js (hero liquid splash, lazy-loaded) + plain CSS (hover/focus) |
-| Site imagery | Admin-uploaded MinIO images in `site_content` (Phase 25), falling back to static imports from `apps/web/assets/images/`; `placehold.co` (DB `image_url` fallback only) |
+| Site imagery | Admin-uploaded MinIO images in `site_content` (Phase 25), falling back to static imports from `apps/web/assets/images/` (`placehold.co` and SVG optimisation removed in Phase 33) |
 | i18n | next-intl (locale-prefixed `/en`, `/nl`, `/fr` routing) |
 | Backend API | Rust + Axum + sqlx + serde |
 | Database | PostgreSQL |
@@ -611,3 +636,4 @@ or recreated repo can't match.
 | Content preview | Postgres drafts + publish; Next.js Draft Mode under `cms.<host>/preview/…`; custom iframe device simulator, no library (Phase 25) |
 | Backups | Lightsail automatic daily snapshots + nightly `pg_dump`/MinIO archive to S3 (Phase 21) |
 | Reverse proxy / TLS | Caddy (automatic HTTPS) |
+| Security & privacy | Caddy security headers + CSP, login limiter + lockout, admin Origin check, retention sweeper, admin Privacy tool, CI dependency audits (Phase 33) |

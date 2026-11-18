@@ -9,6 +9,7 @@ pub mod payment;
 pub mod push;
 pub mod quote_status;
 pub mod rate_limit;
+pub mod retention;
 pub mod routes;
 pub mod site_content;
 pub mod validation;
@@ -24,6 +25,7 @@ use tower_http::{
 };
 use tower_sessions::{
     Expiry, SessionManagerLayer,
+    session_store::ExpiredDeletion,
     cookie::{SameSite, time::Duration},
 };
 use tower_sessions_sqlx_store::PostgresStore;
@@ -115,6 +117,12 @@ pub async fn build_app(
 ) -> Result<Router, sqlx::Error> {
     let session_store = PostgresStore::new(pool.clone());
     session_store.migrate().await?;
+    // Phase 33 Decision 9: expired sessions are deleted, not kept forever.
+    tokio::spawn(
+        session_store
+            .clone()
+            .continuously_delete_expired(tokio::time::Duration::from_secs(3600)),
+    );
 
     let session_layer = SessionManagerLayer::new(session_store)
         .with_secure(cookie_secure)

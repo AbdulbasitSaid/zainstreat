@@ -116,6 +116,17 @@ printf '%s\n' "$PASSWORD" | docker compose exec -T api cargo run --bin create_ad
   staging is a good way to rehearse, or to test against real data.
 - Lightsail's automatic daily instance snapshots stay enabled on
   production as a second, whole-box layer.
+- **After any restore (Phase 33):** the backup can bring back personal
+  data that was erased since it was taken. Run the retention sweeper once
+  (restart the `api` container with `RETENTION_SWEEP_ENABLED=true`; it
+  sweeps on start), then re-apply every erasure logged since the backup:
+  for each `privacy_requests` row with `kind = 'anonymise'` and
+  `created_at` after the backup's timestamp, find the matching rows with
+  `encode(sha256(convert_to(lower(customer_email), 'UTF8')), 'hex') =
+  email_sha256` (and `email` on `catering_enquiries` and
+  `contact_messages`) and anonymise them from the admin **Privacy** page
+  (search the email if you know it) or with `retention.rs`'s functions.
+  See [`docs/privacy.md`](privacy.md).
 
 ## Seeding the production menu
 
@@ -133,7 +144,12 @@ backup.
 `DOZZLE_BASIC_AUTH_USER` / `DOZZLE_BASIC_AUTH_HASH` on the Environment;
 generate the hash with `docker run --rm caddy:2-alpine caddy
 hash-password` and store it exactly as printed). It tails every
-container, which is why it's gated. `RUST_LOG`/`LOG_FORMAT` are
+container, which is why it's gated. Use a random password of 20 or more
+characters (`openssl rand -base64 24`): Basic Auth has no lockout. To
+rotate it, generate a new hash, update the secret, and redeploy. Dozzle is
+pinned to an exact version with container actions, shell and MCP turned
+off (Phase 33), so a stolen password can read logs but not control
+containers. Bump the pin by hand in `docker-compose.prod.yml`. `RUST_LOG`/`LOG_FORMAT` are
 Environment variables; change them as described under "Changing a secret
 or setting".
 
@@ -301,6 +317,34 @@ SES SMTP; without credentials the API logs every send as a no-op.
 - **iPhone** needs iOS 16.4 or later and the Home Screen app. Notifications
   don't work in a Safari tab. The owner's steps are in
   [`docs/admin-app.md`](admin-app.md).
+
+## Security headers, privacy and retention (Phase 33)
+
+- **Headers.** Caddy sends HSTS, `nosniff`, `Referrer-Policy`,
+  `Permissions-Policy` and a Content Security Policy on every host. The
+  `CSP_HEADER` Environment variable picks the CSP header name:
+  `Content-Security-Policy-Report-Only` (the default) only reports
+  violations in the browser console; `Content-Security-Policy` enforces
+  it. Leave staging on Report-Only, browse every public page and the
+  admin (including live preview and a push test) with DevTools open, and
+  switch both Environments to `Content-Security-Policy` once there are no
+  violations.
+- **Admin API.** `https://api.<domain>/api/admin/*` returns 404 at Caddy;
+  the admin only reaches the API through `cms.`. Admin login allows 5
+  quick attempts per IP, then one a minute, and locks an email out for 15
+  minutes after 10 failures in 15 minutes.
+- **Retention.** `RETENTION_SWEEP_ENABLED=true` (Environment variable)
+  starts the nightly sweeper in `apps/api/src/retention.rs`, which
+  anonymises or deletes personal data past the periods in
+  [`docs/privacy.md`](privacy.md). It's off by default: turn it on for
+  staging first, and for production only after the client's accountant
+  confirms the periods.
+- **Customer data requests** are handled from the admin's **Privacy**
+  page. See [`docs/privacy.md`](privacy.md).
+- **Dependency audits** run in CI (`audit` job). An advisory with no fix
+  that can't affect the app goes in `apps/api/.cargo/audit.toml` or
+  `apps/web/pnpm-workspace.yaml` (`auditConfig.ignoreGhsas`) with a
+  reason.
 
 ## Resizing the production instance
 

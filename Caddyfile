@@ -15,8 +15,36 @@
 (noindex-false) {
 }
 
+# Phase 33 Decision 5: on every host. No HSTS preload yet (hard to undo).
+(security-headers) {
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		-Server
+	}
+}
+
+# CSP_HEADER is Content-Security-Policy-Report-Only until a staging pass
+# shows no violations, then Content-Security-Policy. 'unsafe-inline'
+# scripts: Next inlines its bootstrap scripts, and nonces would make every
+# page dynamic (Phase 33 plan Group 4). The hero shader and cart animation
+# load photos straight from api.
+(csp-public) {
+	header {$CSP_HEADER:Content-Security-Policy-Report-Only} "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://api.{$DOMAIN}; font-src 'self'; connect-src 'self' https://api.{$DOMAIN}; media-src 'self' https://api.{$DOMAIN}; worker-src 'self' blob:; frame-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests"
+}
+
+# The admin's device simulator frames cms. itself, and its service worker
+# handles push.
+(csp-cms) {
+	header {$CSP_HEADER:Content-Security-Policy-Report-Only} "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://api.{$DOMAIN}; font-src 'self'; connect-src 'self' https://api.{$DOMAIN}; worker-src 'self'; frame-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests"
+}
+
 {$DOMAIN} {
 	import noindex-{$NOINDEX:false}
+	import security-headers
+	import csp-public
 	log {
 		format json
 	}
@@ -34,19 +62,28 @@ cms.{$DOMAIN} {
 		format json
 	}
 	header X-Robots-Tag "noindex, nofollow"
+	import security-headers
+	import csp-cms
 	reverse_proxy web:3000
 }
 
 api.{$DOMAIN} {
 	import noindex-{$NOINDEX:false}
+	import security-headers
+	header Content-Security-Policy "default-src 'none'; frame-ancestors 'none'"
 	log {
 		format json
 	}
+	# The admin reaches the API only through the cms. proxy over the Docker
+	# network; never expose it here (Phase 33 Decision 4).
+	@admin path /api/admin /api/admin/*
+	respond @admin 404
 	reverse_proxy api:8080
 }
 
 logs.{$DOMAIN} {
 	import noindex-{$NOINDEX:false}
+	import security-headers
 	basic_auth {
 		{$DOZZLE_BASIC_AUTH_USER} {$DOZZLE_BASIC_AUTH_HASH}
 	}

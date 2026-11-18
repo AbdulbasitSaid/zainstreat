@@ -14,6 +14,7 @@ const NAV_ITEMS = [
   { label: "Changes", href: "/changes", enabled: true },
   { label: "Enquiries", href: "/enquiries", enabled: true },
   { label: "Events", href: "/events", enabled: true },
+  { label: "Privacy", href: "/privacy", enabled: true },
   { label: "Settings", href: "/settings", enabled: true },
 ] as const;
 

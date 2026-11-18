@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO privacy_requests (kind, email_sha256, row_counts, admin_user_id)\n           VALUES ($1, encode(sha256(convert_to($2, 'UTF8')), 'hex'), $3, $4)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Jsonb",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f38f3df5441f2078456e6d095e3f5b0a21750d921c5842c34db79ce2cc14aad4"
+}

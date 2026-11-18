@@ -113,6 +113,12 @@ jobs:
           V_DOZZLE_BASIC_AUTH_HASH: ${{ secrets.DOZZLE_BASIC_AUTH_HASH }}
           V_ACME_EMAIL: ${{ vars.ACME_EMAIL }}
           V_NOINDEX: ${{ vars.NOINDEX || 'false' }}
+          # Phase 33: Content-Security-Policy-Report-Only (default) until a
+          # staging pass is clean, then Content-Security-Policy.
+          V_CSP_HEADER: ${{ vars.CSP_HEADER }}
+          # Phase 33 Decision 14: "true" only once the client's accountant
+          # has confirmed the retention periods.
+          V_RETENTION_SWEEP_ENABLED: ${{ vars.RETENTION_SWEEP_ENABLED }}
           V_COOKIE_SECURE: "true"
           V_DOMAIN: ${{ env.DOMAIN }}
           V_API_IMAGE: ${{ inputs.api_image }}

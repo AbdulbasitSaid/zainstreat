@@ -11,7 +11,6 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: ["cms.localhost"],
   images: {
     remotePatterns: [
-      { protocol: "https", hostname: "placehold.co" },
       // Dev: the API container's published port, same convention default
       // as API_PORT everywhere else. Prod: api.$DOMAIN, Caddy-fronted
       // (requirement.md Decision 2). DOMAIN must be set at `next build`
@@ -30,13 +29,8 @@ const nextConfig: NextConfig = {
     // (apps/api/src/routes/media.rs) and static images only change on a
     // deploy, so re-encoding sooner is wasted CPU (Phase 18).
     minimumCacheTTL: 2592000,
-    // placehold.co serves image/svg+xml, which next/image's optimizer
-    // blocks by default (SVGs can embed scripts). Sandboxed CSP below is
-    // Next's own documented mitigation — allows rendering without
-    // executing anything the SVG might contain.
-    dangerouslyAllowSVG: true,
-    contentDispositionType: "attachment",
-    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+    // No dangerouslyAllowSVG: the optimizer rejects SVGs, which closes the
+    // SVG remote-code-execution advisory class (Phase 33 Decision 1).
   },
 };
 

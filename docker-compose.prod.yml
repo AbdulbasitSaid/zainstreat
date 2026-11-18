@@ -43,6 +43,7 @@ services:
       PUBLIC_API_URL: https://api.${DOMAIN}
       PUBLIC_SITE_URL: https://${DOMAIN}
       PUBLIC_ADMIN_URL: https://cms.${DOMAIN}
+      RETENTION_SWEEP_ENABLED: ${RETENTION_SWEEP_ENABLED:-false}
     mem_limit: 256m
     memswap_limit: 256m
     cpus: 1.0
@@ -62,6 +63,8 @@ services:
       # Only dynamically rendered metadata reads this; remotePatterns,
       # robots.txt and sitemap.xml use the build-time value (Dockerfile ARG DOMAIN).
       DOMAIN: ${DOMAIN}
+      # The privacy page shows it, read per request (Phase 33 Decision 12).
+      BUSINESS_KVK: ${BUSINESS_KVK:-}
     mem_limit: 1g
     memswap_limit: 1g
     cpus: 1.5
@@ -76,6 +79,7 @@ services:
       DOMAIN: ${DOMAIN}
       ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL is required}
       NOINDEX: ${NOINDEX:-false}
+      CSP_HEADER: ${CSP_HEADER:-Content-Security-Policy-Report-Only}
       DOZZLE_BASIC_AUTH_USER: ${DOZZLE_BASIC_AUTH_USER}
       DOZZLE_BASIC_AUTH_HASH: ${DOZZLE_BASIC_AUTH_HASH}
     volumes:
@@ -96,11 +100,16 @@ services:
     <<: *default-logging
 
   dozzle:
-    image: amir20/dozzle:latest
+    # Pinned, and read-only: it holds the Docker socket, so container
+    # actions, shell and MCP stay off (Phase 33 Decision 8). Bump by hand.
+    image: amir20/dozzle:v11.4.3
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
       DOZZLE_NO_ANALYTICS: "true"
+      DOZZLE_ENABLE_ACTIONS: "false"
+      DOZZLE_ENABLE_SHELL: "false"
+      DOZZLE_ENABLE_MCP: "false"
     mem_limit: 128m
     memswap_limit: 128m
     cpus: 0.25

@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id FROM orders\n           WHERE anonymised_at IS NULL\n             AND (created_at < now() - make_interval(months => $1)\n                  OR (status = 'cancelled' AND payment_confirmed_at IS NULL\n                      AND created_at < now() - make_interval(months => $2)))",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "38f597dd7aec8ff4b58704049479cf64b6ed40043f3f0413cdf726c7fd2197a1"
+}
