@@ -232,7 +232,7 @@ export function AdminEventForm({ event, initial }: { event: AdminEvent | null; i
             value={input.meal_orders_close_at ?? ""}
             onChange={(e) => set("meal_orders_close_at", e.target.value)}
           />
-          <p className={HINT}>After this, guests can only RSVP without a meal, and can&apos;t cancel online.</p>
+          <p className={HINT}>Bookings close then too, and guests can&apos;t cancel online after it.</p>
         </div>
         <div>
           <label htmlFor="event-rsvp-close" className={LABEL}>Bookings close</label>
@@ -243,7 +243,7 @@ export function AdminEventForm({ event, initial }: { event: AdminEvent | null; i
             value={input.rsvp_closes_at ?? ""}
             onChange={(e) => set("rsvp_closes_at", e.target.value)}
           />
-          <p className={HINT}>Blank: open until the event starts.</p>
+          <p className={HINT}>Bookings close at the earlier of this and the meal-order cutoff. Both blank: open until the event starts.</p>
         </div>
         <div>
           <label htmlFor="event-area" className={LABEL}>Area (public, required)</label>
@@ -262,7 +262,6 @@ export function AdminEventForm({ event, initial }: { event: AdminEvent | null; i
         <div>
           <label htmlFor="event-capacity" className={LABEL}>Seats</label>
           <input id="event-capacity" type="number" min={1} className="field" value={input.capacity} onChange={(e) => set("capacity", Number(e.target.value))} />
-          <p className={HINT}>Guests without a meal take a seat too.</p>
         </div>
         <div>
           <label htmlFor="event-party" className={LABEL}>Max people per booking</label>
@@ -319,7 +318,7 @@ export function AdminEventForm({ event, initial }: { event: AdminEvent | null; i
       <section className="flex flex-col gap-4">
         <h2 className="m-0 text-xl">Plates</h2>
         <p className="m-0 text-sm text-text-muted">
-          Guests pick one per person, or “attending without a meal”. The first plate is the headline.
+          Every guest picks one per person. The first plate is the headline. An event needs at least one plate to publish.
         </p>
         <ol className="m-0 flex list-none flex-col gap-4 p-0">
           {input.plates.map((plate, index) => (

@@ -609,14 +609,29 @@ async fn set_flags(pool: &PgPool, id: i64, published: Option<bool>, archived: Op
 }
 
 /// An event can't go live without the address confirmed guests receive
-/// (Phase 32 Decision 12); a production seed leaves it blank.
+/// (Phase 32 Decision 12; a production seed leaves it blank), or without a
+/// plate, since every guest orders one (Phase 35 Decision 6).
 pub async fn publish_event(State(pool): State<PgPool>, Path(id): Path<i64>) -> Result<Json<AdminEvent>, AppError> {
-    let address = sqlx::query_scalar!("SELECT address FROM events WHERE id = $1", id)
-        .fetch_optional(&pool)
-        .await?
-        .ok_or(AppError::NotFound)?;
-    if address.trim().is_empty() {
-        return Err(AppError::Validation(vec![field_error("address", "required")]));
+    let event = sqlx::query!(
+        r#"
+        SELECT address,
+               EXISTS (SELECT 1 FROM event_plates p WHERE p.event_id = e.id AND p.is_available) as "has_plate!"
+        FROM events e WHERE id = $1
+        "#,
+        id
+    )
+    .fetch_optional(&pool)
+    .await?
+    .ok_or(AppError::NotFound)?;
+    let mut errors = Vec::new();
+    if event.address.trim().is_empty() {
+        errors.push(field_error("address", "required"));
+    }
+    if !event.has_plate {
+        errors.push(field_error("plates", "required"));
+    }
+    if !errors.is_empty() {
+        return Err(AppError::Validation(errors));
     }
     set_flags(&pool, id, Some(true), None).await
 }
@@ -884,8 +899,8 @@ pub async fn bookings_csv(State(pool): State<PgPool>, Path(id): Path<i64>) -> Re
 }
 
 /// Gives seats to a waitlisted (or cancelled) booking if they fit now
-/// (Decision 7, open risk 4). Ignores the meal cutoff: the owner chose to
-/// cook for them.
+/// (Decision 7, open risk 4), until bookings close at the meal cutoff
+/// (Phase 35 Decision 5).
 pub async fn offer_seats(
     State(pool): State<PgPool>,
     State(email): State<EmailConfig>,
@@ -904,10 +919,19 @@ pub async fn offer_seats(
     if !matches!(booking.status.as_str(), "waitlisted" | "cancelled") {
         return Err(AppError::InvalidStatusTransition);
     }
-    let capacity = sqlx::query_scalar!("SELECT capacity FROM events WHERE id = $1 FOR UPDATE", booking.event_id)
-        .fetch_one(&mut *tx)
-        .await?;
-    let seats_left = i64::from(capacity) - seats_taken(&mut tx, booking.event_id).await?;
+    let event = sqlx::query!(
+        r#"
+        SELECT capacity, (now() < LEAST(meal_orders_close_at, rsvp_closes_at, starts_at)) as "booking_open!"
+        FROM events WHERE id = $1 FOR UPDATE
+        "#,
+        booking.event_id
+    )
+    .fetch_one(&mut *tx)
+    .await?;
+    if !event.booking_open {
+        return Err(AppError::BookingClosed);
+    }
+    let seats_left = i64::from(event.capacity) - seats_taken(&mut tx, booking.event_id).await?;
     if i64::from(booking.party_size) > seats_left {
         return Err(AppError::NotEnoughSeats(seats_left.max(0)));
     }

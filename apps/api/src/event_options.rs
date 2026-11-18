@@ -1,7 +1,8 @@
 //! Plate option groups (Phase 32 Decisions 1-4, 7): "Choose your protein:
-//! assorted meat or fish". Every group is pick-one and required, and choices
-//! never change the price. Groups live as JSON on the plate; each guest's
-//! picks are snapshotted with their English label.
+//! assorted meat or fish". Each group has an admin-set min and max picks
+//! (Phase 35 Decisions 7-8, default exactly one), and choices never change
+//! the price. Groups live as JSON on the plate; each guest's picks are
+//! snapshotted with their English label.
 
 use crate::order_emails::Locale;
 use serde::{Deserialize, Serialize};
@@ -29,6 +30,34 @@ pub struct OptionGroup {
     pub key: String,
     pub label: Labels,
     pub choices: Vec<OptionChoice>,
+    /// Fewest and most picks per guest; Phase 32 groups have neither and
+    /// read as exactly one.
+    #[serde(default = "one")]
+    pub min: u8,
+    #[serde(default = "one")]
+    pub max: u8,
+}
+
+fn one() -> u8 {
+    1
+}
+
+/// A guest's picks in one group. A bare string is the Phase 32 shape, still
+/// accepted from a cached page.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(untagged)]
+pub enum Picked {
+    One(String),
+    Many(Vec<String>),
+}
+
+impl Picked {
+    pub fn keys(&self) -> &[String] {
+        match self {
+            Picked::One(key) => std::slice::from_ref(key),
+            Picked::Many(keys) => keys,
+        }
+    }
 }
 
 /// One guest's pick in one group, with the choice's English label at
@@ -50,27 +79,37 @@ pub fn parse_choices(value: &serde_json::Value) -> Vec<GuestChoice> {
     serde_json::from_value(value.clone()).unwrap_or_default()
 }
 
-/// Checks a guest's picks against the plate's groups: exactly one known
-/// choice per group, nothing else. The error is the field message.
+/// Checks a guest's picks against the plate's groups: known, distinct
+/// choices, between the group's min and max, nothing else. Picks come back
+/// in the plate's order, not the guest's, so equal picks snapshot equal.
+/// The error is the field message.
 pub fn resolve_choices(
     groups: &[OptionGroup],
-    picked: &BTreeMap<String, String>,
+    picked: &BTreeMap<String, Picked>,
 ) -> Result<Vec<GuestChoice>, &'static str> {
     if picked.keys().any(|key| !groups.iter().any(|group| &group.key == key)) {
         return Err("unknown_option");
     }
-    groups
-        .iter()
-        .map(|group| {
-            let key = picked.get(&group.key).ok_or("option_required")?;
-            let choice = group.choices.iter().find(|choice| &choice.key == key).ok_or("unknown_option")?;
-            Ok(GuestChoice {
-                group: group.key.clone(),
-                choice: choice.key.clone(),
-                label: label_in(&choice.label, Locale::En),
-            })
-        })
-        .collect()
+    let mut resolved = Vec::new();
+    for group in groups {
+        let keys = picked.get(&group.key).map(Picked::keys).unwrap_or_default();
+        let mut seen = HashSet::new();
+        if keys.iter().any(|key| !seen.insert(key) || !group.choices.iter().any(|choice| &choice.key == key)) {
+            return Err("unknown_option");
+        }
+        if keys.len() < usize::from(group.min) {
+            return Err("option_required");
+        }
+        if keys.len() > usize::from(group.max) {
+            return Err("too_many_options");
+        }
+        resolved.extend(group.choices.iter().filter(|choice| keys.contains(&choice.key)).map(|choice| GuestChoice {
+            group: group.key.clone(),
+            choice: choice.key.clone(),
+            label: label_in(&choice.label, Locale::En),
+        }));
+    }
+    Ok(resolved)
 }
 
 /// "Fried plantain, Chicken": the guest's picks in `locale`, translated
@@ -148,13 +187,14 @@ pub fn normalize_groups(groups: &[OptionGroup]) -> Vec<OptionGroup> {
                     OptionChoice { key, label }
                 })
                 .collect();
-            OptionGroup { key, label, choices }
+            OptionGroup { key, label, choices, min: group.min, max: group.max }
         })
         .collect()
 }
 
 /// Field errors (`(suffix, message)`) for a plate's normalized groups:
-/// English labels, valid unique keys, two or more choices per group.
+/// English labels, valid unique keys, two or more choices per group, and
+/// `0 <= min <= max <= choices` with at least one pick allowed.
 pub fn validate_groups(groups: &[OptionGroup]) -> Vec<(String, &'static str)> {
     let mut errors = Vec::new();
     if groups.len() > MAX_GROUPS {
@@ -172,6 +212,9 @@ pub fn validate_groups(groups: &[OptionGroup]) -> Vec<(String, &'static str)> {
             errors.push((format!("options[{g}].choices"), "too_few"));
         } else if group.choices.len() > MAX_CHOICES {
             errors.push((format!("options[{g}].choices"), "too_many"));
+        }
+        if group.min > group.max || group.max == 0 || usize::from(group.max) > group.choices.len() {
+            errors.push((format!("options[{g}].limits"), "invalid"));
         }
         let mut choice_keys = HashSet::new();
         for (c, choice) in group.choices.iter().enumerate() {
@@ -202,8 +245,71 @@ mod tests {
         ]))
     }
 
-    fn picks(pairs: &[(&str, &str)]) -> BTreeMap<String, String> {
-        pairs.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect()
+    fn picks(pairs: &[(&str, &str)]) -> BTreeMap<String, Picked> {
+        pairs.iter().map(|(k, v)| (k.to_string(), Picked::One(v.to_string()))).collect()
+    }
+
+    fn many(pairs: &[(&str, &[&str])]) -> BTreeMap<String, Picked> {
+        pairs
+            .iter()
+            .map(|(k, v)| (k.to_string(), Picked::Many(v.iter().map(|key| key.to_string()).collect())))
+            .collect()
+    }
+
+    /// Five sides, pick one to three.
+    fn sides(min: u8, max: u8) -> Vec<OptionGroup> {
+        parse_groups(&json!([
+            {"key": "side", "label": {"en": "Side"}, "min": min, "max": max, "choices": [
+                {"key": "plantain", "label": {"en": "Fried plantain"}},
+                {"key": "moin-moin", "label": {"en": "Moin moin"}},
+                {"key": "salad", "label": {"en": "Fresh salad"}},
+                {"key": "rice", "label": {"en": "White rice"}},
+                {"key": "beans", "label": {"en": "Beans"}}]}
+        ]))
+    }
+
+    #[test]
+    fn phase_32_groups_default_to_exactly_one() {
+        assert!(groups().iter().all(|group| group.min == 1 && group.max == 1));
+    }
+
+    #[test]
+    fn up_to_three_of_five() {
+        let groups = sides(1, 3);
+        assert_eq!(resolve_choices(&groups, &many(&[("side", &["salad"])])).unwrap().len(), 1);
+        let three = resolve_choices(&groups, &many(&[("side", &["salad", "plantain", "beans"])])).unwrap();
+        let keys: Vec<_> = three.iter().map(|c| c.choice.as_str()).collect();
+        assert_eq!(keys, ["plantain", "salad", "beans"], "plate order, not click order");
+        assert_eq!(
+            resolve_choices(&groups, &many(&[("side", &["salad", "plantain", "beans", "rice"])])),
+            Err("too_many_options")
+        );
+        assert_eq!(resolve_choices(&groups, &many(&[("side", &[])])), Err("option_required"));
+        assert_eq!(resolve_choices(&groups, &many(&[])), Err("option_required"));
+        assert_eq!(resolve_choices(&groups, &many(&[("side", &["salad", "salad"])])), Err("unknown_option"));
+    }
+
+    #[test]
+    fn exactly_two_and_optional_groups() {
+        let exactly = sides(2, 2);
+        assert_eq!(resolve_choices(&exactly, &many(&[("side", &["salad"])])), Err("option_required"));
+        assert!(resolve_choices(&exactly, &many(&[("side", &["salad", "rice"])])).is_ok());
+        assert_eq!(
+            resolve_choices(&exactly, &many(&[("side", &["salad", "rice", "beans"])])),
+            Err("too_many_options")
+        );
+        assert_eq!(resolve_choices(&sides(0, 2), &many(&[])), Ok(vec![]));
+    }
+
+    #[test]
+    fn validation_checks_limits() {
+        let errors = |min, max| validate_groups(&normalize_groups(&sides(min, max)));
+        assert!(errors(0, 3).is_empty());
+        assert!(errors(5, 5).is_empty());
+        let invalid = ("options[0].limits".to_string(), "invalid");
+        assert!(errors(2, 1).contains(&invalid));
+        assert!(errors(0, 0).contains(&invalid));
+        assert!(errors(1, 6).contains(&invalid));
     }
 
     #[test]

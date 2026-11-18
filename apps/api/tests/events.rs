@@ -112,13 +112,13 @@ async fn unpublished_events_are_hidden(pool: PgPool) {
 async fn booking_with_meals_creates_an_event_order_and_holds_seats(pool: PgPool) {
     let (_, abula, jollof) = seed_event(&pool, 16).await;
 
-    let (status, created) = book(&pool, booking(json!([abula, abula, jollof, null]))).await;
+    let (status, created) = book(&pool, booking(json!([abula, abula, jollof]))).await;
     assert_eq!(status, StatusCode::CREATED, "{created}");
     assert_eq!(created["status"], "awaiting_payment");
 
     let page = booking_page(&pool, created["token"].as_str().unwrap()).await;
     assert_eq!(page["total"], "45.00");
-    assert_eq!(page["party_size"], 4);
+    assert_eq!(page["party_size"], 3);
     assert_eq!(page["address"], Value::Null, "no address before payment");
     assert_eq!(page["event"]["title"], "De Abula-ervaring", "the guest's locale");
     let order = &page["order"];
@@ -134,26 +134,37 @@ async fn booking_with_meals_creates_an_event_order_and_holds_seats(pool: PgPool)
     assert_eq!(order["items"][1]["item_name"], "The Abula Experience — Smoky jollof rice with salad");
 
     let (_, event) = get(pool.clone(), &format!("/api/events/{SLUG}")).await;
-    assert_eq!(event["seats_left"], 12);
+    assert_eq!(event["seats_left"], 13);
 }
 
+/// Phase 35 Decision 3: every guest orders a plate, but bookings made
+/// without one before still load.
 #[sqlx::test]
-async fn free_rsvp_is_confirmed_with_the_address(pool: PgPool) {
-    seed_event(&pool, 16).await;
-    let (status, created) = book(&pool, booking(json!([null, null]))).await;
-    assert_eq!(status, StatusCode::CREATED, "{created}");
-    assert_eq!(created["status"], "confirmed");
+async fn every_guest_needs_a_plate_but_old_no_meal_guests_still_show(pool: PgPool) {
+    let (_, abula, _) = seed_event(&pool, 16).await;
+    for guests in [json!([null, null]), json!([abula, { "plate_id": null }])] {
+        let (status, body) = book(&pool, booking(guests.clone())).await;
+        assert_eq!(status, StatusCode::BAD_REQUEST, "{guests}");
+        assert!(body.to_string().contains("plate_id"), "{body}");
+        assert!(body.to_string().contains("required"), "{body}");
+    }
 
+    let (status, created) = book(&pool, booking(json!([abula, abula]))).await;
+    assert_eq!(status, StatusCode::CREATED, "{created}");
+    sqlx::query("UPDATE event_booking_guests SET plate_id = NULL, plate_name = NULL, unit_price = NULL WHERE position = 1")
+        .execute(&pool)
+        .await
+        .unwrap();
     let page = booking_page(&pool, created["token"].as_str().unwrap()).await;
-    assert_eq!(page["address"], ADDRESS);
-    assert_eq!(page["order"], Value::Null);
+    assert_eq!(page["guests"][1]["plate_name"], Value::Null);
+    assert_eq!(page["guests"][1]["choices"], "");
 }
 
 #[sqlx::test]
 async fn validation_rules(pool: PgPool) {
     let (_, abula, _) = seed_event(&pool, 16).await;
 
-    let (status, body) = book(&pool, booking(json!([null, null, null, null, null, null, null]))).await;
+    let (status, body) = book(&pool, booking(json!([abula, abula, abula, abula, abula, abula, abula]))).await;
     assert_eq!(status, StatusCode::BAD_REQUEST, "max party size");
     assert!(body.to_string().contains("too_many"));
 
@@ -171,16 +182,16 @@ async fn validation_rules(pool: PgPool) {
         .await
         .unwrap();
     let (status, body) = book(&pool, booking(json!([abula]))).await;
-    assert_eq!(status, StatusCode::BAD_REQUEST);
-    assert!(body.to_string().contains("meals_closed"));
-    let (status, _) = book(&pool, booking(json!([null]))).await;
-    assert_eq!(status, StatusCode::CREATED, "RSVPs stay open after the meal cutoff");
+    assert_eq!(status, StatusCode::CONFLICT, "bookings close at the meal cutoff");
+    assert_eq!(body["error"], "booking_closed");
+    let (_, event) = get(pool.clone(), &format!("/api/events/{SLUG}")).await;
+    assert_eq!(event["rsvp_open"], false);
 }
 
 #[sqlx::test]
 async fn honeypot_fakes_success(pool: PgPool) {
     seed_event(&pool, 16).await;
-    let mut body = booking(json!([null]));
+    let mut body = booking(json!([1]));
     body["website"] = json!("http://spam.example");
     let (status, _) = book(&pool, body).await;
     assert_eq!(status, StatusCode::CREATED);
@@ -191,7 +202,7 @@ async fn honeypot_fakes_success(pool: PgPool) {
 #[sqlx::test]
 async fn full_event_offers_the_waitlist(pool: PgPool) {
     let (_, abula, _) = seed_event(&pool, 3).await;
-    let (status, _) = book(&pool, booking(json!([abula, null]))).await;
+    let (status, _) = book(&pool, booking(json!([abula, abula]))).await;
     assert_eq!(status, StatusCode::CREATED);
 
     let (status, body) = book(&pool, booking(json!([abula, abula]))).await;
@@ -256,7 +267,7 @@ async fn confirming_payment_confirms_the_booking(pool: PgPool) {
 async fn cancelling_the_order_frees_the_seats(pool: PgPool) {
     let (_, abula, _) = seed_event(&pool, 16).await;
     let cookie = login(&pool).await;
-    let (_, created) = book(&pool, booking(json!([abula, null]))).await;
+    let (_, created) = book(&pool, booking(json!([abula, abula]))).await;
     let token = created["token"].as_str().unwrap().to_string();
     let order_id = booking_page(&pool, &token).await["order"]["id"].as_i64().unwrap();
 
@@ -310,7 +321,7 @@ async fn sweeper_releases_expired_holds_but_not_claimed_payments(pool: PgPool) {
 async fn owner_offers_seats_to_the_waitlist(pool: PgPool) {
     let (event_id, abula, _) = seed_event(&pool, 2).await;
     let cookie = login(&pool).await;
-    let (_, first) = book(&pool, booking(json!([null, null]))).await;
+    let (_, first) = book(&pool, booking(json!([abula, abula]))).await;
     let mut waitlist = booking(json!([abula]));
     waitlist["join_waitlist"] = json!(true);
     let (_, waiting) = book(&pool, waitlist).await;
@@ -319,6 +330,14 @@ async fn owner_offers_seats_to_the_waitlist(pool: PgPool) {
         .fetch_one(&pool)
         .await
         .unwrap();
+
+    // Phase 35 Decision 5: no offers once bookings close.
+    sqlx::query("UPDATE events SET meal_orders_close_at = now() - interval '1 minute'").execute(&pool).await.unwrap();
+    let (status, body, _) =
+        post_with_cookie(pool.clone(), &format!("/api/admin/events/bookings/{waiting_id}/offer"), json!({}), Some(&cookie)).await;
+    assert_eq!(status, StatusCode::CONFLICT);
+    assert_eq!(body["error"], "booking_closed");
+    sqlx::query("UPDATE events SET meal_orders_close_at = now() + interval '33 days'").execute(&pool).await.unwrap();
 
     let (status, body, _) =
         post_with_cookie(pool.clone(), &format!("/api/admin/events/bookings/{waiting_id}/offer"), json!({}), Some(&cookie)).await;
@@ -349,8 +368,8 @@ async fn owner_offers_seats_to_the_waitlist(pool: PgPool) {
 
 #[sqlx::test]
 async fn guests_cannot_cancel_after_the_meal_cutoff(pool: PgPool) {
-    seed_event(&pool, 16).await;
-    let (_, created) = book(&pool, booking(json!([null]))).await;
+    let (_, abula, _) = seed_event(&pool, 16).await;
+    let (_, created) = book(&pool, booking(json!([abula]))).await;
     sqlx::query("UPDATE events SET meal_orders_close_at = now() - interval '1 minute'")
         .execute(&pool)
         .await
@@ -404,6 +423,16 @@ async fn admin_creates_publishes_and_previews_an_event(pool: PgPool) {
     let (status, second, _) = post_with_cookie(pool.clone(), "/api/admin/events", again, Some(&cookie)).await;
     assert_eq!(status, StatusCode::CREATED);
     assert_eq!(second["slug"], "amala-night-2");
+    // Phase 35 Decision 6: nobody could book an event without a plate.
+    let (status, body, _) = post_with_cookie(
+        pool.clone(),
+        &format!("/api/admin/events/{}/publish", second["id"].as_i64().unwrap()),
+        json!({}),
+        Some(&cookie),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert!(body.to_string().contains("plates"), "{body}");
 
     let (status, photos) = put_with_cookie(
         pool.clone(),
@@ -446,6 +475,48 @@ fn guest(plate_id: i64, choices: Value) -> Value {
     json!({ "plate_id": plate_id, "choices": choices })
 }
 
+/// Phase 35 Decisions 7-9: a pick-up-to-two side group.
+#[sqlx::test]
+async fn multi_pick_groups_follow_their_limits(pool: PgPool) {
+    let (_, abula, jollof) = seed_event(&pool, 16).await;
+    add_options(&pool, abula, jollof).await;
+    sqlx::query("UPDATE event_plates SET options = jsonb_set(jsonb_set(options, '{0,min}', '1'), '{0,max}', '2') WHERE id = $1")
+        .bind(jollof)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let (_, event) = get(pool.clone(), &format!("/api/events/{SLUG}")).await;
+    assert_eq!(event["plates"][1]["options"][0]["max"], 2);
+    assert_eq!(event["plates"][1]["options"][1]["max"], 1, "Phase 32 groups read as exactly one");
+
+    let (status, body) = book(
+        &pool,
+        booking(json!([guest(jollof, json!({ "side": ["fried-plantain", "moin-moin", "fresh-salad"], "protein": "chicken" }))])),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert!(body.to_string().contains("too_many_options"), "{body}");
+
+    let (status, created) = book(
+        &pool,
+        booking(json!([
+            guest(jollof, json!({ "side": ["fresh-salad", "fried-plantain"], "protein": ["chicken"] })),
+            guest(jollof, json!({ "side": ["fried-plantain", "fresh-salad"], "protein": "chicken" })),
+        ])),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED, "{created}");
+    let page = booking_page(&pool, created["token"].as_str().unwrap()).await;
+    let items = page["order"]["items"].as_array().unwrap();
+    assert_eq!(items.len(), 1, "same picks in any order share a line");
+    assert_eq!(
+        items[0]["item_name"],
+        "The Abula Experience — Smoky jollof rice with salad (Fried plantain, Fresh salad, Chicken)"
+    );
+    assert_eq!(items[0]["quantity"], 2);
+}
+
 #[sqlx::test]
 async fn plate_options_are_public_and_translated(pool: PgPool) {
     let (_, abula, jollof) = seed_event(&pool, 16).await;
@@ -470,7 +541,6 @@ async fn choices_become_order_lines_and_show_on_the_booking(pool: PgPool) {
             guest(abula, json!({ "protein": "assorted-meat" })),
             guest(jollof, json!({ "protein": "chicken", "side": "fried-plantain" })),
             guest(abula, json!({ "protein": "assorted-meat" })),
-            { "plate_id": null },
         ])),
     )
     .await;
@@ -480,7 +550,6 @@ async fn choices_become_order_lines_and_show_on_the_booking(pool: PgPool) {
     assert_eq!(page["total"], "60.00");
     assert_eq!(page["guests"][0]["choices"], "Vis", "the booking's locale");
     assert_eq!(page["guests"][2]["choices"], "Gebakken bakbanaan, Kip", "group order");
-    assert_eq!(page["guests"][4]["choices"], "");
     let items = page["order"]["items"].as_array().unwrap();
     let lines: Vec<(&str, i64)> = items
         .iter()
@@ -522,7 +591,8 @@ async fn choices_are_validated(pool: PgPool) {
         (json!([guest(jollof, json!({ "protein": "chicken" }))]), "option_required"),
         (json!([guest(abula, json!({ "protein": "beef" }))]), "unknown_option"),
         (json!([guest(abula, json!({ "protein": "fish", "side": "moin-moin" }))]), "unknown_option"),
-        (json!([{ "plate_id": null, "choices": { "protein": "fish" } }]), "unknown_option"),
+        (json!([{ "plate_id": null, "choices": { "protein": "fish" } }]), "required"),
+        (json!([guest(abula, json!({ "protein": ["fish", "assorted-meat"] }))]), "too_many_options"),
         (json!([abula]), "option_required"),
     ] {
         let (status, body) = book(&pool, booking(guests.clone())).await;
@@ -559,6 +629,7 @@ async fn admin_saves_plate_options_and_needs_an_address_to_publish(pool: PgPool)
     assert_eq!(options["key"], "protein");
     assert_eq!(options["choices"][1]["key"], "turkey");
     assert_eq!(options["choices"][1]["label"]["nl"], "Kalkoen");
+    assert_eq!((options["min"].as_u64(), options["max"].as_u64()), (Some(1), Some(1)), "defaults");
 
     let id = created["id"].as_i64().unwrap();
     sqlx::query("UPDATE events SET address = '' WHERE id = $1").bind(id).execute(&pool).await.unwrap();

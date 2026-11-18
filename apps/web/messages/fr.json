@@ -480,14 +480,15 @@
     "metaTitle": "{title} | Zain's Treat n More",
     "draftNotice": "Aperçu : cet événement n'est pas encore publié. Vous seul pouvez le voir.",
     "backToEvents": "Tous les événements",
-    "freeEntry": "Entrée libre · Repas payants",
+    "eyebrow": "Places limitées · Repas sur commande",
     "pastEyebrow": "Événement passé",
     "platesHeading": "Au menu",
     "seatsLeft": "{count, plural, one {# place libre sur {capacity}} other {# places libres sur {capacity}}}",
     "full": "Complet : inscrivez-vous sur la liste d'attente",
-    "mealCutoff": "Les commandes de repas ferment le {date}.",
+    "bookingCutoff": "Réservations jusqu’au {date}.",
     "bookHeading": "Réservez votre place",
-    "guestWording": "L'entrée est gratuite et les places sont limitées. Inscrivez-vous pour réserver votre place. Si vous souhaitez manger, choisissez votre assiette lors de l'inscription. Vous recevrez aussitôt une demande de paiement, et votre repas est réservé dès réception du paiement.",
+    "guestTagline": "VOTRE PLACE À TABLE VOUS ATTEND",
+    "guestWording": "Ne vous contentez pas d’en entendre parler, vivez l’expérience !",
     "rsvpClosed": "Les réservations pour cet événement sont closes.",
     "addressPrivate": "L'adresse est communiquée uniquement aux invités confirmés.",
     "recapHeading": "Comment ça s'est passé",
@@ -496,8 +497,7 @@
     "openPhoto": "Ouvrir la photo {n} sur {total}",
     "previousPhoto": "Photo précédente",
     "nextPhoto": "Photo suivante",
-    "closePhoto": "Fermer",
-    "chooseGroup": "Choisissez votre {group} :"
+    "closePhoto": "Fermer"
   },
   "EventBooking": {
     "labels": {
@@ -514,12 +514,8 @@
     "guestYou": "Invité 1 (vous)",
     "guestN": "Invité {n}",
     "noMeal": "Présent sans repas",
-    "noMealHint": "Occupe quand même une place",
-    "chooseOption": "Choisissez votre {group}",
     "optionFallback": "options",
-    "mealsClosed": "Les commandes de repas sont closes, mais vous pouvez encore vous inscrire sans repas.",
     "total": "Total",
-    "totalFree": "Gratuit",
     "termsHeading": "Annulation et remboursement",
     "acceptTerms": "J'ai lu les conditions d'annulation et de remboursement.",
     "paymentNote": "Vous recevrez aussitôt une demande de paiement par virement bancaire. Vos places sont réservées pendant que vous payez.",
@@ -536,11 +532,20 @@
       "invalid": "Vérifiez votre {field}.",
       "tooLong": "{field} est trop long.",
       "acceptTerms": "Confirmez que vous avez lu les conditions.",
-      "meals_closed": "Les commandes de repas sont closes. Choisissez « Présent sans repas ».",
       "unavailable": "Une des assiettes n'est plus disponible. Faites un nouveau choix.",
       "too_many": "C'est plus de personnes qu'une réservation ne le permet.",
-      "option_required": "Veuillez choisir votre {group}."
+      "option_required": "Veuillez choisir votre {group}.",
+      "option_min": "Choisissez-en au moins {min} pour {group}.",
+      "too_many_options": "Trop d’options choisies pour l’une des assiettes. Vérifiez vos choix."
     }
+  },
+  "EventOptions": {
+    "chooseOne": "Choisissez votre {group}",
+    "chooseExactly": "{group} : choisissez-en {count}",
+    "chooseUpTo": "{group} : jusqu’à {max} au choix",
+    "chooseRange": "{group} : choisissez-en de {min} à {max}",
+    "chooseOptional": "{group} : facultatif, jusqu’à {max}",
+    "pickedCount": "{count} sur {max} choisis"
   },
   "BookingPage": {
     "metaTitle": "Votre réservation | Zain's Treat n More",

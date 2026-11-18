@@ -3,7 +3,7 @@
 
 use crate::email::EmailConfig;
 use crate::error::{AppError, FieldError};
-use crate::event_options::{label_in, parse_groups, resolve_choices};
+use crate::event_options::{label_in, parse_groups, resolve_choices, Picked};
 use crate::events::{self, BookingEvent, localized, seats_taken};
 use crate::order_emails::Locale;
 use crate::payment::PaymentConfig;
@@ -65,7 +65,7 @@ pub async fn list_events(
                e.starts_at as "starts_at: DateTime<Utc>",
                e.ends_at as "ends_at: DateTime<Utc>",
                (now() >= COALESCE(e.ends_at, e.starts_at)) as "is_past!",
-               (now() < COALESCE(e.rsvp_closes_at, e.starts_at)) as "rsvp_open!",
+               (now() < LEAST(e.meal_orders_close_at, e.rsvp_closes_at, e.starts_at)) as "rsvp_open!",
                (SELECT COALESCE(SUM(b.party_size), 0) FROM event_bookings b
                  WHERE b.event_id = e.id AND b.status IN ('awaiting_payment', 'confirmed'))::BIGINT as "taken!",
                EXISTS (SELECT 1 FROM event_photos p WHERE p.event_id = e.id) as "has_gallery!"
@@ -115,6 +115,9 @@ pub struct PublicOptionGroup {
     pub key: String,
     pub label: String,
     pub choices: Vec<PublicOptionChoice>,
+    /// Fewest and most picks per guest (Phase 35 Decision 7).
+    pub min: u8,
+    pub max: u8,
 }
 
 #[derive(Debug, Serialize)]
@@ -134,6 +137,8 @@ fn public_options(options: &serde_json::Value, locale: Locale) -> Vec<PublicOpti
                 .map(|choice| PublicOptionChoice { label: label_in(&choice.label, locale), key: choice.key })
                 .collect(),
             key: group.key,
+            min: group.min,
+            max: group.max,
         })
         .collect()
 }
@@ -160,6 +165,9 @@ pub struct PublicEvent {
     pub max_party_size: i32,
     pub seats_left: i64,
     pub meal_orders_close_at: Option<DateTime<Utc>>,
+    /// The earlier of the meal and booking cutoffs; `None` means bookings
+    /// stay open until the start (Phase 35 Decision 4).
+    pub bookings_close_at: Option<DateTime<Utc>>,
     pub meals_open: bool,
     pub rsvp_open: bool,
     pub is_past: bool,
@@ -182,9 +190,9 @@ pub(crate) async fn load_public_event(
                e.starts_at as "starts_at: DateTime<Utc>",
                e.ends_at as "ends_at: DateTime<Utc>",
                e.meal_orders_close_at as "meal_orders_close_at: DateTime<Utc>",
+               LEAST(e.meal_orders_close_at, e.rsvp_closes_at) as "bookings_close_at: DateTime<Utc>",
                (now() >= COALESCE(e.ends_at, e.starts_at)) as "is_past!",
-               (now() < COALESCE(e.rsvp_closes_at, e.starts_at)) as "rsvp_open!",
-               (now() < COALESCE(e.meal_orders_close_at, e.rsvp_closes_at, e.starts_at)) as "meals_open!",
+               (now() < LEAST(e.meal_orders_close_at, e.rsvp_closes_at, e.starts_at)) as "rsvp_open!",
                (e.published_at IS NOT NULL) as "published!",
                (SELECT COALESCE(SUM(b.party_size), 0) FROM event_bookings b
                  WHERE b.event_id = e.id AND b.status IN ('awaiting_payment', 'confirmed'))::BIGINT as "taken!"
@@ -238,7 +246,10 @@ pub(crate) async fn load_public_event(
         max_party_size: event.max_party_size,
         seats_left: (i64::from(event.capacity) - event.taken).max(0),
         meal_orders_close_at: event.meal_orders_close_at,
-        meals_open: event.meals_open,
+        bookings_close_at: event.bookings_close_at,
+        // Bookings close at the meal cutoff (Phase 35 Decision 4), so the
+        // two are one; `meals_open` stays for older pages.
+        meals_open: event.rsvp_open,
         rsvp_open: event.rsvp_open,
         is_past: event.is_past,
         published: event.published,
@@ -274,15 +285,16 @@ pub struct CreateBookingRequest {
     pub website: String,
 }
 
-/// A guest's plate and its option picks (Phase 32). A bare plate id or
-/// `null` is the Phase 31 shape, still accepted from a cached page.
+/// A guest's plate and its option picks (Phase 32, Phase 35 Decision 8).
+/// A bare plate id is the Phase 31 shape, still accepted from a cached
+/// page; a `null` plate is rejected (Phase 35 Decision 3).
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
 pub enum GuestInput {
     WithChoices {
         plate_id: Option<i64>,
         #[serde(default)]
-        choices: BTreeMap<String, String>,
+        choices: BTreeMap<String, Picked>,
     },
     PlateOnly(Option<i64>),
 }
@@ -295,7 +307,7 @@ impl GuestInput {
         }
     }
 
-    fn choices(&self) -> BTreeMap<String, String> {
+    fn choices(&self) -> BTreeMap<String, Picked> {
         match self {
             GuestInput::WithChoices { choices, .. } => choices.clone(),
             GuestInput::PlateOnly(_) => BTreeMap::new(),
@@ -377,8 +389,7 @@ pub async fn create_booking(
     let event = sqlx::query!(
         r#"
         SELECT id, capacity, max_party_size,
-               (now() < COALESCE(rsvp_closes_at, starts_at)) as "rsvp_open!",
-               (now() < COALESCE(meal_orders_close_at, rsvp_closes_at, starts_at)) as "meals_open!"
+               (now() < LEAST(meal_orders_close_at, rsvp_closes_at, starts_at)) as "rsvp_open!"
         FROM events
         WHERE slug = $1 AND published_at IS NOT NULL AND archived_at IS NULL
         FOR UPDATE
@@ -408,9 +419,9 @@ pub async fn create_booking(
     let mut guests = Vec::with_capacity(payload.guests.len());
     for (index, guest) in payload.guests.iter().enumerate() {
         let picked = guest.choices();
+        // Every guest orders a plate (Phase 35 Decision 3).
         match guest.plate_id() {
-            None if picked.is_empty() => guests.push((None, None, None, Vec::new())),
-            None => errors.push(field_error(&format!("guests[{index}].choices"), "unknown_option")),
+            None => errors.push(field_error(&format!("guests[{index}].plate_id"), "required")),
             Some(plate_id) => match plates.iter().find(|plate| plate.id == plate_id) {
                 Some(plate) => match resolve_choices(&parse_groups(&plate.options), &picked) {
                     Ok(choices) => guests.push((
@@ -429,9 +440,6 @@ pub async fn create_booking(
         }
     }
     let wants_meals = guests.iter().any(|(plate_id, ..)| plate_id.is_some());
-    if wants_meals && !event.meals_open {
-        errors.push(field_error("guests", "meals_closed"));
-    }
     if wants_meals && !payload.accept_terms {
         errors.push(field_error("accept_terms", "required"));
     }

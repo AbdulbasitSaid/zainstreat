@@ -633,6 +633,27 @@ production, and wants guests to be able to pay by Tikkie.
   bank transfer shows, and admin warns.
 - Staging only ever gets a fake Tikkie link.
 
+## Phase 35 — Event Booking: Copy, Plates Required & Flexible Options
+
+Planned 2026-11-18 (see
+`specs/2026-11-18-phase-35-event-booking-options/requirement.md`). The
+client wants every guest to order a plate, plates with "pick up to N"
+choices, and warmer booking copy.
+
+- The event page's booking intro becomes **"YOUR SEAT AT THE TABLE IS
+  WAITING"** / "Don't just hear about it, be part of the experience!"
+  in en/nl/fr.
+- "Attending without a meal" is removed: every guest picks a plate, and
+  the API rejects bookings without one. Bookings (and owner waitlist
+  offers) close at the meal-order cutoff. Old no-meal bookings still
+  display.
+- Option groups get an admin-set **min and max** (default exactly 1).
+  Guests get radio pills for pick-one groups and limited checkboxes
+  otherwise; the API enforces the same limits. No migration.
+- "Free" goes from guest-facing copy: the event page eyebrow becomes
+  "Limited seats · Meals by pre-order", and the booking email and the
+  seeded story drop "Entry is free".
+
 ## Later — iDEAL Payments
 
 Agreed in the 2026-10-18 call but blocked on the client opening a

@@ -480,14 +480,15 @@
     "metaTitle": "{title} | Zain's Treat n More",
     "draftNotice": "Preview: this event isn't published yet. Only you can see it.",
     "backToEvents": "All events",
-    "freeEntry": "Free entry · Paid meals",
+    "eyebrow": "Limited seats · Meals by pre-order",
     "pastEyebrow": "Past event",
     "platesHeading": "On the table",
     "seatsLeft": "{count, plural, one {# of {capacity} seats left} other {# of {capacity} seats left}}",
     "full": "Fully booked: join the waitlist",
-    "mealCutoff": "Meal orders close on {date}.",
+    "bookingCutoff": "Bookings close on {date}.",
     "bookHeading": "Save your seat",
-    "guestWording": "Entry is free and seats are limited. Please RSVP to save your place. If you'd like to eat, choose your plate when you sign up. You'll get a payment request straight away, and your meal is reserved once payment is received.",
+    "guestTagline": "YOUR SEAT AT THE TABLE IS WAITING",
+    "guestWording": "Don’t just hear about it, be part of the experience!",
     "rsvpClosed": "Booking for this event has closed.",
     "addressPrivate": "The address is shared privately with confirmed guests.",
     "recapHeading": "How it went",
@@ -496,8 +497,7 @@
     "openPhoto": "Open photo {n} of {total}",
     "previousPhoto": "Previous photo",
     "nextPhoto": "Next photo",
-    "closePhoto": "Close",
-    "chooseGroup": "Choose your {group}:"
+    "closePhoto": "Close"
   },
   "EventBooking": {
     "labels": {
@@ -514,12 +514,8 @@
     "guestYou": "Guest 1 (you)",
     "guestN": "Guest {n}",
     "noMeal": "Attending without a meal",
-    "noMealHint": "Still takes a seat",
-    "chooseOption": "Choose your {group}",
     "optionFallback": "options",
-    "mealsClosed": "Meal orders have closed, but you can still RSVP without a meal.",
     "total": "Total",
-    "totalFree": "Free",
     "termsHeading": "Cancellation and refunds",
     "acceptTerms": "I've read the cancellation and refund terms.",
     "paymentNote": "You'll get a payment request by bank transfer straight away. Your seats are held while you pay.",
@@ -536,11 +532,20 @@
       "invalid": "Please check your {field}.",
       "tooLong": "{field} is too long.",
       "acceptTerms": "Please confirm you've read the terms.",
-      "meals_closed": "Meal orders have closed. Choose \"Attending without a meal\".",
       "unavailable": "One of the plates is no longer available. Please choose again.",
       "too_many": "That's more people than one booking allows.",
-      "option_required": "Please choose your {group}."
+      "option_required": "Please choose your {group}.",
+      "option_min": "Please choose at least {min} for {group}.",
+      "too_many_options": "One of the plates has too many options chosen. Please check your choices."
     }
+  },
+  "EventOptions": {
+    "chooseOne": "Choose your {group}",
+    "chooseExactly": "{group}: choose {count}",
+    "chooseUpTo": "{group}: choose up to {max}",
+    "chooseRange": "{group}: choose {min} to {max}",
+    "chooseOptional": "{group}: optional, up to {max}",
+    "pickedCount": "{count} of {max} chosen"
   },
   "BookingPage": {
     "metaTitle": "Your booking | Zain's Treat n More",

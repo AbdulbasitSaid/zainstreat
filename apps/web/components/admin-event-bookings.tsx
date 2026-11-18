@@ -59,6 +59,11 @@ export function AdminEventBookings({ eventId, initial }: { eventId: number; init
       setMessage(`Not enough seats: ${left} left, and this party needs ${pending.booking.party_size}.`);
       return;
     }
+    // Phase 35 Decision 5: no offers after the meal-order cutoff.
+    if (typeof body === "object" && body !== null && "error" in body && body.error === "booking_closed") {
+      setMessage("Bookings for this event have closed, so seats can't be offered any more.");
+      return;
+    }
     setMessage("That didn't work. Refresh the page and try again.");
   }
 
