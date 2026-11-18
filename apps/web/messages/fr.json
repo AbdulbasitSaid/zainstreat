@@ -7,6 +7,7 @@
     "about": "À propos",
     "services": "Services",
     "menu": "Menu",
+    "rentals": "Location",
     "contact": "Contact",
     "orderNow": "Commander",
     "navLabel": "Navigation principale",
@@ -22,6 +23,7 @@
     "about": "À propos",
     "services": "Services",
     "menu": "Menu",
+    "rentals": "Location",
     "contact": "Contact",
     "terms": "Conditions générales",
     "privacy": "Confidentialité",
@@ -83,9 +85,25 @@
     "addToCart": "Ajouter au panier",
     "addToCartOption": "Ajouter {option}",
     "fromPrice": "à partir de {price}",
+    "minimumOrder": "Commande minimum : {count}",
     "chooseOption": "Choisissez une option",
     "closeDialog": "Fermer",
     "loadingMenu": "Chargement du menu…"
+  },
+  "RentalsPage": {
+    "metaTitle": "Location de matériel traiteur",
+    "metaDescription": "Chauffe-plats, marmites, glacières et plus à louer pour votre événement.",
+    "heading": "Location de matériel traiteur",
+    "intro": "Matériel de service et essentiels de cuisine",
+    "pricePerEvent": "{price} par événement",
+    "reserve": "Réserver sur WhatsApp",
+    "whatsappMessage": "Bonjour ! Je voudrais louer : {name}.",
+    "bookingHeading": "Réservation",
+    "bookingNote": "Contactez-nous sur WhatsApp pour réserver le matériel et confirmer sa disponibilité.",
+    "whatsappButton": "Écrivez-nous sur WhatsApp",
+    "whatsappGeneral": "Bonjour ! Je voudrais louer du matériel traiteur.",
+    "empty": "Aucun matériel n'est proposé pour le moment. Écrivez-nous sur WhatsApp.",
+    "loadError": "Impossible de charger la location pour le moment. Réessayez dans un instant."
   },
   "Cart": {
     "metaTitle": "Panier | Zain's Treat n More",
@@ -98,7 +116,8 @@
     "proceedToOrder": "Passer la commande",
     "remove": "Retirer",
     "increaseQuantity": "Augmenter la quantité de {name}",
-    "decreaseQuantity": "Diminuer la quantité de {name}"
+    "decreaseQuantity": "Diminuer la quantité de {name}",
+    "minimumOrder": "Commande minimum : {count}"
   },
   "Order": {
     "metaTitle": "Passer votre commande | Zain's Treat n More",
@@ -118,6 +137,9 @@
     "editDetails": "Modifier",
     "total": "Total",
     "itemsUnavailable": "Certains articles de votre commande ne sont plus disponibles :",
+    "belowMinimum": "Certains articles sont en dessous de la commande minimum. Veuillez modifier votre panier :",
+    "minimumOrder": "Commande minimum : {count}",
+    "updateCart": "Modifier le panier",
     "unknownItem": "Un article",
     "submitError": "Un problème est survenu lors de l'envoi de votre commande. Veuillez réessayer.",
     "placeOrder": "Commander",
@@ -260,6 +282,7 @@
     "requestCateringQuote": "Demander un devis traiteur",
     "eventRentalsHeading": "Location pour événements",
     "eventRentalsCopy": "Des services de location pour vous aider à organiser des moments inoubliables.",
+    "seeRentals": "Voir la location",
     "requestQuote": "Demander un devis"
   },
   "ContactPage": {

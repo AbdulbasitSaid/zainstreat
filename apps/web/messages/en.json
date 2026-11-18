@@ -7,6 +7,7 @@
     "about": "About",
     "services": "Services",
     "menu": "Menu",
+    "rentals": "Rentals",
     "contact": "Contact",
     "orderNow": "Order Now",
     "navLabel": "Main navigation",
@@ -22,6 +23,7 @@
     "about": "About",
     "services": "Services",
     "menu": "Menu",
+    "rentals": "Rentals",
     "contact": "Contact",
     "terms": "Terms & Conditions",
     "privacy": "Privacy Policy",
@@ -83,9 +85,25 @@
     "addToCart": "Add to Cart",
     "addToCartOption": "Add {option}",
     "fromPrice": "from {price}",
+    "minimumOrder": "Minimum order: {count}",
     "chooseOption": "Choose an option",
     "closeDialog": "Close",
     "loadingMenu": "Loading menu…"
+  },
+  "RentalsPage": {
+    "metaTitle": "Catering Rentals",
+    "metaDescription": "Chafing dishes, cooking pots, coolers and more to rent for your event.",
+    "heading": "Catering Rentals",
+    "intro": "Serving equipment and cooking essentials",
+    "pricePerEvent": "{price} per event",
+    "reserve": "Reserve on WhatsApp",
+    "whatsappMessage": "Hi! I'd like to rent: {name}.",
+    "bookingHeading": "Booking",
+    "bookingNote": "Contact us on WhatsApp to reserve rental items and confirm availability.",
+    "whatsappButton": "Message us on WhatsApp",
+    "whatsappGeneral": "Hi! I'd like to rent some catering equipment.",
+    "empty": "No rentals are listed right now. Message us on WhatsApp.",
+    "loadError": "We couldn't load the rentals right now. Please try again shortly."
   },
   "Cart": {
     "metaTitle": "Cart | Zain's Treat n More",
@@ -98,7 +116,8 @@
     "proceedToOrder": "Proceed to Order",
     "remove": "Remove",
     "increaseQuantity": "Increase quantity of {name}",
-    "decreaseQuantity": "Decrease quantity of {name}"
+    "decreaseQuantity": "Decrease quantity of {name}",
+    "minimumOrder": "Minimum order: {count}"
   },
   "Order": {
     "metaTitle": "Place Your Order | Zain's Treat n More",
@@ -118,6 +137,9 @@
     "editDetails": "Edit Details",
     "total": "Total",
     "itemsUnavailable": "Some items in your order are no longer available:",
+    "belowMinimum": "Some items are below their minimum order. Please update your cart:",
+    "minimumOrder": "Minimum order: {count}",
+    "updateCart": "Update cart",
     "unknownItem": "An item",
     "submitError": "Something went wrong submitting your order. Please try again.",
     "placeOrder": "Place Order",
@@ -260,6 +282,7 @@
     "requestCateringQuote": "Request Catering Quote",
     "eventRentalsHeading": "Event Rentals",
     "eventRentalsCopy": "Event-related rental services that help customers organize memorable occasions.",
+    "seeRentals": "See rentals",
     "requestQuote": "Request a Quote"
   },
   "ContactPage": {

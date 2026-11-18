@@ -10,6 +10,7 @@ pub mod orders;
 pub mod privacy;
 pub mod push;
 pub mod quotes;
+pub mod rentals;
 pub mod site_content;
 
 pub(crate) const SESSION_USER_ID_KEY: &str = "user_id";
@@ -38,6 +39,9 @@ pub fn admin_router() -> Router<AppState> {
         .route("/menu-items/{id}/draft", put(menu_items::save_menu_item_draft))
         .route("/menu-items/{id}/availability", patch(menu_items::update_availability))
         .route("/menu-items/{id}/archive", post(menu_items::archive_menu_item))
+        .route("/rentals", get(rentals::list_rentals).post(rentals::create_rental))
+        .route("/rentals/{id}", get(rentals::get_rental).put(rentals::update_rental))
+        .route("/rentals/{id}/archive", post(rentals::archive_rental))
         .route("/media", media::upload_router())
         .route(
             "/catering-enquiries",

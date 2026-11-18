@@ -143,6 +143,25 @@ function isUnavailableItem(value: unknown): value is UnavailableOrderItem {
   );
 }
 
+// A cart line the API rejected as below its item's minimum (Phase 36
+// Decision 4). The minimum is the one stored on the cart line; a line
+// saved before Phase 36 reads as 1, so the UI omits the number then.
+export interface BelowMinimumLine {
+  name: string;
+  optionLabel: string | null;
+  minQuantity: number;
+}
+
+const BELOW_MINIMUM_FIELD = /^items\[(\d+)\]\.quantity$/;
+
+export function belowMinimumFromErrors(fields: FieldError[], lines: BelowMinimumLine[]): BelowMinimumLine[] {
+  return fields.flatMap((error) => {
+    const match = error.message === "below_minimum" ? BELOW_MINIMUM_FIELD.exec(error.field) : null;
+    const line = match ? lines[Number(match[1])] : undefined;
+    return line ? [{ name: line.name, optionLabel: line.optionLabel, minQuantity: line.minQuantity }] : [];
+  });
+}
+
 function isFieldError(value: unknown): value is FieldError {
   if (typeof value !== "object" || value === null) return false;
   const v = value as Record<string, unknown>;

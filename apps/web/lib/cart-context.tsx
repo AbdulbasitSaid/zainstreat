@@ -21,6 +21,8 @@ export interface CartLine {
   unitPrice: string;
   imageUrl: string | null;
   quantity: number;
+  // The item's minimum order when it was added (Phase 36 Decision 3).
+  minQuantity: number;
 }
 
 type NewCartLine = Omit<CartLine, "key" | "quantity">;
@@ -38,7 +40,10 @@ function lineKey(itemId: number, priceOptionId: number | null): string {
   return `${itemId}:${priceOptionId ?? "flat"}`;
 }
 
-function isCartLine(value: unknown): value is CartLine {
+// Lines stored before Phase 36 have no minQuantity; they read as 1.
+type StoredCartLine = Omit<CartLine, "minQuantity"> & { minQuantity?: number };
+
+function isCartLine(value: unknown): value is StoredCartLine {
   if (typeof value !== "object" || value === null) return false;
   const v = value as Record<string, unknown>;
   return (
@@ -50,7 +55,8 @@ function isCartLine(value: unknown): value is CartLine {
     typeof v.unitPrice === "string" &&
     (v.imageUrl === null || typeof v.imageUrl === "string") &&
     typeof v.quantity === "number" &&
-    v.quantity > 0
+    v.quantity > 0 &&
+    (v.minQuantity === undefined || (typeof v.minQuantity === "number" && v.minQuantity >= 1))
   );
 }
 
@@ -70,16 +76,19 @@ function cartReducer(lines: CartLine[], action: CartAction): CartLine[] {
                 ...line,
                 name: action.line.name,
                 imageUrl: action.line.imageUrl,
-                quantity: line.quantity + action.quantity,
+                minQuantity: action.line.minQuantity,
+                quantity: Math.max(line.quantity + action.quantity, action.line.minQuantity),
               }
             : line,
         );
       }
-      return [...lines, { ...action.line, key, quantity: action.quantity }];
+      return [...lines, { ...action.line, key, quantity: Math.max(action.quantity, action.line.minQuantity) }];
     }
     case "setQuantity": {
-      if (action.quantity <= 0) {
-        return lines.filter((line) => line.key !== action.key);
+      // Below the minimum (or 0) removes the line (Phase 36 Decision 3).
+      const line = lines.find((candidate) => candidate.key === action.key);
+      if (!line || action.quantity < Math.max(line.minQuantity, 1)) {
+        return lines.filter((candidate) => candidate.key !== action.key);
       }
       return lines.map((line) =>
         line.key === action.key ? { ...line, quantity: action.quantity } : line,
@@ -116,7 +125,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
       if (raw) {
         const parsed: unknown = JSON.parse(raw);
         if (Array.isArray(parsed) && parsed.every(isCartLine)) {
-          dispatch({ type: "hydrate", lines: parsed });
+          dispatch({
+            type: "hydrate",
+            lines: parsed.map((line) => ({ ...line, minQuantity: line.minQuantity ?? 1 })),
+          });
         }
       }
     } catch {

@@ -654,6 +654,28 @@ choices, and warmer booking copy.
   "Limited seats · Meals by pre-order", and the booking email and the
   seeded story drop "Entry is free".
 
+## Phase 36 — Snacks, Rentals & Email Encoding Fix
+
+Planned 2026-11-18 (see
+`specs/2026-11-18-phase-36-snacks-rentals-email-fix/requirement.md`).
+Client feedback: booking emails show garbled characters, and the client
+sent a snack menu and a catering rentals list.
+
+- Emails: every email is sent as `text/plain; charset=utf-8`, so €, —,
+  ’ and emoji arrive intact instead of as "â‚¬", "â€”", "ðŸ¤Ž".
+- Menu items get an admin-set **minimum quantity** (default 1). The
+  cart starts at it and can't go below it; the API rejects smaller
+  orders.
+- A **Snacks** category joins the existing menu (no separate snack
+  menu) with 13 items: single orders, five combo packs (min 5) and three
+  small chops platters, added by a data migration on staging and
+  production.
+- A new admin-managed **Rentals** list (name, description, price,
+  photo, available, order, archive) and a public `/{locale}/rentals`
+  page (prices per event) with "Reserve on WhatsApp", linked from the header and the
+  Services page. The seven rentals from the client's list are added by
+  migration. No cart, no stock tracking.
+
 ## Later — iDEAL Payments
 
 Agreed in the 2026-10-18 call but blocked on the client opening a

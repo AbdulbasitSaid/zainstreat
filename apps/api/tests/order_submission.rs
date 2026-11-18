@@ -658,3 +658,42 @@ async fn pending_draft_price_is_ignored_when_ordering(pool: PgPool) {
         sqlx::query_scalar!("SELECT unit_price FROM order_items").fetch_one(&pool).await.unwrap();
     assert_eq!(unit_price.to_string(), "13.00");
 }
+
+// Phase 36 Decision 4: a line below its item's minimum is rejected.
+#[sqlx::test]
+async fn order_below_minimum_quantity_is_rejected(pool: PgPool) {
+    sqlx::query("INSERT INTO categories (id, name) VALUES (1, 'Snacks')")
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query(
+        "INSERT INTO menu_items (id, category_id, name, price, min_quantity) VALUES \
+         (1, 1, 'Meat Pie', 4.00, 10), (2, 1, 'Jollof Rice', 13.00, 1)",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let (status, body) = post(
+        pool.clone(),
+        "/api/orders",
+        valid_payload(json!([
+            { "menu_item_id": 2, "price_option_id": null, "quantity": 1 },
+            { "menu_item_id": 1, "price_option_id": null, "quantity": 9 },
+        ])),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST, "{body}");
+    assert_eq!(body["error"], "validation_error");
+    assert_eq!(body["fields"][0]["field"], "items[1].quantity");
+    assert_eq!(body["fields"][0]["message"], "below_minimum");
+
+    let (status, body) = post(
+        pool.clone(),
+        "/api/orders",
+        valid_payload(json!([{ "menu_item_id": 1, "price_option_id": null, "quantity": 10 }])),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED, "{body}");
+    assert_eq!(body["total"], "40.00");
+}

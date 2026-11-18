@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT name, price, is_available FROM menu_items WHERE id = $1 AND deleted_at IS NULL AND published_at IS NOT NULL",
+  "query": "SELECT name, price, is_available, min_quantity FROM menu_items WHERE id = $1 AND deleted_at IS NULL AND published_at IS NOT NULL",
   "describe": {
     "columns": [
       {
@@ -17,6 +17,11 @@
         "ordinal": 2,
         "name": "is_available",
         "type_info": "Bool"
+      },
+      {
+        "ordinal": 3,
+        "name": "min_quantity",
+        "type_info": "Int4"
       }
     ],
     "parameters": {
@@ -27,8 +32,9 @@
     "nullable": [
       false,
       true,
+      false,
       false
     ]
   },
-  "hash": "246a6a139b88729aab3832689858682f92e23656c78492afc54343a5e6e9c9d4"
+  "hash": "dbbda28b929ded640ba5ecc5720c74e501e74951cbbe2bda495dcc4e9b4669e3"
 }

@@ -95,6 +95,7 @@ export function AddToCartControls({ item, onBrand = false }: { item: MenuItem; o
       optionLabel: option?.label ?? null,
       unitPrice,
       imageUrl: item.image_url,
+      minQuantity: item.min_quantity,
     });
     const anchor = anchorRef.current;
     if (anchor) {

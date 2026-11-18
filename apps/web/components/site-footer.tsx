@@ -109,6 +109,7 @@ export function SiteFooter() {
                 <li><Link href="/about">{t("about")}</Link></li>
                 <li><Link href="/services">{t("services")}</Link></li>
                 <li><Link href="/menu">{t("menu")}</Link></li>
+                <li><Link href="/rentals">{t("rentals")}</Link></li>
                 <li><Link href="/contact">{t("contact")}</Link></li>
               </ul>
             </div>

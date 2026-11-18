@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { label: "Orders", href: "/orders", enabled: true },
   { label: "Menu", href: "/menu", enabled: true },
   { label: "Categories", href: "/categories", enabled: true },
+  { label: "Rentals", href: "/rentals", enabled: true },
   { label: "Site content", href: "/site", enabled: true },
   { label: "Changes", href: "/changes", enabled: true },
   { label: "Enquiries", href: "/enquiries", enabled: true },

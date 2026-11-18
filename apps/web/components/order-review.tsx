@@ -1,18 +1,19 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Button } from "@/components/button";
+import { Button, ButtonLink } from "@/components/button";
 import { Notice } from "@/components/notice";
 import { OrderLineSummary, type OrderSummaryLine } from "@/components/order-line-summary";
 import { formatPrice } from "@/lib/format";
 import type { OrderDetailsValues } from "@/components/order-details-form";
-import type { UnavailableOrderItem } from "@/lib/orders";
+import type { BelowMinimumLine, UnavailableOrderItem } from "@/lib/orders";
 
 export function OrderReview({
   details,
   lines,
   subtotal,
   unavailableItems,
+  belowMinimumLines,
   submitting,
   submitError,
   onEdit,
@@ -22,6 +23,7 @@ export function OrderReview({
   lines: OrderSummaryLine[];
   subtotal: number;
   unavailableItems: UnavailableOrderItem[] | null;
+  belowMinimumLines: BelowMinimumLine[] | null;
   submitting: boolean;
   submitError: boolean;
   onEdit: () => void;
@@ -59,6 +61,22 @@ export function OrderReview({
               </li>
             ))}
           </ul>
+        </Notice>
+      )}
+      {belowMinimumLines && belowMinimumLines.length > 0 && (
+        <Notice>
+          {t("belowMinimum")}
+          <ul>
+            {belowMinimumLines.map((line) => (
+              <li key={`${line.name}:${line.optionLabel ?? ""}`}>
+                {line.optionLabel ? `${line.name} (${line.optionLabel})` : line.name}
+                {line.minQuantity > 1 && ` — ${t("minimumOrder", { count: line.minQuantity })}`}
+              </li>
+            ))}
+          </ul>
+          <ButtonLink href="/cart" variant="secondary" className="mt-2">
+            {t("updateCart")}
+          </ButtonLink>
         </Notice>
       )}
       {submitError && <Notice>{t("submitError")}</Notice>}

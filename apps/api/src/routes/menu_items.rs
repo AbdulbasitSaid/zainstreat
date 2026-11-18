@@ -34,6 +34,8 @@ pub struct MenuItemResponse {
     pub image_url: Option<String>,
     pub is_available: bool,
     pub is_featured: bool,
+    /// Phase 36 Decision 2: the cart and `POST /api/orders` enforce it.
+    pub min_quantity: i32,
     pub price_options: Vec<PriceOptionResponse>,
 }
 
@@ -46,6 +48,7 @@ struct MenuItemRow {
     image_url: Option<String>,
     is_available: bool,
     is_featured: bool,
+    min_quantity: i32,
 }
 
 #[derive(Debug, Deserialize)]
@@ -70,7 +73,7 @@ pub async fn list_menu_items(
         MenuItemRow,
         r#"
         SELECT mi.id, mi.category_id, mi.name, mi.description, mi.price, mi.image_url,
-               mi.is_available, mi.is_featured
+               mi.is_available, mi.is_featured, mi.min_quantity
         FROM menu_items mi
         JOIN categories c ON c.id = mi.category_id
         WHERE mi.deleted_at IS NULL
@@ -122,6 +125,7 @@ pub async fn list_menu_items(
             image_url: item.image_url,
             is_available: item.is_available,
             is_featured: item.is_featured,
+            min_quantity: item.min_quantity,
         })
         .collect();
 

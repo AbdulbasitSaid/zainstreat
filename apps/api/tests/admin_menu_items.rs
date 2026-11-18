@@ -647,3 +647,30 @@ async fn category_archived_trigger_rejects_a_direct_insert_under_an_archived_cat
     };
     assert_eq!(db_err.code().as_deref(), Some("23514"));
 }
+
+// Phase 36 Decisions 2, 5: the minimum order defaults to 1, is stored, and
+// is range-checked.
+#[sqlx::test]
+async fn menu_item_min_quantity_defaults_saves_and_validates(pool: PgPool) {
+    let cookie = login(&pool).await;
+    let category_id = insert_category(&pool, "Snacks").await;
+    let url = upload_image(&pool, &cookie).await;
+
+    let mut payload = flat_price_payload(category_id, "Jollof", "12.50");
+    payload["image_url"] = json!(url);
+    let body = create_item(&pool, &cookie, payload.clone()).await;
+    assert_eq!(body["min_quantity"], 1);
+
+    payload["name"] = json!("Meat Pie");
+    payload["min_quantity"] = json!(10);
+    let body = create_item(&pool, &cookie, payload.clone()).await;
+    assert_eq!(body["min_quantity"], 10);
+
+    for invalid in [0, 1000] {
+        payload["min_quantity"] = json!(invalid);
+        let (status, body, _) =
+            post_with_cookie(pool.clone(), "/api/admin/menu-items", payload.clone(), Some(&cookie)).await;
+        assert_eq!(status, StatusCode::BAD_REQUEST, "{body}");
+        assert_eq!(body["fields"][0]["field"], "min_quantity");
+    }
+}
