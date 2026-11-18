@@ -20,6 +20,14 @@ function PaymentField({ label, value }: { label: string; value: string }) {
   );
 }
 
+// A plain date ("2026-12-02") read as UTC, so it's the same day everywhere.
+// en-GB for English: "2 December", like the Dutch and French.
+function formatDayMonth(date: string, locale: string): string {
+  return new Intl.DateTimeFormat(locale === "en" ? "en-GB" : locale, { timeZone: "UTC", day: "numeric", month: "long" }).format(
+    new Date(`${date}T00:00:00Z`),
+  );
+}
+
 // Shared by the post-checkout confirmation and /order/[token] (Phase 20
 // Decision 8). Server-compatible: no state, no effects. No VAT line — the
 // business is under the KOR scheme.
@@ -62,8 +70,31 @@ export function OrderInvoice({ order }: { order: OrderResponse }) {
 
       <section className="flex flex-col gap-4 rounded-card bg-background-soft p-5">
         <h3 className="m-0 text-lg font-semibold">{t("howToPay")}</h3>
+        {/* Tikkie first, bank transfer as the alternative (Phase 34 Decision 16). */}
+        {order.tikkie && (
+          <div className="flex flex-col gap-2 border-b border-text/10 pb-4">
+            <ButtonAnchor
+              href={order.tikkie.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="self-start"
+            >
+              {t("payWithTikkie")}
+            </ButtonAnchor>
+            <p className="m-0">
+              {t.rich("tikkieAmount", {
+                amount: formatPrice(order.tikkie.amount),
+                strong: (chunks) => <strong>{chunks}</strong>,
+              })}
+            </p>
+            <p className="m-0 text-sm text-text-muted">
+              {t("tikkieValidUntil", { date: formatDayMonth(order.tikkie.valid_until, locale) })}
+            </p>
+          </div>
+        )}
         {order.payment ? (
           <>
+            {order.tikkie && <h4 className="m-0 text-base font-semibold">{t("orBankTransfer")}</h4>}
             <p className="m-0">{t("payByTransfer", { total: formatPrice(order.total) })}</p>
             <dl className="m-0 flex flex-col gap-2 text-sm">
               <PaymentField label={t("accountName")} value={order.payment.account_name} />

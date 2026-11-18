@@ -9,6 +9,7 @@ import { Notice } from "@/components/notice";
 import {
   EVENT_LOCALES,
   PLATE_TEXT_KEYS,
+  daysUntil,
   emptyContent,
   type AdminEvent,
   type EventInput,
@@ -60,7 +61,22 @@ function blankInput(): EventInput {
     payment_hold_hours: 48,
     cover_image_url: null,
     plates: [newPlate()],
+    tikkie_url: null,
+    tikkie_valid_until: null,
   };
+}
+
+// The warning under the Tikkie field (Phase 34 Decision 18).
+function tikkieWarning(validUntil: string | null): string | null {
+  if (!validUntil) return null;
+  const days = daysUntil(validUntil);
+  const date = new Intl.DateTimeFormat("en-GB", { timeZone: "UTC", day: "numeric", month: "long" }).format(
+    new Date(`${validUntil}T00:00:00Z`),
+  );
+  if (days < 0) return `Expired on ${date}: guests only see bank transfer. Paste the client's new link.`;
+  if (days === 0) return "Expires at the end of today.";
+  if (days <= 3) return `Expires in ${days} day${days === 1 ? "" : "s"}.`;
+  return null;
 }
 
 /**
@@ -105,6 +121,8 @@ export function AdminEventForm({ event, initial }: { event: AdminEvent | null; i
         ends_at: input.ends_at || null,
         meal_orders_close_at: input.meal_orders_close_at || null,
         rsvp_closes_at: input.rsvp_closes_at || null,
+        tikkie_url: input.tikkie_url?.trim() || null,
+        tikkie_valid_until: input.tikkie_valid_until || null,
       }),
     });
     setSaving(false);
@@ -128,6 +146,8 @@ export function AdminEventForm({ event, initial }: { event: AdminEvent | null; i
   }
 
   const slugLocked = event?.has_bookings ?? false;
+  const tikkieError = (field: string) => errors.some((error) => error.field === field);
+  const warning = tikkieWarning(input.tikkie_valid_until);
 
   return (
     <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-8">
@@ -252,6 +272,47 @@ export function AdminEventForm({ event, initial }: { event: AdminEvent | null; i
           <label htmlFor="event-hold" className={LABEL}>Hours to pay</label>
           <input id="event-hold" type="number" min={1} className="field" value={input.payment_hold_hours} onChange={(e) => set("payment_hold_hours", Number(e.target.value))} />
           <p className={HINT}>Unpaid bookings are released after this.</p>
+        </div>
+      </section>
+
+      <section className="grid gap-4 sm:grid-cols-[1fr_12rem]">
+        <h2 className="m-0 text-xl sm:col-span-2">Tikkie</h2>
+        <p className="m-0 text-sm text-text-muted sm:col-span-2">
+          An open-amount Tikkie request. Guests see it first, with the exact amount to enter, and bank transfer
+          below. Leave both empty for bank transfer only.
+        </p>
+        <div>
+          <label htmlFor="event-tikkie-url" className={LABEL}>Tikkie link</label>
+          <input
+            id="event-tikkie-url"
+            type="url"
+            inputMode="url"
+            className="field"
+            placeholder="https://tikkie.me/pay/…"
+            value={input.tikkie_url ?? ""}
+            aria-invalid={tikkieError("tikkie_url") || undefined}
+            aria-describedby="event-tikkie-hint"
+            onChange={(e) => set("tikkie_url", e.target.value)}
+          />
+        </div>
+        <div>
+          <label htmlFor="event-tikkie-until" className={LABEL}>Valid until</label>
+          <input
+            id="event-tikkie-until"
+            type="date"
+            className="field"
+            value={input.tikkie_valid_until ?? ""}
+            aria-invalid={tikkieError("tikkie_valid_until") || undefined}
+            aria-describedby="event-tikkie-hint"
+            onChange={(e) => set("tikkie_valid_until", e.target.value || null)}
+          />
+        </div>
+        <div id="event-tikkie-hint" className="sm:col-span-2">
+          <p className={HINT + " mt-0"}>
+            Only https://tikkie.me/pay/ links. Shown until the end of the “valid until” day, then guests see bank
+            transfer only.
+          </p>
+          {warning && <Notice className="mt-2">{warning}</Notice>}
         </div>
       </section>
 

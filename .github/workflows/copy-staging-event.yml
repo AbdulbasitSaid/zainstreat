@@ -1,0 +1,310 @@
+name: Copy staging event to production
+
+# Phase 34 Decisions 1-11: copies one event, as the client finished it on
+# staging, over the production event with the same slug, and publishes it.
+# Copies the text (en/nl/fr), dates, area, address, seats, cut-offs, plates
+# (prices, options, availability), photos and their uploaded images.
+# Never copies the slug, bookings, orders or the Tikkie link (staging's is
+# fake; the owner sets the real one in production admin).
+#
+# Refuses before writing anything if the event isn't on staging or
+# production, if production has bookings for it, or if the address is
+# blank. Same safety as the other production workflows: the reviewer-gated
+# production environment, a typed phrase and a backup. The reviewer sees
+# what's being copied in the export job's summary before approving.
+#
+# Run this BEFORE Staging down, Staging up or Seed staging events: the
+# first deletes staging's data, the other two overwrite the event with the
+# seed's text and placeholder values.
+on:
+  workflow_dispatch:
+    inputs:
+      slug:
+        description: 'Event slug, the same on staging and production.'
+        default: the-abula-experience-2026
+        required: true
+      confirm:
+        description: 'Type COPY EVENT TO PRODUCTION to confirm. Overwrites the production event with staging''s and publishes it.'
+        required: true
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  C: docker compose -f docker-compose.yml -f docker-compose.prod.yml
+  SLUG: ${{ inputs.slug }}
+
+jobs:
+  # No environment, so a typo never asks a reviewer.
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify confirmation phrase and slug
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          if [ "$CONFIRM" != "COPY EVENT TO PRODUCTION" ]; then
+            echo "::error::Confirmation phrase did not match 'COPY EVENT TO PRODUCTION'. Aborting."
+            exit 1
+          fi
+          # The slug ends up in SQL and shell commands.
+          if ! [[ "$SLUG" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]]; then
+            echo "::error::Not a valid event slug: $SLUG"
+            exit 1
+          fi
+
+  export:
+    needs: check
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Find staging
+        id: staging
+        uses: ./.github/actions/staging-host
+        with:
+          role-arn: ${{ vars.AWS_ROLE_ARN }}
+          region: ${{ vars.AWS_REGION }}
+          dns-suffix: ${{ vars.STAGING_DNS_SUFFIX }}
+
+      - name: Check staging is up
+        if: steps.staging.outputs.up != 'true'
+        run: |
+          echo "::error::Staging isn't up, so there's nothing to copy."
+          exit 1
+
+      - name: Set up SSH
+        uses: ./.github/actions/ssh-target
+        with:
+          host: ${{ steps.staging.outputs.ip }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: Export the event
+        run: |
+          # Leaves out what's never copied (Decision 4). Subtracting the
+          # Tikkie keys works before and after their migration.
+          ssh target "cd /opt/zainstreat && $C exec -T postgres sh -c 'psql -tA -v ON_ERROR_STOP=1 -v slug=$SLUG -U \"\$POSTGRES_USER\" -d \"\$POSTGRES_DB\"'" > event.json <<'SQL'
+          SELECT jsonb_build_object(
+            -- For the reviewer's summary only; the import doesn't read it.
+            'preview', jsonb_build_object(
+              'starts', to_char(e.starts_at AT TIME ZONE 'Europe/Amsterdam', 'YYYY-MM-DD HH24:MI'),
+              'ends', to_char(e.ends_at AT TIME ZONE 'Europe/Amsterdam', 'YYYY-MM-DD HH24:MI'),
+              'meals_close', to_char(e.meal_orders_close_at AT TIME ZONE 'Europe/Amsterdam', 'YYYY-MM-DD HH24:MI'),
+              'rsvp_close', to_char(e.rsvp_closes_at AT TIME ZONE 'Europe/Amsterdam', 'YYYY-MM-DD HH24:MI')),
+            'event', to_jsonb(e) - ARRAY['id', 'slug', 'published_at', 'archived_at', 'created_at',
+                                         'updated_at', 'tikkie_url', 'tikkie_valid_until'],
+            'plates', COALESCE((SELECT jsonb_agg(jsonb_build_object(
+                          'position', p.position, 'content', p.content, 'options', p.options,
+                          'price', p.price, 'is_available', p.is_available) ORDER BY p.position, p.id)
+                        FROM event_plates p WHERE p.event_id = e.id), '[]'),
+            'photos', COALESCE((SELECT jsonb_agg(jsonb_build_object(
+                          'position', ph.position, 'image_url', ph.image_url, 'caption', ph.caption)
+                          ORDER BY ph.position, ph.id)
+                        FROM event_photos ph WHERE ph.event_id = e.id), '[]'))
+          FROM events e WHERE e.slug = :'slug';
+          SQL
+          if ! jq -e '.event' event.json > /dev/null 2>&1; then
+            echo "::error::No event with that slug on staging."
+            exit 1
+          fi
+          if [ -z "$(jq -r '.event.address | gsub("^\\s+|\\s+$"; "")' event.json)" ]; then
+            echo "::error::The staging event has no address, and production can't publish without one."
+            exit 1
+          fi
+
+      - name: Export its uploaded images
+        run: |
+          # Relative paths (the repo's /images/... cover) need no copy.
+          scp -q infra/minio-object.sh target:/tmp/minio-object.sh
+          mkdir -p media
+          jq -r '[.event.cover_image_url] + [.photos[].image_url] | .[] | select(. != null)' event.json \
+            | { grep -oE '/api/media/[^/]+$' || true; } | sed 's#^/api/media/##' | sort -u > media/keys
+          while read -r key; do
+            ssh target "bash /tmp/minio-object.sh get $key" < /dev/null > "media/$key"
+            test -s "media/$key" || { echo "::error::Image $key came back empty."; exit 1; }
+          done < media/keys
+          ssh target 'rm -f /tmp/minio-object.sh'
+          echo "Exported $(wc -l < media/keys | tr -d ' ') image(s)."
+
+      - name: Upload the export
+        uses: actions/upload-artifact@v4
+        with:
+          name: event-copy
+          # It holds the private address, so it's gone within a day.
+          retention-days: 1
+          path: |
+            event.json
+            media/
+
+      - name: Summary for the reviewer
+        run: |
+          {
+            echo "### What will be copied to production"
+            echo
+            echo "Check this, then approve the **import** job. The event is published on production straight away."
+            echo
+            jq -r '
+              .event as $e | .preview as $t |
+              "- **Title:** \($e.content.en.title)",
+              "- **Starts:** \($t.starts) · **ends:** \($t.ends // "—") (Amsterdam time)",
+              "- **Meal orders close:** \($t.meals_close // "—") · **RSVP closes:** \($t.rsvp_close // "—")",
+              "- **Area:** \($e.area)",
+              "- **Address:** \($e.address)",
+              "- **Seats:** \($e.capacity), up to \($e.max_party_size) per booking, \($e.payment_hold_hours) hours to pay",
+              "- **Cover:** \($e.cover_image_url // "none")",
+              "- **Photos:** \(.photos | length)",
+              "",
+              "**Plates**",
+              "",
+              (.plates[] | "- \(.content.en.name) — €\(.price)\(if .is_available then "" else " (unavailable)" end)\(
+                if (.options | length) > 0 then " · " + ([.options[] | "\(.label.en): " + ([.choices[].label.en] | join(", "))] | join(" · ")) else "" end)")
+            ' event.json
+            if grep -qx 'Staging test address, Almere' <(jq -r '.event.address' event.json); then
+              echo
+              echo "> ⚠️ The address is still the staging test address. Fix it in production admin after the copy."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  import:
+    needs: export
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download the export
+        uses: actions/download-artifact@v4
+        with:
+          name: event-copy
+
+      - name: Set up SSH
+        uses: ./.github/actions/ssh-target
+        with:
+          host: ${{ vars.DEPLOY_HOST }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: Check production
+        run: |
+          STATE=$(ssh target "cd /opt/zainstreat && $C exec -T postgres sh -c 'psql -tA -v ON_ERROR_STOP=1 -v slug=$SLUG -U \"\$POSTGRES_USER\" -d \"\$POSTGRES_DB\"'" <<'SQL'
+          SELECT CASE
+            WHEN NOT EXISTS (SELECT 1 FROM events WHERE slug = :'slug') THEN 'missing'
+            WHEN EXISTS (SELECT 1 FROM event_bookings b JOIN events e ON e.id = b.event_id WHERE e.slug = :'slug') THEN 'booked'
+            ELSE 'ok' END;
+          SQL
+          )
+          case "$(echo "$STATE" | tr -d '[:space:]')" in
+            ok) ;;
+            missing) echo "::error::Production has no event '$SLUG'. Run Seed production events first."; exit 1 ;;
+            booked) echo "::error::Production has bookings for this event; it can't be overwritten."; exit 1 ;;
+            *) echo "::error::Unexpected answer from production: $STATE"; exit 1 ;;
+          esac
+
+      - name: Find production's media URL
+        id: base
+        run: |
+          BASE=$(ssh target "cd /opt/zainstreat && $C exec -T api printenv PUBLIC_API_URL" | tr -d '[:space:]')
+          test -n "$BASE" || { echo "::error::Couldn't read PUBLIC_API_URL from production's api."; exit 1; }
+          echo "url=$BASE" >> "$GITHUB_OUTPUT"
+
+      - name: Backup
+        run: |
+          ssh target 'set -euo pipefail
+            cd /opt/zainstreat
+            COMPOSE="docker compose -f docker-compose.yml -f docker-compose.prod.yml"
+            TS=$(date +%Y%m%d-%H%M%S)
+            mkdir -p backups
+            echo "Backing up to backups/backup-${TS}.sql"
+            $COMPOSE exec -T postgres sh -c '"'"'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB"'"'"' > "backups/backup-${TS}.sql"
+            test -s "backups/backup-${TS}.sql"
+            echo "Backup OK ($(wc -l < "backups/backup-${TS}.sql") lines)."'
+
+      - name: Upload the images
+        run: |
+          # Fresh UUID keys, so this never overwrites anything (Decision 9).
+          scp -q infra/minio-object.sh target:/tmp/minio-object.sh
+          while read -r key; do
+            ssh target "bash /tmp/minio-object.sh put $key" < "media/$key"
+          done < media/keys
+          ssh target 'rm -f /tmp/minio-object.sh'
+          echo "Uploaded $(wc -l < media/keys | tr -d ' ') image(s)."
+
+      - name: Copy and publish the event
+        env:
+          BASE: ${{ steps.base.outputs.url }}
+        run: |
+          # The JSON travels as a file and is read with \set, so no shell
+          # quoting ever touches it.
+          scp -q event.json target:/tmp/event-copy.json
+          ssh target "cd /opt/zainstreat && $C cp /tmp/event-copy.json postgres:/tmp/event-copy.json && rm -f /tmp/event-copy.json"
+          ssh target "cd /opt/zainstreat && $C exec -T postgres sh -c 'psql -v ON_ERROR_STOP=1 -v slug=$SLUG -v base=$BASE -U \"\$POSTGRES_USER\" -d \"\$POSTGRES_DB\"; status=\$?; rm -f /tmp/event-copy.json; exit \$status'" <<'SQL'
+          \set data `cat /tmp/event-copy.json`
+          BEGIN;
+          CREATE TEMP TABLE incoming ON COMMIT DROP AS SELECT :'data'::jsonb AS d, id
+          FROM events WHERE slug = :'slug' FOR UPDATE;
+          DO $$ BEGIN
+            IF EXISTS (SELECT 1 FROM event_bookings b JOIN incoming c ON c.id = b.event_id) THEN
+              RAISE EXCEPTION 'production has bookings for this event';
+            END IF;
+          END $$;
+          -- Staging's media URLs point at production's api; relative paths stay.
+          CREATE FUNCTION pg_temp.media(url TEXT, base TEXT) RETURNS TEXT LANGUAGE sql AS
+            $f$ SELECT regexp_replace(url, '^https?://[^/]+/api/media/', base || '/api/media/') $f$;
+          UPDATE events e SET
+            content = c.d->'event'->'content',
+            starts_at = (c.d->'event'->>'starts_at')::timestamptz,
+            ends_at = (c.d->'event'->>'ends_at')::timestamptz,
+            area = c.d->'event'->>'area',
+            address = c.d->'event'->>'address',
+            capacity = (c.d->'event'->>'capacity')::int,
+            max_party_size = (c.d->'event'->>'max_party_size')::int,
+            meal_orders_close_at = (c.d->'event'->>'meal_orders_close_at')::timestamptz,
+            rsvp_closes_at = (c.d->'event'->>'rsvp_closes_at')::timestamptz,
+            payment_hold_hours = (c.d->'event'->>'payment_hold_hours')::int,
+            cover_image_url = pg_temp.media(c.d->'event'->>'cover_image_url', :'base'),
+            published_at = COALESCE(e.published_at, now()),
+            updated_at = now()
+          FROM incoming c WHERE e.id = c.id;
+          DELETE FROM event_plates WHERE event_id = (SELECT id FROM incoming);
+          INSERT INTO event_plates (event_id, position, content, options, price, is_available)
+          SELECT c.id, (p->>'position')::int, p->'content', p->'options',
+                 (p->>'price')::numeric, (p->>'is_available')::boolean
+          FROM incoming c, jsonb_array_elements(c.d->'plates') p;
+          DELETE FROM event_photos WHERE event_id = (SELECT id FROM incoming);
+          INSERT INTO event_photos (event_id, position, image_url, caption)
+          SELECT c.id, (ph->>'position')::int, pg_temp.media(ph->>'image_url', :'base'), ph->>'caption'
+          FROM incoming c, jsonb_array_elements(c.d->'photos') ph;
+          COMMIT;
+          SQL
+
+      - name: Show the event
+        run: |
+          ssh target "cd /opt/zainstreat && $C exec -T postgres sh -c 'psql -v slug=$SLUG -U \"\$POSTGRES_USER\" -d \"\$POSTGRES_DB\"'" <<'SQL'
+          SELECT e.slug, e.content->'en'->>'title' AS title, e.area, (e.address <> '') AS has_address,
+                 (e.published_at IS NOT NULL) AS published, e.cover_image_url,
+                 (SELECT count(*) FROM event_photos ph WHERE ph.event_id = e.id) AS photos
+          FROM events e WHERE e.slug = :'slug';
+          SELECT p.position, p.content->'en'->>'name' AS plate, p.price, p.is_available,
+                 jsonb_array_length(p.options) AS option_groups
+          FROM event_plates p JOIN events e ON e.id = p.event_id
+          WHERE e.slug = :'slug' ORDER BY p.position;
+          SQL
+
+      - name: Summary
+        env:
+          DOMAIN: ${{ vars.DOMAIN }}
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" <<EOF
+          ### Copied and published
+
+          https://${DOMAIN}/en/events/${SLUG}
+
+          Next:
+
+          1. Check the event page in English, Dutch and French.
+          2. In the \`cms.\` admin → Events, add the client's Tikkie link and its "valid until" date.
+             Guests see bank transfer only until then.
+          EOF

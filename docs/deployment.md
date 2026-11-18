@@ -138,6 +138,38 @@ type `SEED PRODUCTION`; it `pg_dump`s to
 seeds and prints row counts. To undo, use **Restore** with the latest S3
 backup.
 
+## Copying an event from staging to production
+
+When the client has finished an event on staging, run **Copy staging
+event to production** with the event's slug and type
+`COPY EVENT TO PRODUCTION` (Phase 34). It copies the text (en/nl/fr),
+dates, area, address, seats, cut-offs, plates (prices, options,
+availability), photos and uploaded images over the production event
+with the same slug, then publishes it. It never copies bookings or the
+Tikkie link.
+
+- The **export** job's summary lists what will be copied. Check it
+  (especially the address and prices), then approve the **import** job.
+- It stops without changing anything if the event is missing on either
+  side, if production has bookings for it, or if the address is blank.
+- The import `pg_dump`s to `/opt/zainstreat/backups/` first. Images are
+  added under new keys, so nothing in MinIO is overwritten.
+- **Copy first.** Staging down deletes staging's data, and Staging up
+  (even a redeploy) and Seed staging events overwrite the event with the
+  seed's text and placeholder values.
+- After copying, add the client's Tikkie link in the `cms.` admin.
+
+## Tikkie links for events
+
+An event's **Tikkie** section in admin takes an open-amount
+`https://tikkie.me/pay/…` link and its "valid until" date (Phase 34).
+While it's valid, guests see **Pay with Tikkie** with the exact amount
+first, and bank transfer below. After the end of that day (Amsterdam
+time) they see bank transfer only, and admin shows "Tikkie expired":
+paste the client's new link. Tikkie payments carry no `ZTM-` reference,
+so match them by name and amount. Staging's seed sets a fake link; the
+real one is only ever entered in production admin.
+
 ## Viewing logs
 
 **Dozzle** at `https://logs.<domain>` (HTTP Basic Auth:

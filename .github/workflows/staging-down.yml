@@ -4,6 +4,8 @@ name: Staging down
 # Its data goes with it; staging-up.yml reseeds a fresh one. The name is
 # hard-coded and the env=staging tag is checked (the IAM role also refuses
 # to delete anything untagged), so this can never touch production.
+# Phase 34: copy an event the client edited here to production first
+# (copy-staging-event.yml); this deletes those edits.
 on:
   workflow_dispatch:
     inputs:

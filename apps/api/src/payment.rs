@@ -1,3 +1,5 @@
+use chrono::NaiveDate;
+use rust_decimal::Decimal;
 use serde::Serialize;
 use std::sync::Arc;
 
@@ -24,6 +26,31 @@ pub struct PaymentInstructions {
     pub bic: Option<String>,
     pub kvk: Option<String>,
     pub reference: String,
+}
+
+/// An event's open-amount Tikkie request (Phase 34 Decisions 12-15),
+/// shown before the bank details while it's valid.
+#[derive(Debug, Serialize)]
+pub struct TikkieInstructions {
+    pub url: String,
+    /// The link works through the end of this day, Europe/Amsterdam.
+    pub valid_until: NaiveDate,
+    /// The order total, which the guest types into the request.
+    #[serde(with = "rust_decimal::serde::str")]
+    pub amount: Decimal,
+}
+
+const TIKKIE_PREFIX: &str = "https://tikkie.me/pay/";
+
+/// Trims, then accepts only `https://tikkie.me/pay/<token>` (Decision 13),
+/// so a typo or a look-alike domain never reaches a guest.
+pub fn normalize_tikkie_url(raw: &str) -> Option<String> {
+    let url = raw.trim();
+    let token = url.strip_prefix(TIKKIE_PREFIX)?;
+    let valid = !token.is_empty()
+        && token.len() <= 64
+        && token.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-');
+    valid.then(|| url.to_string())
 }
 
 /// Derived from the id, never stored, so it can't drift (Decision 6).
@@ -137,6 +164,28 @@ mod tests {
     fn rejects_a_single_wrong_digit() {
         assert_eq!(normalize_iban("NL91ABNA0417164301"), None);
         assert_eq!(normalize_iban("NL92ABNA0417164300"), None);
+    }
+
+    #[test]
+    fn accepts_only_tikkie_payment_links() {
+        assert_eq!(
+            normalize_tikkie_url(" https://tikkie.me/pay/abc123XYZ789def ").as_deref(),
+            Some("https://tikkie.me/pay/abc123XYZ789def")
+        );
+        assert!(normalize_tikkie_url("https://tikkie.me/pay/staging-not-a-real-link").is_some());
+        for raw in [
+            "",
+            "https://tikkie.me/pay/",
+            "http://tikkie.me/pay/abc",
+            "https://tikkie.me.evil.com/pay/abc",
+            "https://evil.com/https://tikkie.me/pay/abc",
+            "https://tikkie.me/pay/abc/def",
+            "https://tikkie.me/pay/abc?x=1",
+            "https://tikkie.me/pay/abc#x",
+            "https://example.com",
+        ] {
+            assert_eq!(normalize_tikkie_url(raw), None, "{raw}");
+        }
     }
 
     #[test]

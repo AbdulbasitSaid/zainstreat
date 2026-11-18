@@ -101,6 +101,17 @@ export interface OrderResponse {
   completed_by: "customer" | "admin" | null;
   // For an event order: the booking it pays for (Phase 31 Decision 11).
   event_booking_token: string | null;
+  // An unpaid event order's open-amount Tikkie request, while the link is
+  // valid (Phase 34 Decision 15); null otherwise.
+  tikkie: TikkieInstructions | null;
+}
+
+export interface TikkieInstructions {
+  url: string;
+  // yyyy-mm-dd; the link works through the end of this day in Amsterdam.
+  valid_until: string;
+  // The order total, which the guest types into Tikkie.
+  amount: string;
 }
 
 export interface UnavailableOrderItem {

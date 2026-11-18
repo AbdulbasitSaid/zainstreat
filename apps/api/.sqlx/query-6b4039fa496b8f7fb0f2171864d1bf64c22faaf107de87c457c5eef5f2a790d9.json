@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT e.id, e.slug, e.content, e.area, e.address, e.capacity, e.max_party_size,\n               e.payment_hold_hours, e.cover_image_url,\n               to_char(e.starts_at AT TIME ZONE 'Europe/Amsterdam', 'YYYY-MM-DD\"T\"HH24:MI') as \"starts_at!\",\n               to_char(e.ends_at AT TIME ZONE 'Europe/Amsterdam', 'YYYY-MM-DD\"T\"HH24:MI') as ends_at,\n               to_char(e.meal_orders_close_at AT TIME ZONE 'Europe/Amsterdam', 'YYYY-MM-DD\"T\"HH24:MI') as meal_orders_close_at,\n               to_char(e.rsvp_closes_at AT TIME ZONE 'Europe/Amsterdam', 'YYYY-MM-DD\"T\"HH24:MI') as rsvp_closes_at,\n               e.starts_at as \"starts_at_utc: DateTime<Utc>\",\n               (e.published_at IS NOT NULL) as \"published!\",\n               (e.archived_at IS NOT NULL) as \"archived!\",\n               (now() >= COALESCE(e.ends_at, e.starts_at)) as \"is_past!\",\n               EXISTS (SELECT 1 FROM event_bookings b WHERE b.event_id = e.id) as \"has_bookings!\"\n        FROM events e\n        WHERE e.id = $1\n        ",
+  "query": "\n        SELECT e.id, e.slug, e.content, e.area, e.address, e.capacity, e.max_party_size,\n               e.payment_hold_hours, e.cover_image_url, e.tikkie_url, e.tikkie_valid_until as \"tikkie_valid_until: NaiveDate\",\n               COALESCE(now() >= ((e.tikkie_valid_until + 1)::timestamp AT TIME ZONE 'Europe/Amsterdam'), false) as \"tikkie_expired!\",\n               to_char(e.starts_at AT TIME ZONE 'Europe/Amsterdam', 'YYYY-MM-DD\"T\"HH24:MI') as \"starts_at!\",\n               to_char(e.ends_at AT TIME ZONE 'Europe/Amsterdam', 'YYYY-MM-DD\"T\"HH24:MI') as ends_at,\n               to_char(e.meal_orders_close_at AT TIME ZONE 'Europe/Amsterdam', 'YYYY-MM-DD\"T\"HH24:MI') as meal_orders_close_at,\n               to_char(e.rsvp_closes_at AT TIME ZONE 'Europe/Amsterdam', 'YYYY-MM-DD\"T\"HH24:MI') as rsvp_closes_at,\n               e.starts_at as \"starts_at_utc: DateTime<Utc>\",\n               (e.published_at IS NOT NULL) as \"published!\",\n               (e.archived_at IS NOT NULL) as \"archived!\",\n               (now() >= COALESCE(e.ends_at, e.starts_at)) as \"is_past!\",\n               EXISTS (SELECT 1 FROM event_bookings b WHERE b.event_id = e.id) as \"has_bookings!\"\n        FROM events e\n        WHERE e.id = $1\n        ",
   "describe": {
     "columns": [
       {
@@ -50,46 +50,61 @@
       },
       {
         "ordinal": 9,
-        "name": "starts_at!",
+        "name": "tikkie_url",
         "type_info": "Text"
       },
       {
         "ordinal": 10,
-        "name": "ends_at",
-        "type_info": "Text"
+        "name": "tikkie_valid_until: NaiveDate",
+        "type_info": "Date"
       },
       {
         "ordinal": 11,
-        "name": "meal_orders_close_at",
-        "type_info": "Text"
+        "name": "tikkie_expired!",
+        "type_info": "Bool"
       },
       {
         "ordinal": 12,
-        "name": "rsvp_closes_at",
+        "name": "starts_at!",
         "type_info": "Text"
       },
       {
         "ordinal": 13,
+        "name": "ends_at",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 14,
+        "name": "meal_orders_close_at",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 15,
+        "name": "rsvp_closes_at",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 16,
         "name": "starts_at_utc: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 14,
+        "ordinal": 17,
         "name": "published!",
         "type_info": "Bool"
       },
       {
-        "ordinal": 15,
+        "ordinal": 18,
         "name": "archived!",
         "type_info": "Bool"
       },
       {
-        "ordinal": 16,
+        "ordinal": 19,
         "name": "is_past!",
         "type_info": "Bool"
       },
       {
-        "ordinal": 17,
+        "ordinal": 20,
         "name": "has_bookings!",
         "type_info": "Bool"
       }
@@ -109,6 +124,9 @@
       false,
       false,
       true,
+      true,
+      true,
+      null,
       null,
       null,
       null,
@@ -120,5 +138,5 @@
       null
     ]
   },
-  "hash": "9dd95926af4cc93c877d33b91f6fa3ae1f636273753b346288bcadcffb6b9a4a"
+  "hash": "6b4039fa496b8f7fb0f2171864d1bf64c22faaf107de87c457c5eef5f2a790d9"
 }

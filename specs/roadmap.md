@@ -613,6 +613,26 @@ deployed version.
 - `docs/privacy.md`: the record of processing, processors and a breach
   checklist.
 
+## Phase 34 — Event Copy to Production & Tikkie Payment
+
+Planned 2026-11-18 (see
+`specs/2026-11-18-phase-34-event-copy-tikkie/requirement.md`). The
+client finished The Abula Experience on staging and wants exactly that on
+production, and wants guests to be able to pay by Tikkie.
+
+- A reviewer-gated `copy-staging-event.yml` copies one event (text,
+  dates, settings, address, plates, prices, options, photos and their
+  MinIO images) from staging over the production event with the same
+  slug, after a backup, and publishes it. It refuses when production has
+  bookings for it or the address is blank. It never copies the Tikkie
+  link.
+- Events get an admin-editable **Tikkie link** with a "valid until"
+  date. While it's valid, the booking page, tracking page and payment
+  emails show **Pay with Tikkie** first, with the exact amount to enter,
+  and bank transfer below as the alternative. Expired or unset, only
+  bank transfer shows, and admin warns.
+- Staging only ever gets a fake Tikkie link.
+
 ## Later — iDEAL Payments
 
 Agreed in the 2026-10-18 call but blocked on the client opening a
