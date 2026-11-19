@@ -1,0 +1,33 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE orders\n        SET delivery_fee = $3, total = subtotal + $3, delivery_distance_km = $4,\n            delivery_rate_per_km = $5, delivery_estimated_by = $6,\n            delivery_fee_pending = false, updated_at = now()\n        WHERE id = $1 AND updated_at = $2 AND delivery_type = 'delivery'\n          AND status = 'awaiting_payment' AND payment_claimed_at IS NULL\n        RETURNING public_token,\n                  to_char(created_at AT TIME ZONE 'Europe/Amsterdam', 'DD-MM-YYYY HH24:MI') as \"placed_at!\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "public_token",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "placed_at!",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Timestamptz",
+        "Numeric",
+        "Numeric",
+        "Numeric",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      null
+    ]
+  },
+  "hash": "609533e9fcd5ea17daae30f60810bde4629d6196c35cf7ec9b4c65e6333d7641"
+}

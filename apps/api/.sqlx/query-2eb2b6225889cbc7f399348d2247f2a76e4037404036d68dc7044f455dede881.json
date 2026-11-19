@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO order_items\n                (order_id, menu_item_id, price_option_id, item_name, option_label,\n                 unit_price, quantity, subtotal, rental_id, kind)\n            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Int8",
+        "Text",
+        "Text",
+        "Numeric",
+        "Int4",
+        "Numeric",
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2eb2b6225889cbc7f399348d2247f2a76e4037404036d68dc7044f455dede881"
+}

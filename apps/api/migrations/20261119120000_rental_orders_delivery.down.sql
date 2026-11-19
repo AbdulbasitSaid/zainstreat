@@ -1,0 +1,11 @@
+DROP TABLE delivery_settings;
+ALTER TABLE orders
+    DROP COLUMN delivery_fee_pending,
+    DROP COLUMN delivery_estimated_by,
+    DROP COLUMN delivery_rate_per_km,
+    DROP COLUMN delivery_distance_km,
+    DROP COLUMN rental_date;
+ALTER TABLE order_items
+    DROP CONSTRAINT order_items_one_source,
+    DROP COLUMN kind,
+    DROP COLUMN rental_id;
