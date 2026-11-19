@@ -350,6 +350,46 @@ SES SMTP; without credentials the API logs every send as a no-op.
   don't work in a Safari tab. The owner's steps are in
   [`docs/admin-app.md`](admin-app.md).
 
+## Delivery fee (Phase 37)
+
+- **What it does.** Delivery orders pay a fee worked out by the API:
+  the one-way driving distance from the business address to the
+  customer's address × the rate per km (€1.00 to start), with an optional
+  minimum fee and maximum distance. The owner sets all of this in admin
+  **Settings → Delivery**. Customers pick their address from Dutch
+  address suggestions (PDOK, free, no key) and see the fee before
+  ordering.
+- **Delivery ships switched off.** The business address is seeded from
+  the current event's address. The owner checks it in Settings, tries a
+  few addresses with **Test an address**, then switches delivery on.
+  The business address is private: only the admin API returns it.
+- **Driving distance: Google Routes API.** Without a key, distances are
+  the straight line × 1.3, marked "Straight-line estimate" on the admin
+  order. To set up the key (once, in the client's Google account):
+  1. Create a Google Cloud project and link a billing account.
+  2. **APIs & Services → Library**: enable **Routes API** only.
+  3. **Credentials → Create credentials → API key**. Restrict it:
+     API restrictions → Routes API; application restrictions → IP
+     addresses → the server's static IP.
+  4. **Quotas**: set the Routes API "Compute Routes" requests per day to
+     500. Past that, the API falls back to the straight-line estimate.
+  5. **Billing → Budgets & alerts**: a €10/month budget with an email
+     alert to the owner.
+  6. `gh secret set GOOGLE_ROUTES_API_KEY --env <env>` and pipe the key
+     in. Never commit or paste it.
+  First deploy after adding it: Promote with
+  `allow_env_changes: GOOGLE_ROUTES_API_KEY`.
+- **What leaves the server.** PDOK gets the address text the customer
+  types; Google gets coordinates only (no name or address text). Nothing
+  is cached from Google (their terms).
+- **When PDOK is down**, checkout takes a typed address and the order is
+  placed with "Delivery fee to be confirmed". The owner gets "Delivery
+  fee needed" by email and push, sets the fee on the admin order page,
+  and the customer gets an updated invoice with payment details. The
+  customer can't mark the order paid before that.
+- **Trying the PDOK-down path locally:** run the API with
+  `PDOK_BASE_URL=http://127.0.0.1:9` (nothing listens there).
+
 ## Security headers, privacy and retention (Phase 33)
 
 - **Headers.** Caddy sends HSTS, `nosniff`, `Referrer-Policy`,
