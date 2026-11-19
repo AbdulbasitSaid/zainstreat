@@ -368,11 +368,15 @@ SES SMTP; without credentials the API logs every send as a no-op.
   "Straight-line estimate" on the admin order. Free up to 100,000
   requests a month, then $2 per 1,000; a few requests per order. To set
   up the token (once):
-  1. Sign in at account.mapbox.com.
-  2. **Tokens → Create a token**: name it `zainstreat-<env>`, leave only
-     the default public scopes ticked (Directions needs no secret scope),
-     no URL restrictions (those only apply to browser requests; this
-     token is used server-side only).
+  1. Sign in at console.mapbox.com (account `abdulbasit-ibrahim`,
+     Google sign-in as techsihir@gmail.com, created 2026-11-19, no card).
+  2. Without a card the account is in "limited mode": Directions works
+     (tested 2026-11-19), but only the **Default public token** exists;
+     creating dedicated tokens needs a payment method. Staging uses the
+     default token. Once a card is added, create `zainstreat-<env>`
+     tokens (default public scopes, no URL restrictions: those only
+     apply to browser requests, and this token is used server-side
+     only) and replace the secrets.
   3. `gh secret set MAPBOX_ACCESS_TOKEN --env <env>` and pipe the token
      in. Never commit it or put it in the web app.
   4. First deploy after adding it: Promote with
