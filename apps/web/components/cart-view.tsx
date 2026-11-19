@@ -6,8 +6,9 @@ import { Button, ButtonLink } from "@/components/button";
 import { CartLineItem } from "@/components/cart-line-item";
 import { useCart } from "@/lib/cart-context";
 import { formatPrice } from "@/lib/format";
+import type { DeliveryInfo } from "@/lib/delivery";
 
-export function CartView() {
+export function CartView({ deliveryInfo }: { deliveryInfo: DeliveryInfo | null }) {
   const t = useTranslations("Cart");
   const { lines, subtotal, clearCart } = useCart();
 
@@ -31,6 +32,11 @@ export function CartView() {
         <p className="m-0 text-lg font-semibold">
           {t("subtotal")}: <span className="text-primary">{formatPrice(subtotal.toFixed(2))}</span>
         </p>
+        {deliveryInfo?.enabled && (
+          <p className="m-0 text-sm text-text-muted">
+            {t("deliveryFromRate", { rate: formatPrice(deliveryInfo.rate_per_km) })}
+          </p>
+        )}
         <div className="flex flex-wrap justify-end gap-3">
           <ButtonLink href="/menu" variant="secondary">
             {t("continueShopping")}

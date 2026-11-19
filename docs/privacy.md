@@ -17,7 +17,7 @@ no large-scale monitoring).
 
 | Activity | Data subjects | Personal data | Purpose | Lawful basis | Kept |
 | --- | --- | --- | --- | --- | --- |
-| Food orders (`orders`, `order_items`) | Customers | Name, email, phone, delivery address, notes, items, amounts | Fulfil and invoice the order | Contract (6(1)(b)); tax records (6(1)(c)) | 7 years, then anonymised; unpaid cancelled orders 12 months |
+| Food and rental orders (`orders`, `order_items`) | Customers | Name, email, phone, delivery address and distance, rental date, notes, items, amounts | Fulfil and invoice the order | Contract (6(1)(b)); tax records (6(1)(c)) | 7 years, then anonymised; unpaid cancelled orders 12 months |
 | Event bookings (`event_bookings`, guests) | Guests | Name, email, phone, party size, meal choices, notes | Seat guests, cook, invoice | Contract (6(1)(b)); tax records (6(1)(c)) | Paid: 7 years. Free RSVP, waitlist, cancelled: 12 months after the event |
 | Catering enquiries and quotes | Prospective customers | Name, email, phone, event details, message, quote | Answer and quote | Pre-contract steps (6(1)(b)) | Accepted: 7 years. Otherwise 12 months after the last update |
 | Contact messages | Anyone who writes | Name, email, phone, subject, message | Answer the message | Legitimate interest (6(1)(f)) | 12 months, then deleted |
@@ -42,6 +42,8 @@ code, this table and the public page together.
 | Amazon Web Services (Lightsail, S3, SES) | Hosting, database, backups, outgoing email | `eu-central-1`, Frankfurt | AWS GDPR Data Processing Addendum, part of the AWS Service Terms (accepted with the account; download from AWS Artifact) |
 | Namecheap (Private Email) | The `contact@` mailbox | Namecheap's mail infrastructure | Namecheap's DPA (accept in the account) |
 | Apple / Google / Mozilla push services | Deliver admin notifications (customer name in the text) | May be outside the EEA | Browser vendor terms, standard contractual clauses |
+| PDOK (Kadaster, Dutch government) | Address suggestions and lookups for delivery (Phase 37): the address text a customer types | Netherlands | Public open-data service; no account, no DPA |
+| Mapbox (Directions API) | Driving distance for the delivery fee (Phase 37): **coordinates only**, no name or address text | US | Mapbox DPA (www.mapbox.com/legal/dpa), part of the Mapbox terms accepted with the account |
 | GitHub | Code and container images | US | No customer data |
 
 **To do before production:** the client accepts both DPAs in their own

@@ -117,7 +117,8 @@ async fn delivery_without_address_is_rejected(pool: PgPool) {
     assert_eq!(status, StatusCode::BAD_REQUEST);
     assert_eq!(body["error"], "validation_error");
     let fields = body["fields"].as_array().unwrap();
-    assert!(fields.iter().any(|f| f["field"] == "delivery_address"));
+    // Phase 37: a delivery address is picked from the lookup, by id.
+    assert!(fields.iter().any(|f| f["field"] == "delivery_address_id"));
 }
 
 #[sqlx::test]

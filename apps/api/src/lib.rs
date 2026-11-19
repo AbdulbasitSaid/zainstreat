@@ -1,3 +1,4 @@
+pub mod delivery;
 pub mod email;
 pub mod error;
 pub mod event_emails;
@@ -21,7 +22,7 @@ use tower::ServiceBuilder;
 use tower_http::{
     LatencyUnit,
     request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer},
-    trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer},
+    trace::{DefaultOnResponse, TraceLayer},
 };
 use tower_sessions::{
     Expiry, SessionManagerLayer,
@@ -45,6 +46,7 @@ pub struct AppState {
     pub email: email::EmailConfig,
     pub payment: payment::PaymentConfig,
     pub push: push::PushConfig,
+    pub delivery: delivery::DeliveryConfig,
 }
 
 impl FromRef<AppState> for PgPool {
@@ -74,6 +76,12 @@ impl FromRef<AppState> for payment::PaymentConfig {
 impl FromRef<AppState> for push::PushConfig {
     fn from_ref(state: &AppState) -> push::PushConfig {
         state.push.clone()
+    }
+}
+
+impl FromRef<AppState> for delivery::DeliveryConfig {
+    fn from_ref(state: &AppState) -> delivery::DeliveryConfig {
+        state.delivery.clone()
     }
 }
 
@@ -114,6 +122,7 @@ pub async fn build_app(
     email: email::EmailConfig,
     payment: payment::PaymentConfig,
     push: push::PushConfig,
+    delivery: delivery::DeliveryConfig,
 ) -> Result<Router, sqlx::Error> {
     let session_store = PostgresStore::new(pool.clone());
     session_store.migrate().await?;
@@ -140,7 +149,18 @@ pub async fn build_app(
                 .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
                 .layer(
                     TraceLayer::new_for_http()
-                        .make_span_with(DefaultMakeSpan::new().level(Level::INFO))
+                        // The path only: a query string can carry personal
+                        // data, like an address typed into the delivery
+                        // lookup (Phase 37 Decision 7, Phase 33's no
+                        // personal data in logs).
+                        .make_span_with(|request: &axum::http::Request<axum::body::Body>| {
+                            tracing::info_span!(
+                                "request",
+                                method = %request.method(),
+                                uri = %request.uri().path(),
+                                version = ?request.version(),
+                            )
+                        })
                         .on_response(
                             DefaultOnResponse::new()
                                 .level(Level::INFO)
@@ -155,5 +175,6 @@ pub async fn build_app(
             email,
             payment,
             push,
+            delivery,
         }))
 }

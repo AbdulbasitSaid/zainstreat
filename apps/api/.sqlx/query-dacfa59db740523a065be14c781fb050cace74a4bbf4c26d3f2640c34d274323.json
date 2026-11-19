@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT id, customer_name, delivery_type, total, status,\n               created_at as \"created_at: DateTime<Utc>\",\n               (SELECT q.enquiry_id FROM catering_quotes q WHERE q.order_id = orders.id) as \"catering_enquiry_id?\",\n               (SELECT b.event_id FROM event_bookings b WHERE b.order_id = orders.id) as \"event_id?\",\n               (SELECT e.content->'en'->>'title' FROM event_bookings b JOIN events e ON e.id = b.event_id\n                 WHERE b.order_id = orders.id) as \"event_title?\"\n        FROM orders\n        ORDER BY created_at DESC, id DESC\n        LIMIT $1\n        ",
+  "query": "\n        SELECT id, customer_name, delivery_type, total, status, delivery_fee_pending,\n               created_at as \"created_at: DateTime<Utc>\",\n               (SELECT q.enquiry_id FROM catering_quotes q WHERE q.order_id = orders.id) as \"catering_enquiry_id?\",\n               (SELECT b.event_id FROM event_bookings b WHERE b.order_id = orders.id) as \"event_id?\",\n               (SELECT e.content->'en'->>'title' FROM event_bookings b JOIN events e ON e.id = b.event_id\n                 WHERE b.order_id = orders.id) as \"event_title?\"\n        FROM orders\n        WHERE ($1::TEXT IS NULL OR status = $1)\n        ORDER BY created_at DESC, id DESC\n        LIMIT $2 OFFSET $3\n        ",
   "describe": {
     "columns": [
       {
@@ -30,31 +30,39 @@
       },
       {
         "ordinal": 5,
+        "name": "delivery_fee_pending",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 6,
         "name": "created_at: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 6,
+        "ordinal": 7,
         "name": "catering_enquiry_id?",
         "type_info": "Int8"
       },
       {
-        "ordinal": 7,
+        "ordinal": 8,
         "name": "event_id?",
         "type_info": "Int8"
       },
       {
-        "ordinal": 8,
+        "ordinal": 9,
         "name": "event_title?",
         "type_info": "Text"
       }
     ],
     "parameters": {
       "Left": [
+        "Text",
+        "Int8",
         "Int8"
       ]
     },
     "nullable": [
+      false,
       false,
       false,
       false,
@@ -66,5 +74,5 @@
       null
     ]
   },
-  "hash": "ab726bc4d606f21e2c5338f8c19084599f4669259d9d87c24813cf1593589d69"
+  "hash": "dacfa59db740523a065be14c781fb050cace74a4bbf4c26d3f2640c34d274323"
 }

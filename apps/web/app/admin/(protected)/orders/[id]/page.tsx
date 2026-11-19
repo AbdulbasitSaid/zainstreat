@@ -1,14 +1,16 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { FULFILMENT_LABELS } from "@/lib/admin-orders";
+import { ESTIMATED_BY_LABELS, FULFILMENT_LABELS } from "@/lib/admin-orders";
 import { getAdminOrder } from "@/lib/admin-orders-api";
 import { AdminCateringTag } from "@/components/admin-catering-tag";
 import { AdminEventTag } from "@/components/admin-event-tag";
 import { AdminStatusBadge } from "@/components/admin-status-badge";
 import { AdminOrderActions } from "@/components/admin-order-actions";
 import { AdminEmailDeliveryNotice } from "@/components/admin-email-delivery-notice";
-import { formatDateTime, formatPrice } from "@/lib/format";
+import { AdminOrderDeliveryFee } from "@/components/admin-order-delivery-fee";
+import { Notice } from "@/components/notice";
+import { formatDate, formatDateTime, formatPrice } from "@/lib/format";
 
 export const metadata: Metadata = {
   title: "Order | Zain's Admin",
@@ -35,6 +37,9 @@ export default async function AdminOrderDetailPage({
   }
 
   const order = await getAdminOrder(orderId);
+  // Phase 37 Decision 17 / open risk 6: until the customer says they've paid.
+  const feeEditable =
+    order.delivery_type === "delivery" && order.status === "awaiting_payment" && order.payment_claimed_at === null;
 
   return (
     <div className="flex flex-col gap-8">
@@ -57,6 +62,10 @@ export default async function AdminOrderDetailPage({
         whatsAppMessage={`Hi ${order.customer_name}, about your Zain's Treat n More order ${order.payment_reference}:`}
       />
 
+      {order.delivery_fee_pending && (
+        <Notice>Delivery fee needed: set it below before the customer can pay.</Notice>
+      )}
+
       <AdminOrderActions
         orderId={order.id}
         status={order.status}
@@ -71,6 +80,7 @@ export default async function AdminOrderDetailPage({
         <Field label="Phone" value={order.customer_phone} />
         <Field label="Type" value={FULFILMENT_LABELS[order.delivery_type]} />
         <Field label="Address" value={order.delivery_address ?? "—"} />
+        {order.rental_date && <Field label="Rental date" value={formatDate(order.rental_date)} />}
         <Field label="Placed" value={formatDateTime(order.created_at)} />
         {order.payment_claimed_at && (
           <Field label="Customer says paid" value={formatDateTime(order.payment_claimed_at)} />
@@ -117,6 +127,9 @@ export default async function AdminOrderDetailPage({
             {order.items.map((item) => (
               <tr key={item.id} className="border-b border-text/10">
                 <td className="py-3 pr-4">
+                  {item.kind === "rental" && (
+                    <span className="mr-2 rounded-full bg-cream px-2 py-0.5 text-xs font-semibold">Rental</span>
+                  )}
                   {item.item_name}
                   {item.option_label && (
                     <span className="text-text-muted"> · {item.option_label}</span>
@@ -137,14 +150,34 @@ export default async function AdminOrderDetailPage({
           <dd className="m-0">{formatPrice(order.subtotal)}</dd>
         </div>
         <div className="flex justify-between">
-          <dt className="text-text-muted">Delivery fee</dt>
-          <dd className="m-0">{formatPrice(order.delivery_fee)}</dd>
+          <dt className="text-text-muted">
+            Delivery fee
+            {order.delivery_distance_km && ` (${order.delivery_distance_km} km)`}
+          </dt>
+          <dd className="m-0">{order.delivery_fee_pending ? "Needed" : formatPrice(order.delivery_fee)}</dd>
         </div>
+        {order.delivery_estimated_by && (
+          <p
+            className={`m-0 text-right text-xs ${order.delivery_estimated_by === "straight_line" ? "font-semibold text-primary-dark" : "text-text-muted"}`}
+          >
+            {ESTIMATED_BY_LABELS[order.delivery_estimated_by]}
+            {order.delivery_rate_per_km && ` · ${formatPrice(order.delivery_rate_per_km)}/km`}
+          </p>
+        )}
         <div className="flex justify-between border-t border-text/15 pt-2 text-base font-semibold">
           <dt>Total</dt>
           <dd className="m-0">{formatPrice(order.total)}</dd>
         </div>
       </dl>
+
+      {feeEditable && (
+        <AdminOrderDeliveryFee
+          orderId={order.id}
+          updatedAt={order.updated_at}
+          pending={order.delivery_fee_pending}
+          currentFee={order.delivery_fee}
+        />
+      )}
     </div>
   );
 }

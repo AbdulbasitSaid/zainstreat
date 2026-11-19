@@ -30,3 +30,17 @@ const DATE_TIME_FORMAT = new Intl.DateTimeFormat("en-GB", {
 export function formatDateTime(iso: string): string {
   return DATE_TIME_FORMAT.format(new Date(iso));
 }
+
+// A plain date ("2026-12-02") read as UTC, so it's the same day everywhere;
+// for the admin, like formatDateTime (Phase 37's rental date).
+const PLAIN_DATE_FORMAT = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "UTC",
+  weekday: "short",
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+});
+
+export function formatDate(date: string): string {
+  return PLAIN_DATE_FORMAT.format(new Date(`${date}T00:00:00Z`));
+}

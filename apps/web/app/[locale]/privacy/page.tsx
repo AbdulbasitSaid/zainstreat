@@ -26,7 +26,7 @@ export async function generateMetadata({
 const SECTIONS = [
   { key: "collect", intro: "collectIntro", items: ["collectOrders", "collectEvents", "collectCatering", "collectContact", "collectTechnical"] },
   { key: "why", items: ["whyContract", "whyQuote", "whyLegal", "whyInterest"], outro: "whyNot" },
-  { key: "sharing", intro: "sharingIntro", items: ["sharingHosting", "sharingMail", "sharingPush"], outro: ["sharingWhatsapp", "sharingTransfers"] },
+  { key: "sharing", intro: "sharingIntro", items: ["sharingHosting", "sharingMail", "sharingPush", "sharingDelivery"], outro: ["sharingWhatsapp", "sharingTransfers"] },
   { key: "retention", items: ["retentionBookkeeping", "retentionShort", "retentionEmail", "retentionLogs", "retentionBackups"] },
   { key: "cookies", intro: "cookiesCopy", items: ["cookiesLocale", "cookiesCart", "cookiesOrder"], outro: "cookiesConsent" },
 ] as const;

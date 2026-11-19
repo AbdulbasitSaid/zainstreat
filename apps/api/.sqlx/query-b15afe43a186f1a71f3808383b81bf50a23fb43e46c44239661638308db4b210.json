@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE orders\n        SET status = 'payment_claimed', payment_claimed_at = now(), updated_at = now()\n        WHERE public_token = $1 AND status = 'awaiting_payment' AND NOT delivery_fee_pending\n        RETURNING id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "b15afe43a186f1a71f3808383b81bf50a23fb43e46c44239661638308db4b210"
+}

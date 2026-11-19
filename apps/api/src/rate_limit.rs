@@ -62,6 +62,12 @@ pub fn login_rate_limiter() -> GovernorLayer<ForwardedForKeyExtractor, NoOpMiddl
     limiter(60, 5)
 }
 
+/// Address suggestions and delivery quotes (Phase 37 Decision 9): they fire
+/// as the customer types (debounced), so a burst of 30, then one a second.
+pub fn delivery_rate_limiter() -> GovernorLayer<ForwardedForKeyExtractor, NoOpMiddleware, Body> {
+    limiter(1, 30)
+}
+
 fn limiter(
     refill_seconds: u64,
     burst: u32,

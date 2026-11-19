@@ -47,7 +47,32 @@ pub enum AppError {
     NotEnoughSeats(i64),
     /// RSVPs for the event have closed, or it has already started.
     BookingClosed,
+    /// The fee the customer saw isn't the fee now (Phase 37 Decision 12);
+    /// carries the new fee and distance so checkout can show them.
+    DeliveryFeeChanged { fee: rust_decimal::Decimal, distance_km: rust_decimal::Decimal },
+    /// Payment can't be claimed before the owner sets the delivery fee
+    /// (Phase 37 Decision 17).
+    DeliveryFeePending,
+    /// Delivery is switched off or has no located business address.
+    DeliveryUnavailable,
+    /// PDOK didn't answer (Phase 37 Decision 17).
+    AddressLookupDown,
+    DeliveryOutOfRange,
+    AddressNotFound,
     Internal,
+}
+
+impl From<crate::delivery::DeliveryError> for AppError {
+    fn from(err: crate::delivery::DeliveryError) -> Self {
+        use crate::delivery::DeliveryError;
+        match err {
+            DeliveryError::Unavailable => Self::DeliveryUnavailable,
+            DeliveryError::OutOfRange => Self::DeliveryOutOfRange,
+            DeliveryError::NotFound => Self::AddressNotFound,
+            DeliveryError::LookupDown => Self::AddressLookupDown,
+            DeliveryError::Database(err) => Self::Database(err),
+        }
+    }
 }
 
 impl From<sqlx::Error> for AppError {
@@ -192,6 +217,40 @@ impl IntoResponse for AppError {
             AppError::BookingClosed => (
                 StatusCode::CONFLICT,
                 Json(json!({ "error": "booking_closed" })),
+            )
+                .into_response(),
+            AppError::DeliveryFeeChanged { fee, distance_km } => (
+                StatusCode::CONFLICT,
+                Json(json!({
+                    "error": "delivery_fee_changed",
+                    "fee": fee.to_string(),
+                    "distance_km": distance_km.to_string(),
+                })),
+            )
+                .into_response(),
+            AppError::DeliveryFeePending => (
+                StatusCode::CONFLICT,
+                Json(json!({ "error": "delivery_fee_pending" })),
+            )
+                .into_response(),
+            AppError::DeliveryUnavailable => (
+                StatusCode::SERVICE_UNAVAILABLE,
+                Json(json!({ "error": "delivery_unavailable" })),
+            )
+                .into_response(),
+            AppError::AddressLookupDown => (
+                StatusCode::SERVICE_UNAVAILABLE,
+                Json(json!({ "error": "address_lookup_down" })),
+            )
+                .into_response(),
+            AppError::DeliveryOutOfRange => (
+                StatusCode::UNPROCESSABLE_ENTITY,
+                Json(json!({ "error": "out_of_range" })),
+            )
+                .into_response(),
+            AppError::AddressNotFound => (
+                StatusCode::UNPROCESSABLE_ENTITY,
+                Json(json!({ "error": "not_found" })),
             )
                 .into_response(),
             AppError::Internal => {

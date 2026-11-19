@@ -285,6 +285,16 @@ struct InvoiceCopy {
     whatsapp_fallback: &'static str,
     verified_only: &'static str,
     after_paying: &'static str,
+    // Phase 37: rentals and the delivery fee.
+    rental_date: &'static str,
+    per_event: &'static str,
+    delivery: &'static str,
+    to_be_confirmed: &'static str,
+    plus_delivery: &'static str,
+    fee_pending_note: &'static str,
+    order_page: &'static str,
+    fee_confirmed_subject: &'static str,
+    fee_confirmed_intro: &'static str,
 }
 
 const INVOICE_EN: InvoiceCopy = InvoiceCopy {
@@ -304,6 +314,15 @@ const INVOICE_EN: InvoiceCopy = InvoiceCopy {
     whatsapp_fallback: "Please contact us on WhatsApp for our bank details.",
     verified_only: "We only start preparing your order once your payment has been verified.",
     after_paying: "After paying, let us know on your order page:",
+    rental_date: "Rental date",
+    per_event: "per event",
+    delivery: "Delivery",
+    to_be_confirmed: "to be confirmed",
+    plus_delivery: "+ delivery",
+    fee_pending_note: "We're confirming your delivery fee. You'll get an email with the final total and payment details shortly.",
+    order_page: "Your order page:",
+    fee_confirmed_subject: "Delivery fee confirmed",
+    fee_confirmed_intro: "Your delivery fee is confirmed. Here is your updated invoice.",
 };
 
 const INVOICE_NL: InvoiceCopy = InvoiceCopy {
@@ -323,6 +342,15 @@ const INVOICE_NL: InvoiceCopy = InvoiceCopy {
     whatsapp_fallback: "Neem contact met ons op via WhatsApp voor onze bankgegevens.",
     verified_only: "We beginnen pas met je bestelling als je betaling is gecontroleerd.",
     after_paying: "Heb je betaald? Laat het ons weten op je bestelpagina:",
+    rental_date: "Huurdatum",
+    per_event: "per evenement",
+    delivery: "Bezorging",
+    to_be_confirmed: "nog te bevestigen",
+    plus_delivery: "+ bezorging",
+    fee_pending_note: "We bevestigen je bezorgkosten. Je krijgt snel een e-mail met het eindtotaal en de betaalgegevens.",
+    order_page: "Je bestelpagina:",
+    fee_confirmed_subject: "Bezorgkosten bevestigd",
+    fee_confirmed_intro: "Je bezorgkosten zijn bevestigd. Hier is je bijgewerkte factuur.",
 };
 
 const INVOICE_FR: InvoiceCopy = InvoiceCopy {
@@ -342,6 +370,15 @@ const INVOICE_FR: InvoiceCopy = InvoiceCopy {
     whatsapp_fallback: "Contactez-nous sur WhatsApp pour obtenir nos coordonnées bancaires.",
     verified_only: "Nous commençons à préparer votre commande uniquement après vérification de votre paiement.",
     after_paying: "Après votre paiement, signalez-le-nous sur la page de votre commande :",
+    rental_date: "Date de location",
+    per_event: "par événement",
+    delivery: "Livraison",
+    to_be_confirmed: "à confirmer",
+    plus_delivery: "+ livraison",
+    fee_pending_note: "Nous confirmons vos frais de livraison. Vous recevrez bientôt un e-mail avec le total final et les informations de paiement.",
+    order_page: "Page de votre commande :",
+    fee_confirmed_subject: "Frais de livraison confirmés",
+    fee_confirmed_intro: "Vos frais de livraison sont confirmés. Voici votre facture mise à jour.",
 };
 
 fn invoice_copy(locale: Locale) -> &'static InvoiceCopy {
@@ -359,6 +396,7 @@ fn invoice_section(
     order: &OrderResponse,
     placed_at: &str,
     tracking_url: &str,
+    intro: fn(&InvoiceCopy) -> &'static str,
 ) -> String {
     let copy = invoice_copy(locale);
 
@@ -368,27 +406,51 @@ fn invoice_section(
         order.delivery_address.as_deref(),
     );
 
+    // Directly under the fulfilment line (Phase 37 Decision 4).
+    let rental_line = order
+        .rental_date
+        .map(|date| format!("\n{}: {}", copy.rental_date, date.format("%d-%m-%Y")))
+        .unwrap_or_default();
+
     let mut body = format!(
-        "{} {},\n\n{}\n\n{}: {}\n{}: {}\n{}\n\n",
+        "{} {},\n\n{}\n\n{}: {}\n{}: {}\n{}{}\n\n",
         copy.greeting,
         order.customer_name,
-        copy.intro,
+        intro(copy),
         copy.order,
         order.payment_reference,
         copy.date,
         placed_at,
         delivery_line,
+        rental_line,
     );
 
     for item in &order.items {
-        let name = match &item.option_label {
-            Some(label) => format!("{} ({label})", item.item_name),
-            None => item.item_name.clone(),
+        let name = match (&item.option_label, item.kind.as_str()) {
+            (Some(label), _) => format!("{} ({label})", item.item_name),
+            (None, "rental") => format!("{} ({})", item.item_name, copy.per_event),
+            (None, _) => item.item_name.clone(),
         };
         body.push_str(&format!(
             "{} x {name} — €{}\n",
             item.quantity, item.subtotal
         ));
+    }
+
+    // Phase 37 Decisions 13, 17: the delivery fee, or its absence for now.
+    if order.delivery_fee_pending {
+        body.push_str(&format!(
+            "{}: {}\n\n{}: €{} {}\n\n{}\n\n{}\n{tracking_url}",
+            copy.delivery, copy.to_be_confirmed, copy.total, order.subtotal, copy.plus_delivery,
+            copy.fee_pending_note, copy.order_page,
+        ));
+        return body;
+    }
+    if order.delivery_type == "delivery" && order.delivery_fee > Decimal::ZERO {
+        match order.delivery_distance_km {
+            Some(km) => body.push_str(&format!("{} ({km} km) — €{}\n", copy.delivery, order.delivery_fee)),
+            None => body.push_str(&format!("{} — €{}\n", copy.delivery, order.delivery_fee)),
+        }
     }
     body.push_str(&format!("\n{}: €{}\n\n", copy.total, order.total));
 
@@ -433,7 +495,29 @@ pub fn invoice_email(
             (
                 locale,
                 invoice_copy(locale).subject,
-                invoice_section(locale, order, placed_at, &url),
+                invoice_section(locale, order, placed_at, &url, |copy| copy.intro),
+            )
+        })
+        .collect();
+    multilingual(&parts, &order.payment_reference)
+}
+
+/// The updated invoice once the owner sets a delivery fee (Phase 37
+/// Decision 17): the invoice again, under its own subject and intro.
+pub fn delivery_fee_confirmed_email(
+    order: &OrderResponse,
+    placed_at: &str,
+    site_url: &str,
+    token: Uuid,
+) -> (String, String) {
+    let parts: Vec<_> = Locale::ALL
+        .into_iter()
+        .map(|locale| {
+            let url = tracking_url(site_url, locale, token);
+            (
+                locale,
+                invoice_copy(locale).fee_confirmed_subject,
+                invoice_section(locale, order, placed_at, &url, |copy| copy.fee_confirmed_intro),
             )
         })
         .collect();
@@ -592,6 +676,11 @@ mod tests {
     use crate::routes::orders::OrderItemResponse;
     use rust_decimal::Decimal;
 
+    /// The plain invoice, as `invoice_email` builds it.
+    fn section(locale: Locale, order: &OrderResponse, placed_at: &str, url: &str) -> String {
+        invoice_section(locale, order, placed_at, url, |copy| copy.intro)
+    }
+
     const SITE: &str = "https://zainstreat.com";
     const TOKEN: Uuid = Uuid::nil();
     const ORDER_URL: &str = "https://zainstreat.com/nl/order/00000000-0000-0000-0000-000000000000";
@@ -615,11 +704,16 @@ mod tests {
             notes: None,
             subtotal: Decimal::new(3050, 2),
             delivery_fee: Decimal::ZERO,
+            delivery_distance_km: None,
+            delivery_estimated_by: None,
+            delivery_fee_pending: false,
+            rental_date: None,
             total: Decimal::new(3050, 2),
             status: "awaiting_payment".into(),
             created_at: chrono::Utc::now(),
             items: vec![
                 OrderItemResponse {
+                    kind: "menu".into(),
                     item_name: "Jollof Rice".into(),
                     option_label: Some("Large".into()),
                     unit_price: Decimal::new(1200, 2),
@@ -627,6 +721,7 @@ mod tests {
                     subtotal: Decimal::new(2400, 2),
                 },
                 OrderItemResponse {
+                    kind: "menu".into(),
                     item_name: "Puff Puff".into(),
                     option_label: None,
                     unit_price: Decimal::new(650, 2),
@@ -797,7 +892,7 @@ mod tests {
     /// which `multilingual` adds once.
     #[test]
     fn english_invoice_keeps_the_phase_20_text() {
-        let body = invoice_section(
+        let body = section(
             Locale::En,
             &order(Some(bank())),
             "31-10-2026 14:05",
@@ -816,7 +911,7 @@ mod tests {
 
     #[test]
     fn dutch_invoice_without_bank_details_falls_back_to_whatsapp() {
-        let body = invoice_section(Locale::Nl, &order(None), "31-10-2026 14:05", ORDER_URL);
+        let body = section(Locale::Nl, &order(None), "31-10-2026 14:05", ORDER_URL);
         assert!(body.starts_with("Hoi Amina,"));
         assert!(body.contains("Afhalen") && body.contains("Totaal: €30.50"));
         assert!(body.contains("via WhatsApp") && !body.contains("IBAN"));
@@ -825,7 +920,7 @@ mod tests {
     /// Pinned to the Phase 24 copy.md §3.
     #[test]
     fn french_invoice_matches_the_copy() {
-        let body = invoice_section(
+        let body = section(
             Locale::Fr,
             &order(Some(bank())),
             "31-10-2026 14:05",

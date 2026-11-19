@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT id, customer_name, customer_email, customer_phone, delivery_type,\n               delivery_address, notes, subtotal, delivery_fee, total, status, public_token,\n               completed_by,\n               created_at as \"created_at: Timestamp\",\n               payment_claimed_at as \"payment_claimed_at: Timestamp\",\n               payment_confirmed_at as \"payment_confirmed_at: Timestamp\",\n               ready_at as \"ready_at: Timestamp\",\n               completed_at as \"completed_at: Timestamp\",\n               cancelled_at as \"cancelled_at: Timestamp\",\n               (SELECT b.public_token FROM event_bookings b WHERE b.order_id = orders.id) as \"event_booking_token?\"\n        FROM orders\n        WHERE public_token = $1\n        ",
+  "query": "\n        SELECT id, customer_name, customer_email, customer_phone, delivery_type,\n               delivery_address, notes, subtotal, delivery_fee, total, status, public_token,\n               completed_by, delivery_distance_km, delivery_estimated_by, delivery_fee_pending,\n               rental_date as \"rental_date: chrono::NaiveDate\",\n               created_at as \"created_at: Timestamp\",\n               payment_claimed_at as \"payment_claimed_at: Timestamp\",\n               payment_confirmed_at as \"payment_confirmed_at: Timestamp\",\n               ready_at as \"ready_at: Timestamp\",\n               completed_at as \"completed_at: Timestamp\",\n               cancelled_at as \"cancelled_at: Timestamp\",\n               (SELECT b.public_token FROM event_bookings b WHERE b.order_id = orders.id) as \"event_booking_token?\"\n        FROM orders\n        WHERE public_token = $1\n        ",
   "describe": {
     "columns": [
       {
@@ -70,36 +70,56 @@
       },
       {
         "ordinal": 13,
+        "name": "delivery_distance_km",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 14,
+        "name": "delivery_estimated_by",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 15,
+        "name": "delivery_fee_pending",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 16,
+        "name": "rental_date: chrono::NaiveDate",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 17,
         "name": "created_at: Timestamp",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 14,
+        "ordinal": 18,
         "name": "payment_claimed_at: Timestamp",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 15,
+        "ordinal": 19,
         "name": "payment_confirmed_at: Timestamp",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 16,
+        "ordinal": 20,
         "name": "ready_at: Timestamp",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 17,
+        "ordinal": 21,
         "name": "completed_at: Timestamp",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 18,
+        "ordinal": 22,
         "name": "cancelled_at: Timestamp",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 19,
+        "ordinal": 23,
         "name": "event_booking_token?",
         "type_info": "Uuid"
       }
@@ -123,6 +143,10 @@
       false,
       false,
       true,
+      true,
+      true,
+      false,
+      true,
       false,
       true,
       true,
@@ -132,5 +156,5 @@
       null
     ]
   },
-  "hash": "204fe725abcb2dc52c21ea67cb98a4350e5ca4b3f4f9a4c8869f77f55330da81"
+  "hash": "a1613829529877f3dbf1582f648280a875b0f0f31225fc610f16b4ee62f633a6"
 }

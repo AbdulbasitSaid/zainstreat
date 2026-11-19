@@ -1,6 +1,7 @@
 import { adminApiJson } from "@/lib/admin-api";
 import {
   ORDERS_PAGE_SIZE,
+  type AdminDeliverySettings,
   type AdminOrder,
   type AdminOrderList,
   type AdminOrdersSummary,
@@ -25,4 +26,8 @@ export function getAdminOrder(id: number): Promise<AdminOrder> {
 
 export function getAdminOrdersSummary(): Promise<AdminOrdersSummary> {
   return adminApiJson<AdminOrdersSummary>("/api/admin/orders/summary");
+}
+
+export function getAdminDeliverySettings(): Promise<AdminDeliverySettings> {
+  return adminApiJson<AdminDeliverySettings>("/api/admin/delivery-settings");
 }

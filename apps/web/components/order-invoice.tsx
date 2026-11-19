@@ -2,6 +2,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { ButtonAnchor } from "@/components/button";
 import { Notice } from "@/components/notice";
 import { OrderLineSummary } from "@/components/order-line-summary";
+import { OrderTotals } from "@/components/order-totals";
 import { formatPrice } from "@/lib/format";
 import type { OrderResponse } from "@/lib/orders";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
@@ -54,6 +55,9 @@ export function OrderInvoice({ order }: { order: OrderResponse }) {
               ? t("servedAtLine", { address: order.delivery_address })
               : t("pickupLine")}
         </p>}
+        {order.rental_date && (
+          <p className="m-0">{t("rentalDateLine", { date: formatDayMonth(order.rental_date, locale) })}</p>
+        )}
       </div>
 
       <OrderLineSummary
@@ -62,12 +66,25 @@ export function OrderInvoice({ order }: { order: OrderResponse }) {
           optionLabel: item.option_label,
           unitPrice: item.unit_price,
           quantity: item.quantity,
+          perEvent: item.kind === "rental",
         }))}
+        perEventLabel={t("perEvent")}
       />
-      <p className="m-0 text-right text-lg font-semibold">
-        {t("total")}: <span className="text-primary">{formatPrice(order.total)}</span>
-      </p>
+      <OrderTotals
+        subtotal={order.subtotal}
+        delivery={
+          order.delivery_fee_pending
+            ? "pending"
+            : order.delivery_type === "delivery" && Number.parseFloat(order.delivery_fee) > 0
+              ? { fee: order.delivery_fee, distanceKm: order.delivery_distance_km }
+              : null
+        }
+      />
 
+      {/* Nothing to pay until the owner sets the delivery fee (Phase 37 Decision 17). */}
+      {order.delivery_fee_pending ? (
+        <Notice>{t("feePendingNote")}</Notice>
+      ) : (
       <section className="flex flex-col gap-4 rounded-card bg-background-soft p-5">
         <h3 className="m-0 text-lg font-semibold">{t("howToPay")}</h3>
         {/* Tikkie first, bank transfer as the alternative (Phase 34 Decision 16). */}
@@ -130,6 +147,7 @@ export function OrderInvoice({ order }: { order: OrderResponse }) {
           </>
         )}
       </section>
+      )}
 
       <Notice>{t("verifiedOnly")}</Notice>
     </div>

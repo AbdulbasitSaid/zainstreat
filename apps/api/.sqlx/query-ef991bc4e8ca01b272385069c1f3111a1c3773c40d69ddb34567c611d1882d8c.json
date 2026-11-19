@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE delivery_settings\n        SET origin_address = $2, origin_lat = $3, origin_lon = $4, rate_per_km = $5,\n            minimum_fee = $6, max_distance_km = $7, delivery_enabled = $8, updated_at = now()\n        WHERE updated_at = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Timestamptz",
+        "Text",
+        "Float8",
+        "Float8",
+        "Numeric",
+        "Numeric",
+        "Numeric",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ef991bc4e8ca01b272385069c1f3111a1c3773c40d69ddb34567c611d1882d8c"
+}

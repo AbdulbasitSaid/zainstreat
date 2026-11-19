@@ -1,6 +1,7 @@
 import { isOrderToken, type OrderResponse } from "@/lib/orders";
 import { previewFetchInit } from "@/lib/preview";
 import { isQuoteToken, type PublicQuote } from "@/lib/quotes";
+import type { DeliveryInfo } from "@/lib/delivery";
 import { EMPTY_SITE_CONTENT, type SiteContent } from "@/lib/site-content";
 
 export interface Category {
@@ -80,6 +81,16 @@ export interface Rental {
 
 export async function getRentals(): Promise<Rental[]> {
   return apiFetch<Rental[]>("/api/rentals");
+}
+
+// Phase 37 Decision 11. Fails soft to null, which checkout treats as
+// "delivery off": pickup always works.
+export async function getDeliveryInfo(): Promise<DeliveryInfo | null> {
+  try {
+    return await apiFetch<DeliveryInfo>("/api/delivery/info");
+  } catch {
+    return null;
+  }
 }
 
 // Fails soft to the bundled defaults. The published document is cached

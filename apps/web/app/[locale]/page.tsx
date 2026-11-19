@@ -10,7 +10,7 @@ import { LiquidCard } from "@/components/liquid-card";
 import { BoilingSlideshow, type BoilingSlide } from "@/components/boiling-slideshow";
 import { ScrollCue } from "@/components/scroll-cue";
 import { Link } from "@/i18n/navigation";
-import { getMenuItems, getSiteContent } from "@/lib/api";
+import { getCategories, getMenuItems, getSiteContent } from "@/lib/api";
 import { getHomeText } from "@/lib/home-text";
 import { siteImage } from "@/lib/site-content";
 import type { AppLocale } from "@/i18n/routing";
@@ -69,12 +69,22 @@ const PROMISE_ITEMS = [
 ] as const;
 
 // The first two fill the collage's left column, the last two its right.
+// Each tile opens its own page (Phase 37 Decision 1); Snacks (null) is resolved
+// to its menu category at render time, since category ids differ per
+// environment.
 const CATEGORY_ITEMS = [
-  { labelKey: "servicesMeals", slot: "category_meals", src: categoryMeals, tileClass: "aspect-square w-3/4 self-end" },
-  { labelKey: "servicesSnacks", slot: "category_snacks", src: categorySnacks, tileClass: "aspect-[4/3]" },
-  { labelKey: "servicesCatering", slot: "category_catering", src: categoryCatering, tileClass: "aspect-[4/3]" },
+  { labelKey: "servicesMeals", href: "/menu", slot: "category_meals", src: categoryMeals, tileClass: "aspect-square w-3/4 self-end" },
+  { labelKey: "servicesSnacks", href: null, slot: "category_snacks", src: categorySnacks, tileClass: "aspect-[4/3]" },
+  {
+    labelKey: "servicesCatering",
+    href: "/contact?tab=catering",
+    slot: "category_catering",
+    src: categoryCatering,
+    tileClass: "aspect-[4/3]",
+  },
   {
     labelKey: "servicesEventRentals",
+    href: "/rentals",
     slot: "category_event_rentals",
     src: categoryEventRentals,
     tileClass: "aspect-[4/5] w-3/4",
@@ -105,7 +115,9 @@ export default async function Home() {
   const heroHeadingClass = "mb-4 text-[clamp(2.5rem,5vw,4.25rem)]";
   const heroSupportingClass = "max-w-[48ch] text-[clamp(1.05rem,1.5vw,1.25rem)] text-text-muted";
 
-  const menuItems = await getMenuItems();
+  const [menuItems, categories] = await Promise.all([getMenuItems(), getCategories()]);
+  const snacksCategory = categories.find((category) => category.name.trim().toLowerCase() === "snacks");
+  const snacksHref = snacksCategory ? `/menu?category=${snacksCategory.id}` : "/menu";
   const featuredItems = menuItems
     .filter((item) => item.is_featured && item.is_available)
     .slice(0, MAX_FEATURED_ITEMS);
@@ -173,8 +185,8 @@ export default async function Home() {
           <div className="grid grid-cols-2 gap-3 sm:gap-4">
             {[CATEGORY_ITEMS.slice(0, 2), CATEGORY_ITEMS.slice(2)].map((column, columnIndex) => (
               <div key={columnIndex} className={`flex flex-col gap-3 sm:gap-4 ${columnIndex === 1 ? "pt-10 sm:pt-14" : ""}`}>
-                {column.map(({ labelKey, slot, src, tileClass }) => (
-                  <Link key={labelKey} href="/services" className={`group relative block ${tileClass}`}>
+                {column.map(({ labelKey, href, slot, src, tileClass }) => (
+                  <Link key={labelKey} href={href ?? snacksHref} className={`group relative block ${tileClass}`}>
                     <LiquidCard
                       wrapperClassName="h-full transition-transform duration-300 ease-out-expo group-hover:-translate-y-1"
                       className="h-full rounded-card shadow-sm"

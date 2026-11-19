@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE delivery_settings SET origin_lat = $1, origin_lon = $2 WHERE origin_address = $3 AND origin_lat IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Float8",
+        "Float8",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a482cc1603c4d5ae32a4570ee7a9dbd84fcfe8aae42c6c3a60ac6338bc5ca1ac"
+}

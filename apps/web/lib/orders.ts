@@ -1,8 +1,7 @@
-export interface OrderItemRequest {
-  menu_item_id: number;
-  price_option_id: number | null;
-  quantity: number;
-}
+// A menu item or a rental (Phase 37 Decision 3).
+export type OrderItemRequest =
+  | { menu_item_id: number; price_option_id: number | null; quantity: number }
+  | { rental_id: number; quantity: number };
 
 export type DeliveryType = "pickup" | "delivery";
 
@@ -50,7 +49,13 @@ export interface CreateOrderRequest {
   customer_email: string;
   customer_phone: string;
   delivery_type: DeliveryType;
+  // Only sent while address lookup is down (Phase 37 Decision 17).
   delivery_address: string | null;
+  delivery_address_id: string | null;
+  delivery_address_extra: string | null;
+  // The fee checkout showed; a different server fee is a 409 (Decision 12).
+  expected_delivery_fee: string | null;
+  rental_date: string | null;
   notes: string | null;
   items: OrderItemRequest[];
   // The site language, for the customer's emails (Phase 22 Decision 5).
@@ -58,6 +63,7 @@ export interface CreateOrderRequest {
 }
 
 export interface OrderItemResponse {
+  kind: "menu" | "rental";
   item_name: string;
   option_label: string | null;
   unit_price: string;
@@ -84,6 +90,12 @@ export interface OrderResponse {
   notes: string | null;
   subtotal: string;
   delivery_fee: string;
+  // Phase 37: how the fee was worked out, and whether the owner still has
+  // to set it (Decisions 12, 17).
+  delivery_distance_km: string | null;
+  delivery_estimated_by: "route" | "straight_line" | "manual" | null;
+  delivery_fee_pending: boolean;
+  rental_date: string | null;
   total: string;
   status: OrderStatus;
   created_at: string;
@@ -130,6 +142,8 @@ export type SubmitOrderResult =
   | { ok: true; order: OrderResponse }
   | { ok: false; kind: "items_unavailable"; items: UnavailableOrderItem[] }
   | { ok: false; kind: "validation_error"; fields: FieldError[] }
+  | { ok: false; kind: "delivery_fee_changed"; fee: string; distanceKm: string }
+  | { ok: false; kind: "lookup_down" }
   | { ok: false; kind: "unknown" };
 
 function isUnavailableItem(value: unknown): value is UnavailableOrderItem {
@@ -189,6 +203,17 @@ export async function submitOrder(payload: CreateOrderRequest): Promise<SubmitOr
     (body as Record<string, unknown[]>).items.every(isUnavailableItem)
   ) {
     return { ok: false, kind: "items_unavailable", items: (body as { items: UnavailableOrderItem[] }).items };
+  }
+
+  if (response.status === 409 && typeof body === "object" && body !== null) {
+    const { error, fee, distance_km: distanceKm } = body as Record<string, unknown>;
+    if (error === "delivery_fee_changed" && typeof fee === "string" && typeof distanceKm === "string") {
+      return { ok: false, kind: "delivery_fee_changed", fee, distanceKm };
+    }
+  }
+
+  if (response.status === 503 && typeof body === "object" && body !== null && (body as Record<string, unknown>).error === "address_lookup_down") {
+    return { ok: false, kind: "lookup_down" };
   }
 
   if (

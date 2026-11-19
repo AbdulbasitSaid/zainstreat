@@ -1,5 +1,6 @@
 use api::email::EmailConfig;
 use api::payment::PaymentConfig;
+use api::delivery::{DeliveryConfig, FakeBackend};
 use api::push::PushConfig;
 use api::{MediaConfig, build_app};
 use argon2::Argon2;
@@ -62,6 +63,44 @@ async fn test_media_config() -> MediaConfig {
     }
 }
 
+/// The PDOK id of the one address the fake delivery backend knows.
+#[allow(dead_code)]
+pub const TEST_ADDRESS_ID: &str = "adr-test-almere";
+
+/// Delivery lookups never touch the network in tests (Phase 37): one known
+/// address, routed at 12.34 km.
+#[allow(dead_code)]
+pub fn test_delivery_backend() -> FakeBackend {
+    FakeBackend {
+        addresses: vec![
+            (TEST_ADDRESS_ID.into(), "Stationsplein 1, 1315NT Almere".into(), 52.3746, 5.2176),
+            ("adr-test-origin".into(), "Grote Markt 1, 1315JG Almere".into(), 52.3702, 5.2141),
+        ],
+        lookup_down: false,
+        route_km: Some(12.34),
+    }
+}
+
+pub fn test_delivery() -> DeliveryConfig {
+    DeliveryConfig::fake(test_delivery_backend())
+}
+
+/// The same app with a custom delivery backend (Phase 37).
+#[allow(dead_code)]
+pub async fn build_test_app_with_delivery(pool: PgPool, delivery: DeliveryConfig) -> axum::Router {
+    build_app(
+        pool,
+        false,
+        test_media_config().await,
+        EmailConfig::from_env(),
+        PaymentConfig::from_env(),
+        PushConfig::disabled(),
+        delivery,
+    )
+    .await
+    .expect("failed to build app in test")
+}
+
 async fn send_raw(pool: PgPool, request: Request<Body>) -> (StatusCode, HeaderMap, Vec<u8>) {
     let app = build_app(
         pool,
@@ -70,6 +109,7 @@ async fn send_raw(pool: PgPool, request: Request<Body>) -> (StatusCode, HeaderMa
         EmailConfig::from_env(),
         PaymentConfig::from_env(),
         PushConfig::disabled(),
+        test_delivery(),
     )
     .await
     .expect("failed to build app in test");
@@ -92,6 +132,7 @@ pub async fn build_test_app(pool: PgPool) -> axum::Router {
         EmailConfig::from_env(),
         PaymentConfig::from_env(),
         PushConfig::disabled(),
+        test_delivery(),
     )
     .await
     .expect("failed to build app in test")
@@ -107,6 +148,7 @@ pub async fn build_test_app_with_push(pool: PgPool, push: PushConfig) -> axum::R
         EmailConfig::from_env(),
         PaymentConfig::from_env(),
         push,
+        test_delivery(),
     )
     .await
     .expect("failed to build app in test")

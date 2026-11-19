@@ -1,22 +1,22 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT status, delivery_type, completed_by FROM orders WHERE id = $1 FOR UPDATE",
+  "query": "SELECT name, price, is_available FROM rentals WHERE id = $1 AND deleted_at IS NULL",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "status",
+        "name": "name",
         "type_info": "Text"
       },
       {
         "ordinal": 1,
-        "name": "delivery_type",
-        "type_info": "Text"
+        "name": "price",
+        "type_info": "Numeric"
       },
       {
         "ordinal": 2,
-        "name": "completed_by",
-        "type_info": "Text"
+        "name": "is_available",
+        "type_info": "Bool"
       }
     ],
     "parameters": {
@@ -27,8 +27,8 @@
     "nullable": [
       false,
       false,
-      true
+      false
     ]
   },
-  "hash": "efb44af8936284e02a09ab9ae5c21cbcfe5023f3034e924bf725e1a68ce9fb76"
+  "hash": "453dd7dd3b6d0a45878a9754a1041cb2ef1d9fded9f4132f1157d188c913cf60"
 }

@@ -4,16 +4,17 @@ import { useTranslations } from "next-intl";
 import { Button, ButtonLink } from "@/components/button";
 import { Notice } from "@/components/notice";
 import { OrderLineSummary, type OrderSummaryLine } from "@/components/order-line-summary";
-import { formatPrice } from "@/lib/format";
+import { OrderTotals } from "@/components/order-totals";
 import type { OrderDetailsValues } from "@/components/order-details-form";
-import type { BelowMinimumLine, UnavailableOrderItem } from "@/lib/orders";
+import type { BelowMinimumLine } from "@/lib/orders";
 
 export function OrderReview({
   details,
   lines,
   subtotal,
-  unavailableItems,
+  unavailableNames,
   belowMinimumLines,
+  feeChangedMessage,
   submitting,
   submitError,
   onEdit,
@@ -22,14 +23,22 @@ export function OrderReview({
   details: OrderDetailsValues;
   lines: OrderSummaryLine[];
   subtotal: number;
-  unavailableItems: UnavailableOrderItem[] | null;
+  unavailableNames: string[] | null;
   belowMinimumLines: BelowMinimumLine[] | null;
+  feeChangedMessage: string | null;
   submitting: boolean;
   submitError: boolean;
   onEdit: () => void;
   onPlaceOrder: () => void;
 }) {
   const t = useTranslations("Order");
+  const isDelivery = details.deliveryType === "delivery";
+  const delivery = !isDelivery
+    ? null
+    : details.addressLookupDown || !details.deliveryQuote
+      ? ("pending" as const)
+      : { fee: details.deliveryQuote.fee, distanceKm: details.deliveryQuote.distance_km };
+  const address = [details.deliveryAddress, details.deliveryAddressExtra.trim()].filter(Boolean).join(", ");
 
   return (
     <div className="mx-auto flex max-w-[640px] flex-col gap-6 py-8">
@@ -37,28 +46,28 @@ export function OrderReview({
         <p className="m-0 font-semibold">{details.name}</p>
         <p className="m-0 text-sm text-text-muted">{details.email} · {details.phone}</p>
         <p className="m-0 text-sm text-text-muted">
-          {details.deliveryType === "delivery" ? `${t("deliveryOption")}: ${details.deliveryAddress}` : t("pickupOption")}
+          {isDelivery ? `${t("deliveryOption")}: ${address}` : t("pickupOption")}
         </p>
+        {details.rentalDate && (
+          <p className="m-0 text-sm text-text-muted">{t("rentalDateLine", { date: details.rentalDate })}</p>
+        )}
         {details.notes && <p className="m-0 text-sm text-text-muted">{details.notes}</p>}
         <button type="button" onClick={onEdit} className="mt-2 self-start text-sm text-primary underline">
           {t("editDetails")}
         </button>
       </section>
 
-      <OrderLineSummary lines={lines} />
+      <OrderLineSummary lines={lines} perEventLabel={t("perEvent")} />
 
-      <p className="m-0 text-right text-lg font-semibold">
-        {t("total")}: <span className="text-primary">{formatPrice(subtotal.toFixed(2))}</span>
-      </p>
+      <OrderTotals subtotal={subtotal.toFixed(2)} delivery={delivery} />
+      {delivery === "pending" && <p className="m-0 text-right text-sm text-text-muted">{t("feePendingAtCheckout")}</p>}
 
-      {unavailableItems && unavailableItems.length > 0 && (
+      {unavailableNames && unavailableNames.length > 0 && (
         <Notice>
           {t("itemsUnavailable")}
           <ul>
-            {unavailableItems.map((item) => (
-              <li key={`${item.menu_item_id}:${item.price_option_id ?? "flat"}`}>
-                {item.name ?? t("unknownItem")}
-              </li>
+            {unavailableNames.map((name, index) => (
+              <li key={`${name}:${index}`}>{name}</li>
             ))}
           </ul>
         </Notice>
@@ -80,6 +89,11 @@ export function OrderReview({
         </Notice>
       )}
       {submitError && <Notice>{t("submitError")}</Notice>}
+      {feeChangedMessage && (
+        <div role="alert">
+          <Notice>{feeChangedMessage}</Notice>
+        </div>
+      )}
 
       <Button onClick={onPlaceOrder} disabled={submitting} className="self-end">
         {submitting ? t("placingOrder") : t("placeOrder")}

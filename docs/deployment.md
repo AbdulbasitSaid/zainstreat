@@ -350,6 +350,53 @@ SES SMTP; without credentials the API logs every send as a no-op.
   don't work in a Safari tab. The owner's steps are in
   [`docs/admin-app.md`](admin-app.md).
 
+## Delivery fee (Phase 37)
+
+- **What it does.** Delivery orders pay a fee worked out by the API:
+  the one-way driving distance from the business address to the
+  customer's address × the rate per km (€1.00 to start), with an optional
+  minimum fee and maximum distance. The owner sets all of this in admin
+  **Settings → Delivery**. Customers pick their address from Dutch
+  address suggestions (PDOK, free, no key) and see the fee before
+  ordering.
+- **Delivery ships switched off.** The business address is seeded from
+  the current event's address. The owner checks it in Settings, tries a
+  few addresses with **Test an address**, then switches delivery on.
+  The business address is private: only the admin API returns it.
+- **Driving distance: Mapbox Directions API** (`mapbox/driving`).
+  Without a token, distances are the straight line × 1.3, marked
+  "Straight-line estimate" on the admin order. Free up to 100,000
+  requests a month, then $2 per 1,000; a few requests per order. To set
+  up the token (once):
+  1. Sign in at console.mapbox.com (account `abdulbasit-ibrahim`,
+     Google sign-in as techsihir@gmail.com, created 2026-11-19, no card).
+  2. Without a card the account is in "limited mode": Directions works
+     (tested 2026-11-19), but only the **Default public token** exists;
+     creating dedicated tokens needs a payment method. Staging uses the
+     default token. Once a card is added, create `zainstreat-<env>`
+     tokens (default public scopes, no URL restrictions: those only
+     apply to browser requests, and this token is used server-side
+     only) and replace the secrets.
+  3. `gh secret set MAPBOX_ACCESS_TOKEN --env <env>` and pipe the token
+     in. Never commit it or put it in the web app.
+  4. First deploy after adding it: Promote with
+     `allow_env_changes: MAPBOX_ACCESS_TOKEN`.
+  Mapbox's terms (Product Terms §2.10.1) forbid storing Directions
+  results, so orders keep the fee, rate and method but not the routed
+  km; checkout shows the km live with the required "© Mapbox
+  © OpenStreetMap" attribution (§1.4.1).
+- **What leaves the server.** PDOK gets the address text the customer
+  types; Mapbox gets coordinates only (no name or address text). The API
+  never logs the Mapbox URL (it carries the token and coordinates) or
+  request query strings.
+- **When PDOK is down**, checkout takes a typed address and the order is
+  placed with "Delivery fee to be confirmed". The owner gets "Delivery
+  fee needed" by email and push, sets the fee on the admin order page,
+  and the customer gets an updated invoice with payment details. The
+  customer can't mark the order paid before that.
+- **Trying the PDOK-down path locally:** run the API with
+  `PDOK_BASE_URL=http://127.0.0.1:9` (nothing listens there).
+
 ## Security headers, privacy and retention (Phase 33)
 
 - **Headers.** Caddy sends HSTS, `nosniff`, `Referrer-Policy`,

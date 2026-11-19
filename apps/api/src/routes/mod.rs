@@ -2,6 +2,7 @@ pub mod admin;
 pub mod categories;
 pub mod catering_enquiries;
 pub mod contact_messages;
+pub mod delivery;
 pub mod events;
 pub mod health;
 pub mod media;
@@ -68,6 +69,16 @@ pub fn api_router() -> Router<AppState> {
         .route(
             "/events/bookings/{token}/cancel",
             post(events::cancel_booking).route_layer(crate::rate_limit::enquiry_rate_limiter()),
+        )
+        // Phase 37: the delivery calculator.
+        .route("/delivery/info", get(delivery::get_info))
+        .route(
+            "/delivery/suggest",
+            get(delivery::suggest).route_layer(crate::rate_limit::delivery_rate_limiter()),
+        )
+        .route(
+            "/delivery/quote",
+            post(delivery::quote).route_layer(crate::rate_limit::delivery_rate_limiter()),
         )
         .route("/media/{key}", get(media::get_media))
         .nest("/admin", admin::admin_router())
