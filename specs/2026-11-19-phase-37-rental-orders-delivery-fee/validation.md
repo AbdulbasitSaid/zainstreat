@@ -59,21 +59,24 @@
       shows suggestions; picking one shows "About {km} km · Delivery
       €{fee}" with fee = km × €1.00, and the summary total updates.
       Keyboard only (↑/↓/Enter/Esc) works; VoiceOver announces options.
-- [ ] Placing that order stores the same fee, `delivery_distance_km`,
-      `delivery_rate_per_km = 1.00`, `delivery_estimated_by = route`
-      (with `GOOGLE_ROUTES_API_KEY` set; km within ~5 % of Google Maps'
-      driving distance for the same addresses);
+- [ ] With `MAPBOX_ACCESS_TOKEN` set, the estimate shows "Driving
+      distance by © Mapbox © OpenStreetMap" (links work) and the km is
+      within ~5 % of a map app's driving distance for the same addresses.
+- [ ] Placing that order stores the same fee,
+      `delivery_rate_per_km = 1.00`, `delivery_estimated_by = route` and
+      **no** `delivery_distance_km` (Mapbox terms); emails, tracking and
+      admin show "Delivery: €{fee}" without km;
       `total = subtotal + fee` in DB, invoice email, tracking and admin.
 - [ ] `curl -X POST /api/orders` with `delivery_type: delivery` and no
       `delivery_address_id` → `400`; a client-sent `delivery_fee` is
       ignored.
-- [ ] With `GOOGLE_ROUTES_API_KEY` unset (or an invalid key), the quote
+- [ ] With `MAPBOX_ACCESS_TOKEN` unset (or an invalid token), the quote
       still works and returns `estimated_by: "straight_line"`; admin
-      shows "Straight-line estimate"; the API log line has the status
-      only.
-- [ ] The Google Cloud project has only the Routes API enabled, the key
-      is restricted to it, the daily quota is 500 and a budget alert
-      exists (`docs/deployment.md` steps followed).
+      shows "Straight-line estimate" and the order keeps its km; the API
+      log line has the status only, never the Mapbox URL or token.
+- [ ] `MAPBOX_ACCESS_TOKEN` is a GitHub Actions secret for staging and
+      never appears in the web bundle (`grep -r pk\. apps/web/.next` is
+      empty).
 - [ ] Fee changed: open checkout, get a quote, change the rate in
       admin, place the order → `409 delivery_fee_changed`, no order row,
       checkout shows the new fee and message; placing again → `201` at

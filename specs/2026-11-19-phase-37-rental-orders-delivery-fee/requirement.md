@@ -27,7 +27,8 @@ Answers to the planning questions (2026-11-19):
   (`/contact?tab=catering`); no new catering page.
 - **Distance:** road (driving) distance. Address lookup through PDOK
   (free, Dutch government, no key); driving distance through
-  OpenRouteService (free key) — *superseded below by Google Routes*.
+  OpenRouteService (free key) — *superseded below: Google Routes, then
+  Mapbox*.
 - **Business address:** a private admin setting, filled once by the
   migration from the current event's address. The owner can change it.
   It is never shown to customers.
@@ -41,12 +42,22 @@ Follow-up answers to the open risks (2026-11-19):
   allow commercial use ([ORS plans](https://openrouteservice.org/plans/)),
   so driving distance comes from the **Google Routes API** instead
   (commercial use allowed, needs a Google Cloud billing account and a
-  key). PDOK stays for address lookup.
+  key; *later replaced by Mapbox, below*). PDOK stays for address lookup.
 - **Origin:** seeded from the event, but delivery starts **off** until
   the owner checks the address in Settings and switches it on.
 - **PDOK down:** checkout falls back to a typed address and the order
   is placed with "Delivery fee to be confirmed". The owner sets the fee
   in admin and the customer gets an updated invoice before paying.
+
+Switch to Mapbox (2026-11-19, during implementation): the Google Cloud
+billing account on techsihir@gmail.com came up closed and couldn't be
+reopened, so the user chose **Mapbox Directions** instead (no Google
+project needed; 100,000 requests a month free). Mapbox's Product Terms
+(20 Oct 2026) forbid storing Navigation API results (§2.10.1) and
+require attribution (§1.4.1); the user chose to **store the fee only**:
+a Mapbox-routed order keeps fee, rate and method but not the km
+(Decisions 10, 12, 13). The empty Google Cloud project `zainstreat` and a
+closed billing account remain on techsihir@gmail.com, unused.
 
 ## Context
 
@@ -171,25 +182,27 @@ charged €0 for delivery, and the owner charges €1/km.
    are out of scope (Out of scope). PDOK is open government data with
    no usage fee or commercial restriction, but no SLA (see Decision 17
    for when it is down).
-10. **Driving distance: Google Routes API** (user's answer,
-    2026-11-19; ORS's free plan is non-commercial).
-    `POST https://routes.googleapis.com/directions/v2:computeRoutes`
-    with origin and destination as `latLng`, `travelMode: DRIVE`,
-    `routingPreference: TRAFFIC_UNAWARE` (cheapest tier; traffic
-    doesn't belong in a fixed fee), header
-    `X-Goog-FieldMask: routes.distanceMeters`, key in env
-    `GOOGLE_ROUTES_API_KEY`, 5 s timeout. Only coordinates are sent to
-    Google, never the customer's name or address text. No result cache
-    (Google Maps Platform terms restrict caching route results); the
-    volume is a few lookups per order. If Google is down, unconfigured,
-    over quota, or errors, the API falls back to the straight-line
+10. **Driving distance: Mapbox Directions API** (user's answer,
+    2026-11-19, replacing Google Routes; ORS's free plan is
+    non-commercial). `GET https://api.mapbox.com/directions/v5/mapbox/driving/{lon},{lat};{lon},{lat}`
+    with `alternatives=false&overview=false&steps=false` and the token
+    in env `MAPBOX_ACCESS_TOKEN`; `routes[0].distance` is metres; 5 s
+    timeout. `mapbox/driving`, not `driving-traffic`: traffic doesn't
+    belong in a fixed fee. Only coordinates are sent to Mapbox, never the
+    customer's name or address text. Nothing from Mapbox is cached or
+    stored (Product Terms §2.10.1): the routed km is shown live at
+    checkout and in admin's "Test an address", but orders don't keep it
+    (Decision 12). The request URL carries the token and coordinates, so
+    it is never logged. If Mapbox is down, unconfigured, over its limits
+    or finds no route, the API falls back to the straight-line
     (haversine) distance × 1.3 and marks the result
     `estimated_by: "straight_line"`; the order is still accepted. Admin
     sees the method on the order page so the owner can adjust.
-    **Cost guard:** the key is restricted to the Routes API, and the
-    Google Cloud project gets a daily request quota cap (500/day) and a
-    budget alert, documented in `docs/deployment.md`. Hitting the cap
-    simply triggers the straight-line fallback.
+    **Attribution** (§1.4.1): under a routed estimate, checkout shows
+    "Driving distance by © Mapbox © OpenStreetMap", linked to
+    mapbox.com/about/maps and openstreetmap.org/about.
+    **Cost:** 100,000 requests a month free, then $2 per 1,000; this
+    shop needs a few per order.
 11. **The estimate calculator.** `POST /api/delivery/quote`
     `{ address_id }` → `{ address, distance_km, fee, estimated_by }` or
     an error (`out_of_range`, `delivery_unavailable`, `not_found`).
@@ -208,11 +221,13 @@ charged €0 for delivery, and the owner charges €1/km.
     `delivery_address_extra`, e.g. "3rd floor, ring twice", ≤ 120 chars),
     `delivery_fee`, `delivery_distance_km NUMERIC(6,1)`,
     `delivery_rate_per_km NUMERIC(10,2)` and `delivery_estimated_by
-    TEXT` on the order. Old orders keep their columns null and fee 0
+    TEXT` on the order. `delivery_distance_km` is only kept for our own
+    straight-line estimate; a Mapbox-routed order stores null there
+    (Decision 10). Old orders keep their columns null and fee 0
     (historical accuracy rule). `total = subtotal + delivery_fee`.
     **The customer confirms any change.** The order request carries
     `expected_delivery_fee` (the fee checkout showed). If the server's
-    fee differs (the owner changed the rate mid-checkout, or Google
+    fee differs (the owner changed the rate mid-checkout, or Mapbox
     recovered/failed between quote and order), the API places nothing
     and returns `409 { error: "delivery_fee_changed", fee, distance_km }`;
     checkout updates the summary, shows "The delivery fee changed to
@@ -221,7 +236,8 @@ charged €0 for delivery, and the owner charges €1/km.
 13. **Fee everywhere the total is.** Invoice email, owner new-order
     email, tracking page, order success page, admin order list/detail,
     and push notification text show "Delivery ({km} km): €{fee}"
-    when the fee is above zero. Pickup orders are unchanged.
+    when the fee is above zero, or "Delivery: €{fee}" when the order has
+    no stored km (every Mapbox-routed order). Pickup orders are unchanged.
 14. **Catering quotes get a calculator, not an automatic fee.** In the
     admin quote editor, a "Calculate delivery" button (shown when the
     quote's fulfilment is delivery or on-site) looks up the enquiry's
@@ -279,14 +295,14 @@ charged €0 for delivery, and the owner charges €1/km.
 - **Round-trip pricing or zone pricing** — one-way distance only;
   the owner can raise the rate or minimum.
 - **Fees on event bookings** (`delivery_type = event`, no delivery).
-- **Production rollout steps** beyond setting `GOOGLE_ROUTES_API_KEY`
+- **Production rollout steps** beyond setting `MAPBOX_ACCESS_TOKEN`
   as a secret (standing rule: staging is the target).
 - **A map on the checkout page** (only distance and fee are shown).
 
 ## Open risks flagged during planning
 
-1. **Third-party availability.** *Resolved:* Google down, unconfigured
-   or over its daily cap → straight-line × 1.3 fallback, flagged in
+1. **Third-party availability.** *Resolved:* Mapbox down, unconfigured
+   or over its limits → straight-line × 1.3 fallback, flagged in
    admin (Decision 10). PDOK down → typed address with "fee to be
    confirmed", payment held until the owner sets the fee
    (Decision 17). Pickup always works.
@@ -298,12 +314,13 @@ charged €0 for delivery, and the owner charges €1/km.
    `kind` and read as menu lines (Decision 2); there was never a saved
    address in the cart, so nothing else carries over.
 4. **Routing terms and cost.** *Resolved:* ORS's free plan is
-   non-commercial, so the Google Routes API is used (Decision 10).
-   Remaining exposure is Google billing: capped by a key restricted to
-   the Routes API, a 500/day quota and a budget alert; a few orders a
-   day is expected to stay within Google's free monthly usage. The
-   client's Google Cloud billing account is a prerequisite for real
-   distances on staging; without it the fallback runs.
+   non-commercial and Google's billing account couldn't be activated,
+   so Mapbox Directions is used (Decision 10), well inside its 100,000
+   free requests a month. *Remaining:* storing the fee, which is
+   km × rate, could be read as deriving from a stored result; it is
+   our own price, and the km itself is never stored. Revisit if Mapbox
+   says otherwise. A Mapbox token is needed for real distances on
+   staging; without it the fallback runs.
 5. **Fee changes between estimate and order.** *Resolved:* the order
    carries `expected_delivery_fee`; a mismatch returns
    `409 delivery_fee_changed` and the customer confirms the new fee

@@ -1,8 +1,8 @@
 //! Phase 37: the delivery fee (requirement.md Decisions 5–12, 17).
 //!
 //! Addresses are looked up with PDOK Locatieserver (Dutch addresses, no
-//! key) and the driving distance comes from the Google Routes API. When
-//! Google is down, unconfigured or over quota, the distance falls back to
+//! key) and the driving distance comes from the Mapbox Directions API. When
+//! Mapbox is down, unconfigured or over quota, the distance falls back to
 //! the straight line × 1.3 (Decision 10). The business origin is private:
 //! nothing here logs an address or coordinates, and only the admin API
 //! returns the origin (Decision 7).
@@ -11,15 +11,15 @@ use chrono::{DateTime, Utc};
 use rust_decimal::prelude::{FromPrimitive, RoundingStrategy};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
+use serde_json::Value;
 use sqlx::PgPool;
 use std::sync::Arc;
 use std::time::Duration;
 
 const PDOK_BASE_URL: &str = "https://api.pdok.nl/bzk/locatieserver/search/v3_1";
-const GOOGLE_ROUTES_URL: &str = "https://routes.googleapis.com/directions/v2:computeRoutes";
+const MAPBOX_DIRECTIONS_URL: &str = "https://api.mapbox.com/directions/v5/mapbox/driving";
 const PDOK_TIMEOUT: Duration = Duration::from_secs(4);
-const GOOGLE_TIMEOUT: Duration = Duration::from_secs(5);
+const ROUTE_TIMEOUT: Duration = Duration::from_secs(5);
 const SUGGESTION_ROWS: u32 = 7;
 /// Roads are longer than the crow flies (Decision 10).
 pub const STRAIGHT_LINE_FACTOR: f64 = 1.3;
@@ -65,6 +65,16 @@ pub struct DeliveryQuote {
     pub fee: Decimal,
     pub rate_per_km: Decimal,
     pub estimated_by: EstimatedBy,
+}
+
+impl DeliveryQuote {
+    /// The distance an order may keep. Mapbox's terms forbid storing results
+    /// from its Navigation APIs (Product Terms §2.10.1), so a routed
+    /// distance is shown live at checkout but never saved; our own
+    /// straight-line estimate may be.
+    pub fn storable_distance_km(&self) -> Option<Decimal> {
+        (self.estimated_by != EstimatedBy::Route).then_some(self.distance_km)
+    }
 }
 
 #[derive(Debug)]
@@ -154,9 +164,9 @@ pub fn parse_centroid(wkt: &str) -> Option<(f64, f64)> {
     Some((lat, lon))
 }
 
-/// `routes[0].distanceMeters` in km; `None` for an empty or odd response.
-pub fn parse_google_distance_km(body: &Value) -> Option<f64> {
-    let meters = body.get("routes")?.get(0)?.get("distanceMeters")?.as_f64()?;
+/// Mapbox's `routes[0].distance` (metres) in km; `None` for an empty or odd response.
+pub fn parse_mapbox_distance_km(body: &Value) -> Option<f64> {
+    let meters = body.get("routes")?.get(0)?.get("distance")?.as_f64()?;
     Some(meters / 1000.0)
 }
 
@@ -172,14 +182,14 @@ pub struct FakeBackend {
     pub addresses: Vec<(String, String, f64, f64)>,
     /// PDOK behaves as if down.
     pub lookup_down: bool,
-    /// The routed distance; `None` behaves as if Google failed.
+    /// The routed distance; `None` behaves as if Mapbox failed.
     pub route_km: Option<f64>,
 }
 
 struct HttpBackend {
     client: reqwest::Client,
     pdok_base_url: String,
-    google_routes_api_key: Option<String>,
+    mapbox_access_token: Option<String>,
 }
 
 #[derive(Clone)]
@@ -194,23 +204,23 @@ pub struct DeliveryConfig {
 }
 
 impl DeliveryConfig {
-    /// `GOOGLE_ROUTES_API_KEY` unset means straight-line distances only.
+    /// `MAPBOX_ACCESS_TOKEN` unset means straight-line distances only.
     /// `PDOK_BASE_URL` exists so the lookup-down path can be tried locally.
     pub fn from_env() -> Self {
         let non_blank = |key: &str| std::env::var(key).ok().filter(|v| !v.trim().is_empty());
-        let google_routes_api_key = non_blank("GOOGLE_ROUTES_API_KEY");
-        if google_routes_api_key.is_none() {
-            tracing::info!("GOOGLE_ROUTES_API_KEY not set: delivery distances use the straight-line estimate");
+        let mapbox_access_token = non_blank("MAPBOX_ACCESS_TOKEN");
+        if mapbox_access_token.is_none() {
+            tracing::info!("MAPBOX_ACCESS_TOKEN not set: delivery distances use the straight-line estimate");
         }
         let client = reqwest::Client::builder()
-            .timeout(GOOGLE_TIMEOUT)
+            .timeout(ROUTE_TIMEOUT)
             .build()
             .expect("reqwest client builds");
         Self {
             backend: Backend::Http(Arc::new(HttpBackend {
                 client,
                 pdok_base_url: non_blank("PDOK_BASE_URL").unwrap_or_else(|| PDOK_BASE_URL.to_string()),
-                google_routes_api_key,
+                mapbox_access_token,
             })),
         }
     }
@@ -415,38 +425,38 @@ impl HttpBackend {
     }
 
     async fn route_km(&self, from: (f64, f64), to: (f64, f64)) -> Option<f64> {
-        let key = self.google_routes_api_key.as_deref()?;
-        let point = |(lat, lon): (f64, f64)| json!({ "location": { "latLng": { "latitude": lat, "longitude": lon } } });
-        // TRAFFIC_UNAWARE: the cheapest tier, and traffic has no place in a
-        // fixed fee (Decision 10). Only coordinates leave the server.
-        let body = json!({
-            "origin": point(from),
-            "destination": point(to),
-            "travelMode": "DRIVE",
-            "routingPreference": "TRAFFIC_UNAWARE",
-            "units": "METRIC",
-        });
+        let token = self.mapbox_access_token.as_deref()?;
+        // `mapbox/driving` (no live traffic): traffic has no place in a fixed
+        // fee (Decision 10). Only coordinates leave the server, as lon,lat.
+        let mut url = reqwest::Url::parse(&format!(
+            "{MAPBOX_DIRECTIONS_URL}/{},{};{},{}",
+            from.1, from.0, to.1, to.0
+        ))
+        .ok()?;
+        url.query_pairs_mut()
+            .append_pair("alternatives", "false")
+            .append_pair("overview", "false")
+            .append_pair("steps", "false")
+            .append_pair("access_token", token);
+        // Never log the error itself: its URL carries the token and the
+        // customer's coordinates.
         let response = self
             .client
-            .post(GOOGLE_ROUTES_URL)
-            .header("X-Goog-Api-Key", key)
-            .header("X-Goog-FieldMask", "routes.distanceMeters")
-            .header(reqwest::header::CONTENT_TYPE, "application/json")
-            .body(body.to_string())
+            .get(url)
             .send()
             .await
-            .inspect_err(|error| tracing::warn!(timeout = error.is_timeout(), "Google Routes request failed"))
+            .inspect_err(|error| tracing::warn!(timeout = error.is_timeout(), "Mapbox Directions request failed"))
             .ok()?;
         let status = response.status();
         if !status.is_success() {
-            tracing::warn!(%status, "Google Routes returned an error; using the straight-line estimate");
+            tracing::warn!(%status, "Mapbox Directions returned an error; using the straight-line estimate");
             return None;
         }
         let bytes = response.bytes().await.ok()?;
         let parsed: Value = serde_json::from_slice(&bytes).ok()?;
-        let km = parse_google_distance_km(&parsed);
+        let km = parse_mapbox_distance_km(&parsed);
         if km.is_none() {
-            tracing::warn!("Google Routes found no route; using the straight-line estimate");
+            tracing::warn!("Mapbox Directions found no route; using the straight-line estimate");
         }
         km
     }
@@ -455,6 +465,7 @@ impl HttpBackend {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
 
     fn dec(value: &str) -> Decimal {
         value.parse().unwrap()
@@ -494,10 +505,10 @@ mod tests {
     }
 
     #[test]
-    fn parses_google_distance() {
-        assert_eq!(parse_google_distance_km(&json!({ "routes": [{ "distanceMeters": 12345 }] })), Some(12.345));
-        assert_eq!(parse_google_distance_km(&json!({})), None);
-        assert_eq!(parse_google_distance_km(&json!({ "routes": [] })), None);
+    fn parses_mapbox_distance() {
+        assert_eq!(parse_mapbox_distance_km(&json!({ "code": "Ok", "routes": [{ "distance": 12345.0 }] })), Some(12.345));
+        assert_eq!(parse_mapbox_distance_km(&json!({ "code": "NoRoute", "routes": [] })), None);
+        assert_eq!(parse_mapbox_distance_km(&json!({})), None);
     }
 
     #[test]

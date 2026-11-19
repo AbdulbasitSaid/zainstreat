@@ -305,7 +305,7 @@ async fn resolve_delivery(
     Ok(DeliveryCharge {
         address: with_extra(&quote.address, payload.delivery_address_extra.as_deref()),
         fee: quote.fee,
-        distance_km: Some(quote.distance_km),
+        distance_km: quote.storable_distance_km(),
         rate_per_km: Some(quote.rate_per_km),
         estimated_by: Some(quote.estimated_by),
         pending: false,

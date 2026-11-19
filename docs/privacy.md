@@ -43,7 +43,7 @@ code, this table and the public page together.
 | Namecheap (Private Email) | The `contact@` mailbox | Namecheap's mail infrastructure | Namecheap's DPA (accept in the account) |
 | Apple / Google / Mozilla push services | Deliver admin notifications (customer name in the text) | May be outside the EEA | Browser vendor terms, standard contractual clauses |
 | PDOK (Kadaster, Dutch government) | Address suggestions and lookups for delivery (Phase 37): the address text a customer types | Netherlands | Public open-data service; no account, no DPA |
-| Google (Maps Platform, Routes API) | Driving distance for the delivery fee (Phase 37): **coordinates only**, no name or address text | May be outside the EEA | Google Maps Platform Data Processing Terms (accept in the client's Google Cloud account) |
+| Mapbox (Directions API) | Driving distance for the delivery fee (Phase 37): **coordinates only**, no name or address text | US | Mapbox DPA (www.mapbox.com/legal/dpa), part of the Mapbox terms accepted with the account |
 | GitHub | Code and container images | US | No customer data |
 
 **To do before production:** the client accepts both DPAs in their own

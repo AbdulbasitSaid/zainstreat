@@ -239,7 +239,8 @@ async fn delivery_order_stores_the_server_fee(pool: PgPool) {
 
     assert_eq!(status, StatusCode::CREATED, "{order}");
     assert_eq!(order["delivery_fee"], "12.30");
-    assert_eq!(order["delivery_distance_km"], "12.3");
+    // Mapbox's terms forbid storing a routed distance; only the fee is kept.
+    assert_eq!(order["delivery_distance_km"], Value::Null);
     assert_eq!(order["delivery_estimated_by"], "route");
     assert_eq!(order["delivery_address"], "Stationsplein 1, 1315NT Almere, 3rd floor");
     assert_eq!(order["subtotal"], "26.00");
@@ -287,7 +288,7 @@ async fn minimum_fee_and_maximum_distance_apply(pool: PgPool) {
 }
 
 #[sqlx::test]
-async fn google_down_falls_back_to_the_straight_line(pool: PgPool) {
+async fn routing_down_falls_back_to_the_straight_line(pool: PgPool) {
     seed(&pool).await;
     enable_delivery(&pool, None).await;
     let app = build_test_app_with_delivery(
@@ -296,12 +297,19 @@ async fn google_down_falls_back_to_the_straight_line(pool: PgPool) {
     )
     .await;
 
-    let (status, quote) = post_on(app, "/api/delivery/quote", json!({ "address_id": TEST_ADDRESS_ID })).await;
+    let (status, quote) = post_on(app.clone(), "/api/delivery/quote", json!({ "address_id": TEST_ADDRESS_ID })).await;
 
     assert_eq!(status, StatusCode::OK, "{quote}");
     assert_eq!(quote["estimated_by"], "straight_line");
     // ~0.5 km apart as the crow flies, × 1.3.
     assert_eq!(quote["distance_km"], "0.7");
+
+    // Our own estimate may be kept on the order.
+    let mut body = delivery_payload("0.70");
+    body["delivery_address_extra"] = Value::Null;
+    let (status, order) = post_on(app, "/api/orders", body).await;
+    assert_eq!(status, StatusCode::CREATED, "{order}");
+    assert_eq!(order["delivery_distance_km"], "0.7");
 }
 
 #[sqlx::test]

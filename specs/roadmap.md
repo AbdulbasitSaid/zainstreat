@@ -690,7 +690,7 @@ Pulls "delivery fee calculation" forward from Beyond MVP.
   for a rental date when the cart has rentals; one order, one invoice,
   same bank-transfer flow.
 - Delivery fee on every delivery order, calculated by the API from the
-  one-way driving distance (PDOK address lookup + Google Routes API,
+  one-way driving distance (PDOK address lookup + Mapbox Directions API,
   straight-line fallback) × an admin-set rate (€1.00/km), with an
   optional minimum fee and maximum distance and an on/off switch.
   Delivery ships switched off until the owner checks the business

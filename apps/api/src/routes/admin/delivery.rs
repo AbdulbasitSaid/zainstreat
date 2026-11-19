@@ -209,7 +209,8 @@ pub async fn set_order_fee(
             let settings = delivery::load_settings(&pool).await?;
             let fee = fee.unwrap_or(quote.fee);
             let by = if fee == quote.fee { quote.estimated_by } else { EstimatedBy::Manual };
-            (fee, Some(quote.distance_km), Some(settings.rate_per_km), by)
+            let distance_km = if by == EstimatedBy::StraightLine { Some(quote.distance_km) } else { None };
+            (fee, distance_km, Some(settings.rate_per_km), by)
         }
         (Some(fee), None) => (fee, None, None, EstimatedBy::Manual),
     };

@@ -326,12 +326,26 @@ export function OrderDetailsForm({
               <p className="m-0 text-sm text-text-muted">{t("calculating")}</p>
             )}
             {!values.addressLookupDown && quoteStatus === "ready" && values.deliveryQuote && (
-              <p className="m-0 font-semibold text-primary">
-                {t("deliveryEstimate", {
-                  km: values.deliveryQuote.distance_km,
-                  fee: formatPrice(values.deliveryQuote.fee),
-                })}
-              </p>
+              <>
+                <p className="m-0 font-semibold text-primary">
+                  {t("deliveryEstimate", {
+                    km: values.deliveryQuote.distance_km,
+                    fee: formatPrice(values.deliveryQuote.fee),
+                  })}
+                </p>
+                {/* Mapbox Product Terms §1.4.1: attribution wherever its routing is used. */}
+                {values.deliveryQuote.estimated_by === "route" && (
+                  <p className="m-0 mt-1 text-xs text-text-muted">
+                    {t("routeAttribution")}{" "}
+                    <a href="https://www.mapbox.com/about/maps" target="_blank" rel="noopener noreferrer" className="underline">
+                      © Mapbox
+                    </a>{" "}
+                    <a href="https://www.openstreetmap.org/about" target="_blank" rel="noopener noreferrer" className="underline">
+                      © OpenStreetMap
+                    </a>
+                  </p>
+                )}
+              </>
             )}
             {(quoteStatus === "out_of_range" || quoteStatus === "unavailable" || quoteStatus === "error" || quoteStatus === "not_found") && (
               <Notice>

@@ -93,9 +93,9 @@ New `apps/api/src/delivery.rs`:
 ```rust
 pub struct DeliveryClient {
     http: reqwest::Client,                 // built once, 5 s timeout
-    google_routes_api_key: Option<String>, // env GOOGLE_ROUTES_API_KEY
+    mapbox_access_token: Option<String>,   // env MAPBOX_ACCESS_TOKEN
 }
-// No route cache: Google Maps Platform terms restrict caching (Decision 10).
+// No route cache: Mapbox's terms forbid caching or storing results (Decision 10).
 
 pub struct ResolvedAddress { pub id: String, pub label: String, pub lat: f64, pub lon: f64 }
 pub enum EstimatedBy { Route, StraightLine, Manual } // Manual: owner-set (Decision 17)
@@ -123,26 +123,17 @@ pub fn haversine_km(a: (f64, f64), b: (f64, f64)) -> f64;
   and `…/lookup?id=…&fl=id,weergavenaam,centroide_ll`. Parse
   `centroide_ll` (`POINT(lon lat)`). Confirm the current base path
   against PDOK's docs during implementation (v3_1 at planning time).
-- Google Routes: `POST https://routes.googleapis.com/directions/v2:computeRoutes`,
-  headers `X-Goog-Api-Key: {key}`, `X-Goog-FieldMask: routes.distanceMeters`,
-  body:
-
-  ```json
-  {
-    "origin": { "location": { "latLng": { "latitude": 52.37, "longitude": 5.21 } } },
-    "destination": { "location": { "latLng": { "latitude": 52.35, "longitude": 4.90 } } },
-    "travelMode": "DRIVE",
-    "routingPreference": "TRAFFIC_UNAWARE",
-    "units": "METRIC"
-  }
-  ```
-
-  Read `routes[0].distanceMeters`. Only coordinates are sent.
+- Mapbox Directions (replaced Google Routes during implementation, see
+  requirement.md): `GET https://api.mapbox.com/directions/v5/mapbox/driving/{lon},{lat};{lon},{lat}?alternatives=false&overview=false&steps=false&access_token={MAPBOX_ACCESS_TOKEN}`.
+  Read `routes[0].distance` (metres). Only coordinates are sent; the URL
+  is never logged (token + coordinates). `DeliveryQuote::storable_distance_km()`
+  returns `None` for a routed quote, so orders never keep Mapbox's km
+  (Product Terms §2.10.1).
 - `quote()` reads `delivery_settings`; if `origin_lat` is null and
   `origin_address` is set, geocode it with PDOK `free?q=` (first
   `type:adres` hit) and store the coordinates; if still none →
   `Unavailable`. `delivery_enabled = false` → `Unavailable`.
-- Google failure, missing key, `429`/quota or empty `routes` →
+- Mapbox failure, missing token, `429`/limits or empty `routes` →
   `haversine × 1.3`, `StraightLine` (log at `warn` with the HTTP status
   only, never addresses or coordinates — Decision 7).
 - PDOK timeout / 5xx / connection error → `LookupDown` (distinct from
@@ -150,7 +141,7 @@ pub fn haversine_km(a: (f64, f64), b: (f64, f64)) -> f64;
 - Distance rounding: `Decimal::from_f64(km).round_dp_with_strategy(1, MidpointAwayFromZero)`;
   fee rounding the same at 2 dp.
 - Register `DeliveryClient` in app state (`Arc`), constructed in
-  `main.rs` from env; add `GOOGLE_ROUTES_API_KEY: ${GOOGLE_ROUTES_API_KEY:-}` to the `api`
+  `main.rs` from env; add `MAPBOX_ACCESS_TOKEN: ${MAPBOX_ACCESS_TOKEN:-}` to the `api`
   service in `docker-compose.yml` and the staging deploy env/secrets in
   `.github/workflows` next to `VAPID_PRIVATE_KEY`.
 
@@ -241,7 +232,7 @@ Tests (`#[sqlx::test]`, delivery client with a stub/mock trait so no
 network): rental-only order, mixed order, rental without date → 400,
 date today → `too_soon`, food-only with date → `not_allowed`,
 unavailable rental → 400, delivery fee stored and in total,
-Google-down fallback marks `straight_line`, delivery disabled → 400,
+Mapbox-down fallback marks `straight_line`, delivery disabled → 400,
 out-of-range → 400, wrong `expected_delivery_fee` → 409 and no order
 row, typed address while PDOK is up → 400, typed address while PDOK is
 down → 201 with `delivery_fee_pending`, payment claim on a pending
@@ -389,14 +380,11 @@ Email bodies get the same lines in `order_emails.rs` per locale.
 
 ## Group 10 — Specs and docs
 
-- `docs/deployment.md`: `GOOGLE_ROUTES_API_KEY` — create a Google
-  Cloud project under the client's account with billing, enable only
-  the Routes API, create a key restricted to the Routes API (and the
-  server's static IP), set the Routes API quota to 500 requests/day,
-  add a €10/month budget alert to the owner's email, and store the key
-  as a GitHub Actions secret / server env.
+- `docs/deployment.md`: `MAPBOX_ACCESS_TOKEN` — create a token at
+  account.mapbox.com (default public scopes, no URL restriction since it
+  is used server-side only) and store it as a GitHub Actions secret.
 - `docs/privacy.md`: PDOK receives the typed address search text and
-  Google receives the delivery coordinates (no name or address text) (processors list); the privacy page's
+  Mapbox receives the delivery coordinates (no name or address text) (processors list); the privacy page's
   processor section in en/nl/fr gets one line each.
 - `specs/tech-stack.md` already updated in planning (Delivery fee
   section).
