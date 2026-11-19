@@ -105,6 +105,9 @@ jobs:
           V_VAPID_PUBLIC_KEY: ${{ vars.VAPID_PUBLIC_KEY }}
           V_VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
           V_VAPID_SUBJECT: ${{ vars.VAPID_SUBJECT }}
+          # Delivery fee distances (Phase 37). Optional: unset uses the
+          # straight-line estimate.
+          V_GOOGLE_ROUTES_API_KEY: ${{ secrets.GOOGLE_ROUTES_API_KEY }}
           V_BANK_ACCOUNT_NAME: ${{ vars.BANK_ACCOUNT_NAME }}
           V_BANK_IBAN: ${{ vars.BANK_IBAN }}
           V_BANK_BIC: ${{ vars.BANK_BIC }}
