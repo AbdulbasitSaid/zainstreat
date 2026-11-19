@@ -609,6 +609,30 @@ or recreated repo can't match.
   is pinned to an exact version. `aws-sdk-s3` runs without default
   features so it uses its hyper 1 / rustls 0.23 client.
 
+## Delivery Fee (Phase 37)
+
+- **Address lookup: PDOK Locatieserver** (`api.pdok.nl`, Dutch
+  government, free, no key). Suggest + lookup give a canonical Dutch
+  address and its coordinates, so the fee is computed from a real
+  address instead of free text. Netherlands only, which matches the
+  customer base; Belgian customers choose pickup or WhatsApp.
+- **Driving distance: Google Routes API** (`computeRoutes`,
+  `TRAFFIC_UNAWARE`, field mask `routes.distanceMeters`; key in
+  `GOOGLE_ROUTES_API_KEY`), called from the API with the existing
+  `reqwest`. Road distance matches what customers see in a map app.
+  OpenRouteService was rejected because its free plan forbids
+  commercial use; self-hosted OSRM because of the RAM and map upkeep
+  on the 4 GB box. Only coordinates are sent; no caching (Google
+  terms). Cost is capped by a Routes-only key, a 500/day quota and a
+  budget alert. A straight-line (haversine × 1.3) fallback keeps orders
+  flowing when Google is down, unconfigured or over quota.
+- **If PDOK is down** the order is taken with "delivery fee to be
+  confirmed" and payment is held until the owner sets the fee.
+- **All lookups go through the API** (`/api/delivery/*`): the key stays
+  server-side, the CSP's `connect-src` doesn't change, and the private
+  business origin never reaches the browser. The fee is always
+  recomputed server-side when the order is placed.
+
 ## Summary Table
 
 | Concern | Choice |
@@ -637,3 +661,4 @@ or recreated repo can't match.
 | Backups | Lightsail automatic daily snapshots + nightly `pg_dump`/MinIO archive to S3 (Phase 21) |
 | Reverse proxy / TLS | Caddy (automatic HTTPS) |
 | Security & privacy | Caddy security headers + CSP, login limiter + lockout, admin Origin check, retention sweeper, admin Privacy tool, CI dependency audits (Phase 33) |
+| Delivery fee | PDOK Locatieserver (address lookup) + Google Routes API (driving distance, haversine fallback), proxied by the API; admin-set rate/minimum/max in `delivery_settings` (Phase 37) |

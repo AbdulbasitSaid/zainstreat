@@ -676,6 +676,32 @@ sent a snack menu and a catering rentals list.
   Services page. The seven rentals from the client's list are added by
   migration. No cart, no stock tracking.
 
+## Phase 37 — Home Tiles, Rental Orders & Delivery Fee
+
+Planned 2026-11-19 (see
+`specs/2026-11-19-phase-37-rental-orders-delivery-fee/requirement.md`).
+Client feedback: the home page's four "What we offer" tiles all open
+Services, rentals should be bought like food, and delivery costs €1/km.
+Pulls "delivery fee calculation" forward from Beyond MVP.
+
+- Home tiles: Meals → full menu, Snacks → menu filtered to Snacks,
+  Catering → the catering quote form, Catering Rentals → `/rentals`.
+- Rentals join the food cart (add-to-cart on `/rentals`); checkout asks
+  for a rental date when the cart has rentals; one order, one invoice,
+  same bank-transfer flow.
+- Delivery fee on every delivery order, calculated by the API from the
+  one-way driving distance (PDOK address lookup + Google Routes API,
+  straight-line fallback) × an admin-set rate (€1.00/km), with an
+  optional minimum fee and maximum distance and an on/off switch.
+  Delivery ships switched off until the owner checks the business
+  address. A changed fee is re-confirmed by the customer; if address
+  lookup is down, the owner confirms the fee before payment.
+- Checkout picks the address from suggestions and shows "About {km} km ·
+  Delivery €{fee}" before ordering; the fee is snapshotted on the order.
+- The business origin is a private admin setting seeded from the current
+  event's address, never shown to customers. The quote editor gets a
+  "Calculate delivery" helper.
+
 ## Later — iDEAL Payments
 
 Agreed in the 2026-10-18 call but blocked on the client opening a
@@ -691,7 +717,7 @@ payment-provider account (needs their business details).
 
 Deliberately deferred — see README §39 for detail:
 
-- **Phase 2 (later):** delivery fee calculation, event booking calendar,
+- **Phase 2 (later):** event booking calendar,
   discount codes, catering packages.
 - **Phase 3 (later):** customer accounts, order history, loyalty program,
   multiple administrators/staff roles, inventory management, sales
