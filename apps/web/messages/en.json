@@ -96,14 +96,13 @@
     "heading": "Catering Rentals",
     "intro": "Serving equipment and cooking essentials",
     "pricePerEvent": "{price} per event",
-    "reserve": "Reserve on WhatsApp",
-    "whatsappMessage": "Hi! I'd like to rent: {name}.",
-    "bookingHeading": "Booking",
-    "bookingNote": "Contact us on WhatsApp to reserve rental items and confirm availability.",
+    "bookingHeading": "Questions?",
+    "bookingNote": "Add rentals to your cart and pick the date at checkout. Questions about availability? Message us on WhatsApp.",
     "whatsappButton": "Message us on WhatsApp",
     "whatsappGeneral": "Hi! I'd like to rent some catering equipment.",
     "empty": "No rentals are listed right now. Message us on WhatsApp.",
-    "loadError": "We couldn't load the rentals right now. Please try again shortly."
+    "loadError": "We couldn't load the rentals right now. Please try again shortly.",
+    "addToCart": "Add to cart"
   },
   "Cart": {
     "metaTitle": "Cart | Zain's Treat n More",
@@ -117,7 +116,9 @@
     "remove": "Remove",
     "increaseQuantity": "Increase quantity of {name}",
     "decreaseQuantity": "Decrease quantity of {name}",
-    "minimumOrder": "Minimum order: {count}"
+    "minimumOrder": "Minimum order: {count}",
+    "pricePerEvent": "{price} per event",
+    "deliveryFromRate": "Delivery fee is calculated at checkout from {rate} per km."
   },
   "Order": {
     "metaTitle": "Place Your Order | Zain's Treat n More",
@@ -190,7 +191,12 @@
       "required": "{field} is required.",
       "invalid": "Please enter a valid {field}.",
       "tooShort": "{field} is too short.",
-      "tooLong": "{field} is too long."
+      "tooLong": "{field} is too long.",
+      "pickAddress": "Please pick your address from the suggestions.",
+      "calculating": "One moment — we're still calculating the delivery fee.",
+      "noQuote": "We can't deliver to this address. Choose pickup or message us on WhatsApp.",
+      "tooSoon": "{field} must be tomorrow or later.",
+      "tooFar": "{field} must be within a year."
     },
     "tracking": {
       "progressLabel": "Order progress",
@@ -214,7 +220,35 @@
       "receivedOnSiteConfirm": "Yes, all done"
     },
     "eventOrder": "This payment is for your event booking.",
-    "viewBooking": "View your booking"
+    "viewBooking": "View your booking",
+    "deliveryRateHint": "({rate} per km)",
+    "deliveryOff": "Delivery isn't available right now — pickup only.",
+    "addressSearchHint": "Start typing your street and house number.",
+    "searchingAddresses": "Searching…",
+    "noMatches": "No Dutch addresses match. Check the spelling or message us on WhatsApp.",
+    "calculating": "Calculating delivery…",
+    "deliveryEstimate": "About {km} km · Delivery {fee}",
+    "outOfRange": "We don't deliver this far yet. Choose pickup or message us on WhatsApp.",
+    "deliveryUnavailable": "We can't calculate delivery right now. Choose pickup or message us on WhatsApp.",
+    "deliveryWhatsappMessage": "Hi! I'd like to order with delivery. Can you help?",
+    "askOnWhatsapp": "Ask on WhatsApp",
+    "lookupDown": "We can't look up addresses right now. Type your address, place your order, and we'll confirm the delivery fee before you pay.",
+    "addressExtraLabel": "Apartment, floor or instructions (optional)",
+    "rentalDateLabel": "Rental date",
+    "rentalDateHint": "The day of your event. We'll confirm pickup and return times with you.",
+    "deliveryNowUnavailable": "Delivery isn't available right now. Please choose pickup.",
+    "lookupBack": "Address lookup is working again. Please pick your address from the suggestions.",
+    "rentalDateRejected": "Please check the rental date.",
+    "feeChanged": "The delivery fee changed to {fee}. Please check your total and place the order again.",
+    "perEvent": "per event",
+    "subtotal": "Subtotal",
+    "deliveryFeeLine": "Delivery ({km} km)",
+    "deliveryToConfirm": "To be confirmed",
+    "totalPlusDelivery": "{subtotal} + delivery",
+    "feePendingAtCheckout": "We'll email you the delivery fee and the final total before you pay.",
+    "feePendingNote": "We're confirming your delivery fee. You'll get an email with the final total and payment details shortly.",
+    "rentalDateLine": "Rental date: {date}",
+    "successBodyFeePending": "Thank you! We'll confirm your delivery fee and email you the payment details."
   },
   "Quote": {
     "metaTitle": "Your quote",
@@ -412,6 +446,7 @@
     "sharingHosting": "Amazon Web Services (AWS), in Frankfurt, Germany: hosting, backups and sending our emails.",
     "sharingMail": "Our email provider, which receives the emails you send to contact@zainstreat.com.",
     "sharingPush": "Apple, Google or Mozilla push services, which deliver order notifications to the owner's own phone. These contain your name.",
+    "sharingDelivery": "PDOK (the Dutch government's address service) and Google Maps: when you choose delivery, PDOK receives the address you type so you can pick it, and Google receives only its map coordinates to work out the driving distance for the delivery fee.",
     "sharingWhatsapp": "If you message us on WhatsApp, WhatsApp (Meta) handles that conversation under its own privacy policy.",
     "sharingTransfers": "Where a provider may process data outside the European Economic Area, it does so under the European Commission's standard contractual clauses.",
     "retentionHeading": "How long we keep it",

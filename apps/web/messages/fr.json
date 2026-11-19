@@ -96,14 +96,13 @@
     "heading": "Location de matériel traiteur",
     "intro": "Matériel de service et essentiels de cuisine",
     "pricePerEvent": "{price} par événement",
-    "reserve": "Réserver sur WhatsApp",
-    "whatsappMessage": "Bonjour ! Je voudrais louer : {name}.",
-    "bookingHeading": "Réservation",
-    "bookingNote": "Contactez-nous sur WhatsApp pour réserver le matériel et confirmer sa disponibilité.",
+    "bookingHeading": "Des questions ?",
+    "bookingNote": "Ajoutez les articles à louer à votre panier et choisissez la date lors de la commande. Des questions sur la disponibilité ? Écrivez-nous sur WhatsApp.",
     "whatsappButton": "Écrivez-nous sur WhatsApp",
     "whatsappGeneral": "Bonjour ! Je voudrais louer du matériel traiteur.",
     "empty": "Aucun matériel n'est proposé pour le moment. Écrivez-nous sur WhatsApp.",
-    "loadError": "Impossible de charger la location pour le moment. Réessayez dans un instant."
+    "loadError": "Impossible de charger la location pour le moment. Réessayez dans un instant.",
+    "addToCart": "Ajouter au panier"
   },
   "Cart": {
     "metaTitle": "Panier | Zain's Treat n More",
@@ -117,7 +116,9 @@
     "remove": "Retirer",
     "increaseQuantity": "Augmenter la quantité de {name}",
     "decreaseQuantity": "Diminuer la quantité de {name}",
-    "minimumOrder": "Commande minimum : {count}"
+    "minimumOrder": "Commande minimum : {count}",
+    "pricePerEvent": "{price} par événement",
+    "deliveryFromRate": "Les frais de livraison sont calculés lors de la commande : {rate} par km."
   },
   "Order": {
     "metaTitle": "Passer votre commande | Zain's Treat n More",
@@ -190,7 +191,12 @@
       "required": "{field} est obligatoire.",
       "invalid": "Veuillez saisir un(e) {field} valide.",
       "tooShort": "{field} est trop court.",
-      "tooLong": "{field} est trop long."
+      "tooLong": "{field} est trop long.",
+      "pickAddress": "Veuillez choisir votre adresse dans les suggestions.",
+      "calculating": "Un instant — nous calculons encore les frais de livraison.",
+      "noQuote": "Nous ne pouvons pas livrer à cette adresse. Choisissez le retrait ou écrivez-nous sur WhatsApp.",
+      "tooSoon": "{field} doit être demain ou plus tard.",
+      "tooFar": "{field} doit être dans moins d'un an."
     },
     "tracking": {
       "progressLabel": "Suivi de la commande",
@@ -214,7 +220,35 @@
       "receivedOnSiteConfirm": "Oui, tout est fait"
     },
     "eventOrder": "Ce paiement concerne votre réservation pour un événement.",
-    "viewBooking": "Voir votre réservation"
+    "viewBooking": "Voir votre réservation",
+    "deliveryRateHint": "({rate} par km)",
+    "deliveryOff": "La livraison n'est pas disponible pour le moment — retrait uniquement.",
+    "addressSearchHint": "Commencez à saisir votre rue et votre numéro.",
+    "searchingAddresses": "Recherche…",
+    "noMatches": "Aucune adresse néerlandaise ne correspond. Vérifiez l'orthographe ou écrivez-nous sur WhatsApp.",
+    "calculating": "Calcul de la livraison…",
+    "deliveryEstimate": "Environ {km} km · Livraison {fee}",
+    "outOfRange": "Nous ne livrons pas encore aussi loin. Choisissez le retrait ou écrivez-nous sur WhatsApp.",
+    "deliveryUnavailable": "Nous ne pouvons pas calculer la livraison pour le moment. Choisissez le retrait ou écrivez-nous sur WhatsApp.",
+    "deliveryWhatsappMessage": "Bonjour ! J'aimerais commander avec livraison. Pouvez-vous m'aider ?",
+    "askOnWhatsapp": "Demander sur WhatsApp",
+    "lookupDown": "Nous ne pouvons pas rechercher les adresses pour le moment. Saisissez votre adresse, passez votre commande, et nous confirmerons les frais de livraison avant votre paiement.",
+    "addressExtraLabel": "Appartement, étage ou instructions (facultatif)",
+    "rentalDateLabel": "Date de location",
+    "rentalDateHint": "Le jour de votre événement. Nous conviendrons avec vous des heures de retrait et de retour.",
+    "deliveryNowUnavailable": "La livraison n'est pas disponible pour le moment. Veuillez choisir le retrait.",
+    "lookupBack": "La recherche d'adresses fonctionne à nouveau. Choisissez votre adresse dans les suggestions.",
+    "rentalDateRejected": "Veuillez vérifier la date de location.",
+    "feeChanged": "Les frais de livraison sont passés à {fee}. Vérifiez votre total et passez à nouveau la commande.",
+    "perEvent": "par événement",
+    "subtotal": "Sous-total",
+    "deliveryFeeLine": "Livraison ({km} km)",
+    "deliveryToConfirm": "À confirmer",
+    "totalPlusDelivery": "{subtotal} + livraison",
+    "feePendingAtCheckout": "Nous vous enverrons par e-mail les frais de livraison et le total final avant votre paiement.",
+    "feePendingNote": "Nous confirmons vos frais de livraison. Vous recevrez bientôt un e-mail avec le total final et les informations de paiement.",
+    "rentalDateLine": "Date de location : {date}",
+    "successBodyFeePending": "Merci ! Nous confirmerons vos frais de livraison et vous enverrons les informations de paiement par e-mail."
   },
   "Quote": {
     "metaTitle": "Votre devis",
@@ -412,6 +446,7 @@
     "sharingHosting": "Amazon Web Services (AWS), à Francfort, en Allemagne : hébergement, sauvegardes et envoi de nos e-mails.",
     "sharingMail": "Notre fournisseur de messagerie, qui reçoit les e-mails que vous envoyez à contact@zainstreat.com.",
     "sharingPush": "Les services de notification d'Apple, Google ou Mozilla, qui envoient les alertes de commande sur le téléphone de la propriétaire. Elles contiennent votre nom.",
+    "sharingDelivery": "PDOK (le service d'adresses du gouvernement néerlandais) et Google Maps : si vous choisissez la livraison, PDOK reçoit l'adresse que vous saisissez pour que vous puissiez la choisir, et Google ne reçoit que ses coordonnées géographiques pour calculer la distance en voiture des frais de livraison.",
     "sharingWhatsapp": "Si vous nous écrivez sur WhatsApp, WhatsApp (Meta) traite cette conversation selon sa propre politique de confidentialité.",
     "sharingTransfers": "Lorsqu'un prestataire peut traiter des données hors de l'Espace économique européen, il le fait dans le cadre des clauses contractuelles types de la Commission européenne.",
     "retentionHeading": "Combien de temps nous les conservons",

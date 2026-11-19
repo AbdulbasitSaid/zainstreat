@@ -1,3 +1,4 @@
+use crate::delivery::{self, DeliveryConfig, DeliveryError, EstimatedBy};
 use crate::email::{DeliveryRef, EmailConfig, OutgoingEmail};
 use crate::error::{AppError, FieldError, UnavailableItem};
 use crate::order_emails::{Locale, invoice_email};
@@ -22,9 +23,12 @@ pub enum DeliveryType {
     Delivery,
 }
 
+/// A menu item (optionally a price option) or a rental: exactly one of
+/// the two ids (Phase 37 Decision 3).
 #[derive(Debug, Deserialize)]
 pub struct CreateOrderItemRequest {
-    pub menu_item_id: i64,
+    pub menu_item_id: Option<i64>,
+    pub rental_id: Option<i64>,
     pub price_option_id: Option<i64>,
     pub quantity: i32,
 }
@@ -35,7 +39,17 @@ pub struct CreateOrderRequest {
     pub customer_email: String,
     pub customer_phone: String,
     pub delivery_type: DeliveryType,
+    /// Only read when address lookup is down (Phase 37 Decision 17);
+    /// otherwise the address comes from `delivery_address_id`.
     pub delivery_address: Option<String>,
+    /// The PDOK id picked at checkout (Phase 37 Decision 12).
+    pub delivery_address_id: Option<String>,
+    /// Apartment, floor or instructions, appended to the looked-up address.
+    pub delivery_address_extra: Option<String>,
+    /// The fee checkout showed; a different server fee is a 409.
+    pub expected_delivery_fee: Option<Decimal>,
+    /// Required exactly when the order has rentals (Phase 37 Decision 4).
+    pub rental_date: Option<chrono::NaiveDate>,
     pub notes: Option<String>,
     pub items: Vec<CreateOrderItemRequest>,
     /// The site language the customer ordered in, for their emails. Missing
@@ -45,6 +59,8 @@ pub struct CreateOrderRequest {
 
 #[derive(Debug, Serialize)]
 pub struct OrderItemResponse {
+    /// `menu` or `rental` (Phase 37 Decision 3).
+    pub kind: String,
     pub item_name: String,
     pub option_label: Option<String>,
     #[serde(with = "rust_decimal::serde::str")]
@@ -69,6 +85,14 @@ pub struct OrderResponse {
     pub subtotal: Decimal,
     #[serde(with = "rust_decimal::serde::str")]
     pub delivery_fee: Decimal,
+    /// Phase 37: how the fee was worked out, kept with the order.
+    #[serde(with = "rust_decimal::serde::str_option")]
+    pub delivery_distance_km: Option<Decimal>,
+    pub delivery_estimated_by: Option<String>,
+    /// Placed while address lookup was down: no payment until the owner
+    /// sets the fee (Decision 17).
+    pub delivery_fee_pending: bool,
+    pub rental_date: Option<chrono::NaiveDate>,
     #[serde(with = "rust_decimal::serde::str")]
     pub total: Decimal,
     pub status: String,
@@ -97,7 +121,14 @@ pub struct OrderResponse {
 
 const NAME_MIN_LENGTH: usize = 2;
 const ADDRESS_MIN_LENGTH: usize = 5;
+const ADDRESS_EXTRA_MAX_LENGTH: usize = 120;
 const NOTES_MAX_LENGTH: usize = 500;
+const RENTAL_MAX_QUANTITY: i32 = 99;
+const RENTAL_MAX_DAYS_AHEAD: i64 = 365;
+
+fn field_error(field: impl Into<String>, message: &str) -> FieldError {
+    FieldError { field: field.into(), message: message.into() }
+}
 
 fn validate(payload: &CreateOrderRequest) -> Vec<FieldError> {
     let mut errors = Vec::new();
@@ -143,17 +174,30 @@ fn validate(payload: &CreateOrderRequest) -> Vec<FieldError> {
     }
 
     if matches!(payload.delivery_type, DeliveryType::Delivery) {
-        let trimmed_address = payload.delivery_address.as_deref().unwrap_or("").trim();
-        if trimmed_address.is_empty() {
-            errors.push(FieldError {
-                field: "delivery_address".into(),
-                message: "required".into(),
-            });
-        } else if trimmed_address.chars().count() < ADDRESS_MIN_LENGTH {
-            errors.push(FieldError {
-                field: "delivery_address".into(),
-                message: "too_short".into(),
-            });
+        let typed_address = payload.delivery_address.as_deref().unwrap_or("").trim();
+        match payload.delivery_address_id.as_deref() {
+            Some(id) => {
+                if !delivery::is_valid_address_id(id) {
+                    errors.push(field_error("delivery_address_id", "invalid"));
+                }
+                if payload.expected_delivery_fee.is_none() {
+                    errors.push(field_error("expected_delivery_fee", "required"));
+                }
+            }
+            // A typed address is only accepted while lookup is down; that's
+            // checked against PDOK in `resolve_delivery`.
+            None if typed_address.is_empty() => errors.push(field_error("delivery_address_id", "required")),
+            None if typed_address.chars().count() < ADDRESS_MIN_LENGTH => {
+                errors.push(field_error("delivery_address", "too_short"));
+            }
+            None => {}
+        }
+        if payload
+            .delivery_address_extra
+            .as_deref()
+            .is_some_and(|extra| extra.trim().chars().count() > ADDRESS_EXTRA_MAX_LENGTH)
+        {
+            errors.push(field_error("delivery_address_extra", "too_long"));
         }
     }
 
@@ -188,9 +232,91 @@ fn validate(payload: &CreateOrderRequest) -> Vec<FieldError> {
                 message: "must be positive".into(),
             });
         }
+        match (item.menu_item_id, item.rental_id) {
+            (Some(_), None) => {}
+            (None, Some(_)) => {
+                if item.price_option_id.is_some() {
+                    errors.push(field_error(format!("items[{index}].price_option_id"), "invalid"));
+                }
+                if item.quantity > RENTAL_MAX_QUANTITY {
+                    errors.push(field_error(format!("items[{index}].quantity"), "too_many"));
+                }
+            }
+            _ => errors.push(field_error(format!("items[{index}]"), "invalid")),
+        }
+    }
+
+    let has_rentals = payload.items.iter().any(|item| item.rental_id.is_some());
+    match (has_rentals, payload.rental_date) {
+        (true, None) => errors.push(field_error("rental_date", "required")),
+        (false, Some(_)) => errors.push(field_error("rental_date", "not_allowed")),
+        _ => {}
     }
 
     errors
+}
+
+/// How a delivery order is charged (Phase 37 Decisions 12, 17).
+struct DeliveryCharge {
+    address: String,
+    fee: Decimal,
+    distance_km: Option<Decimal>,
+    rate_per_km: Option<Decimal>,
+    estimated_by: Option<EstimatedBy>,
+    pending: bool,
+}
+
+async fn resolve_delivery(
+    pool: &PgPool,
+    delivery: &DeliveryConfig,
+    payload: &CreateOrderRequest,
+) -> Result<DeliveryCharge, AppError> {
+    let unavailable = || AppError::Validation(vec![field_error("delivery_type", "unavailable")]);
+    let settings = delivery::load_settings(pool).await?;
+    if !settings.delivery_enabled {
+        return Err(unavailable());
+    }
+
+    let Some(address_id) = payload.delivery_address_id.as_deref() else {
+        // A typed address: only while PDOK is really down (Decision 17).
+        let typed = payload.delivery_address.as_deref().unwrap_or("").trim();
+        return match delivery.geocode(typed).await {
+            Ok(_) => Err(AppError::Validation(vec![field_error("delivery_address_id", "required")])),
+            Err(delivery::LookupDown) => Ok(DeliveryCharge {
+                address: with_extra(typed, payload.delivery_address_extra.as_deref()),
+                fee: Decimal::ZERO,
+                distance_km: None,
+                rate_per_km: None,
+                estimated_by: None,
+                pending: true,
+            }),
+        };
+    };
+
+    let quote = delivery.quote(pool, address_id, true).await.map_err(|err| match err {
+        DeliveryError::OutOfRange => AppError::Validation(vec![field_error("delivery_address_id", "out_of_range")]),
+        DeliveryError::NotFound => AppError::Validation(vec![field_error("delivery_address_id", "not_found")]),
+        DeliveryError::Unavailable => unavailable(),
+        other => other.into(),
+    })?;
+    if payload.expected_delivery_fee != Some(quote.fee) {
+        return Err(AppError::DeliveryFeeChanged { fee: quote.fee, distance_km: quote.distance_km });
+    }
+    Ok(DeliveryCharge {
+        address: with_extra(&quote.address, payload.delivery_address_extra.as_deref()),
+        fee: quote.fee,
+        distance_km: Some(quote.distance_km),
+        rate_per_km: Some(quote.rate_per_km),
+        estimated_by: Some(quote.estimated_by),
+        pending: false,
+    })
+}
+
+fn with_extra(address: &str, extra: Option<&str>) -> String {
+    match extra.map(str::trim).filter(|extra| !extra.is_empty()) {
+        Some(extra) => format!("{address}, {extra}"),
+        None => address.to_string(),
+    }
 }
 
 struct MenuItemRow {
@@ -205,8 +331,16 @@ struct PriceOptionRow {
     price: Decimal,
 }
 
+struct RentalRow {
+    name: String,
+    price: Decimal,
+    is_available: bool,
+}
+
 struct PricedLine {
-    menu_item_id: i64,
+    kind: &'static str,
+    menu_item_id: Option<i64>,
+    rental_id: Option<i64>,
     price_option_id: Option<i64>,
     item_name: String,
     option_label: Option<String>,
@@ -219,6 +353,7 @@ pub async fn create_order(
     State(email): State<EmailConfig>,
     State(push): State<PushConfig>,
     State(payment): State<PaymentConfig>,
+    State(delivery): State<DeliveryConfig>,
     Json(payload): Json<CreateOrderRequest>,
 ) -> Result<(StatusCode, Json<OrderResponse>), AppError> {
     let field_errors = validate(&payload);
@@ -226,27 +361,73 @@ pub async fn create_order(
         return Err(AppError::Validation(field_errors));
     }
 
+    // Phase 37 Decision 4: from tomorrow to a year ahead, in Dutch time.
+    if let Some(rental_date) = payload.rental_date {
+        let today = sqlx::query_scalar!(r#"SELECT (now() AT TIME ZONE 'Europe/Amsterdam')::date as "today!: chrono::NaiveDate""#)
+            .fetch_one(&pool)
+            .await?;
+        if rental_date <= today {
+            return Err(AppError::Validation(vec![field_error("rental_date", "too_soon")]));
+        }
+        if rental_date > today + chrono::Days::new(RENTAL_MAX_DAYS_AHEAD as u64) {
+            return Err(AppError::Validation(vec![field_error("rental_date", "too_far")]));
+        }
+    }
+
+    // Before the transaction: this may call PDOK and Google.
+    let charge = match payload.delivery_type {
+        DeliveryType::Pickup => None,
+        DeliveryType::Delivery => Some(resolve_delivery(&pool, &delivery, &payload).await?),
+    };
+
     let mut tx = pool.begin().await?;
 
     let mut unavailable: Vec<UnavailableItem> = Vec::new();
     let mut priced_lines: Vec<PricedLine> = Vec::new();
     let mut below_minimum: Vec<FieldError> = Vec::new();
+    let mut unavailable_rentals: Vec<FieldError> = Vec::new();
 
     for (index, item) in payload.items.iter().enumerate() {
+        let Some(menu_item_id) = item.menu_item_id else {
+            // `validate` guarantees a rental id here.
+            let rental_id = item.rental_id.unwrap_or_default();
+            let rental = sqlx::query_as!(
+                RentalRow,
+                "SELECT name, price, is_available FROM rentals WHERE id = $1 AND deleted_at IS NULL",
+                rental_id
+            )
+            .fetch_optional(&mut *tx)
+            .await?;
+            match rental {
+                Some(rental) if rental.is_available => priced_lines.push(PricedLine {
+                    kind: "rental",
+                    menu_item_id: None,
+                    rental_id: Some(rental_id),
+                    price_option_id: None,
+                    item_name: rental.name,
+                    option_label: None,
+                    unit_price: rental.price,
+                    quantity: item.quantity,
+                }),
+                _ => unavailable_rentals.push(field_error(format!("items[{index}].rental_id"), "unavailable")),
+            }
+            continue;
+        };
+
         // An unpublished item can't be ordered, and a pending draft never
         // changes the price (Phase 25 Decision 17).
         let menu_item = sqlx::query_as!(
             MenuItemRow,
             "SELECT name, price, is_available, min_quantity FROM menu_items \
              WHERE id = $1 AND deleted_at IS NULL AND published_at IS NOT NULL",
-            item.menu_item_id
+            menu_item_id
         )
         .fetch_optional(&mut *tx)
         .await?;
 
         let Some(menu_item) = menu_item else {
             unavailable.push(UnavailableItem {
-                menu_item_id: item.menu_item_id,
+                menu_item_id,
                 price_option_id: item.price_option_id,
                 name: None,
                 reason: "not_found".into(),
@@ -256,7 +437,7 @@ pub async fn create_order(
 
         if !menu_item.is_available {
             unavailable.push(UnavailableItem {
-                menu_item_id: item.menu_item_id,
+                menu_item_id,
                 price_option_id: item.price_option_id,
                 name: Some(menu_item.name),
                 reason: "unavailable".into(),
@@ -271,7 +452,7 @@ pub async fn create_order(
                     "SELECT label, price FROM menu_item_price_options \
                      WHERE id = $1 AND menu_item_id = $2 AND deleted_at IS NULL",
                     option_id,
-                    item.menu_item_id
+                    menu_item_id
                 )
                 .fetch_optional(&mut *tx)
                 .await?;
@@ -280,7 +461,7 @@ pub async fn create_order(
                     Some(option) => (option.price, Some(option.label)),
                     None => {
                         unavailable.push(UnavailableItem {
-                            menu_item_id: item.menu_item_id,
+                            menu_item_id,
                             price_option_id: item.price_option_id,
                             name: Some(menu_item.name),
                             reason: "unavailable".into(),
@@ -295,7 +476,7 @@ pub async fn create_order(
             // shape (Phase 14 doesn't exist yet, but future-proof it).
             _ => {
                 unavailable.push(UnavailableItem {
-                    menu_item_id: item.menu_item_id,
+                    menu_item_id,
                     price_option_id: item.price_option_id,
                     name: Some(menu_item.name),
                     reason: "invalid_selection".into(),
@@ -314,7 +495,9 @@ pub async fn create_order(
         }
 
         priced_lines.push(PricedLine {
-            menu_item_id: item.menu_item_id,
+            kind: "menu",
+            menu_item_id: Some(menu_item_id),
+            rental_id: None,
             price_option_id: item.price_option_id,
             item_name: menu_item.name,
             option_label,
@@ -326,6 +509,7 @@ pub async fn create_order(
     if !unavailable.is_empty() {
         return Err(AppError::ItemsUnavailable(unavailable));
     }
+    below_minimum.extend(unavailable_rentals);
     if !below_minimum.is_empty() {
         return Err(AppError::Validation(below_minimum));
     }
@@ -333,7 +517,7 @@ pub async fn create_order(
     let subtotal = priced_lines.iter().fold(Decimal::ZERO, |acc, line| {
         acc + line.unit_price * Decimal::from(line.quantity)
     });
-    let delivery_fee = Decimal::ZERO; // Decision 9 — Beyond MVP.
+    let delivery_fee = charge.as_ref().map_or(Decimal::ZERO, |charge| charge.fee);
     let total = subtotal + delivery_fee;
 
     let delivery_type_str = match payload.delivery_type {
@@ -350,8 +534,10 @@ pub async fn create_order(
         r#"
         INSERT INTO orders
             (customer_name, customer_email, customer_phone, delivery_type,
-             delivery_address, notes, subtotal, delivery_fee, total, locale)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+             delivery_address, notes, subtotal, delivery_fee, total, locale,
+             delivery_distance_km, delivery_rate_per_km, delivery_estimated_by,
+             delivery_fee_pending, rental_date)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
         RETURNING id, status, public_token,
                   created_at as "created_at: Timestamp",
                   to_char(created_at AT TIME ZONE 'Europe/Amsterdam', 'DD-MM-YYYY HH24:MI') as "placed_at!"
@@ -360,12 +546,17 @@ pub async fn create_order(
         payload.customer_email,
         payload.customer_phone,
         delivery_type_str,
-        payload.delivery_address,
+        charge.as_ref().map(|charge| charge.address.clone()),
         payload.notes,
         subtotal,
         delivery_fee,
         total,
         locale.as_str(),
+        charge.as_ref().and_then(|charge| charge.distance_km),
+        charge.as_ref().and_then(|charge| charge.rate_per_km),
+        charge.as_ref().and_then(|charge| charge.estimated_by).map(EstimatedBy::as_str),
+        charge.as_ref().is_some_and(|charge| charge.pending),
+        payload.rental_date.map(crate::chrono_date_to_offset),
     )
     .fetch_one(&mut *tx)
     .await?;
@@ -377,8 +568,8 @@ pub async fn create_order(
             r#"
             INSERT INTO order_items
                 (order_id, menu_item_id, price_option_id, item_name, option_label,
-                 unit_price, quantity, subtotal)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                 unit_price, quantity, subtotal, rental_id, kind)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             "#,
             order.id,
             line.menu_item_id,
@@ -388,11 +579,14 @@ pub async fn create_order(
             line.unit_price,
             line.quantity,
             line_subtotal,
+            line.rental_id,
+            line.kind,
         )
         .execute(&mut *tx)
         .await?;
 
         item_responses.push(OrderItemResponse {
+            kind: line.kind.to_string(),
             item_name: line.item_name.clone(),
             option_label: line.option_label.clone(),
             unit_price: line.unit_price,
@@ -409,10 +603,17 @@ pub async fn create_order(
         customer_email: payload.customer_email,
         customer_phone: payload.customer_phone,
         delivery_type: delivery_type_str.to_string(),
-        delivery_address: payload.delivery_address,
+        delivery_address: charge.as_ref().map(|charge| charge.address.clone()),
         notes: payload.notes,
         subtotal,
         delivery_fee,
+        delivery_distance_km: charge.as_ref().and_then(|charge| charge.distance_km),
+        delivery_estimated_by: charge
+            .as_ref()
+            .and_then(|charge| charge.estimated_by)
+            .map(|by| by.as_str().to_string()),
+        delivery_fee_pending: charge.as_ref().is_some_and(|charge| charge.pending),
+        rental_date: payload.rental_date,
         total,
         status: order.status,
         created_at: order.created_at,
@@ -461,10 +662,26 @@ pub(crate) fn send_invoice(email: &EmailConfig, pool: &PgPool, order: &OrderResp
 }
 
 fn delivery_line(order: &OrderResponse) -> String {
-    match order.delivery_address.as_deref() {
+    let mut line = match order.delivery_address.as_deref() {
         Some(address) if order.delivery_type == "delivery" => format!("Delivery to: {address}"),
         _ => "Pickup".to_string(),
+    };
+    // Phase 37 Decisions 4, 13, 17.
+    if order.delivery_fee_pending {
+        line.push_str("\nDelivery fee needed: the address couldn't be looked up. Set the fee in admin before the customer can pay.");
+    } else if order.delivery_type == "delivery" && order.delivery_fee > Decimal::ZERO {
+        match order.delivery_distance_km {
+            Some(km) => line.push_str(&format!("\nDelivery ({km} km): €{}", order.delivery_fee)),
+            None => line.push_str(&format!("\nDelivery: €{}", order.delivery_fee)),
+        }
+        if order.delivery_estimated_by.as_deref() == Some("straight_line") {
+            line.push_str(" (straight-line estimate)");
+        }
     }
+    if let Some(date) = order.rental_date {
+        line.push_str(&format!("\nRental date: {}", date.format("%d-%m-%Y")));
+    }
+    line
 }
 
 fn new_order_owner_email_body(order: &OrderResponse, admin_url: &str) -> String {
@@ -495,7 +712,8 @@ pub(crate) async fn load_order_by_token(
         r#"
         SELECT id, customer_name, customer_email, customer_phone, delivery_type,
                delivery_address, notes, subtotal, delivery_fee, total, status, public_token,
-               completed_by,
+               completed_by, delivery_distance_km, delivery_estimated_by, delivery_fee_pending,
+               rental_date as "rental_date: chrono::NaiveDate",
                created_at as "created_at: Timestamp",
                payment_claimed_at as "payment_claimed_at: Timestamp",
                payment_confirmed_at as "payment_confirmed_at: Timestamp",
@@ -515,7 +733,7 @@ pub(crate) async fn load_order_by_token(
     let items = sqlx::query_as!(
         OrderItemResponse,
         r#"
-        SELECT item_name, option_label, unit_price, quantity, subtotal
+        SELECT kind, item_name, option_label, unit_price, quantity, subtotal
         FROM order_items
         WHERE order_id = $1
         ORDER BY id
@@ -535,6 +753,10 @@ pub(crate) async fn load_order_by_token(
         notes: order.notes,
         subtotal: order.subtotal,
         delivery_fee: order.delivery_fee,
+        delivery_distance_km: order.delivery_distance_km,
+        delivery_estimated_by: order.delivery_estimated_by,
+        delivery_fee_pending: order.delivery_fee_pending,
+        rental_date: order.rental_date,
         total: order.total,
         status: order.status,
         created_at: order.created_at,
@@ -577,11 +799,12 @@ pub async fn claim_payment(
 ) -> Result<Json<OrderResponse>, AppError> {
     let token = parse_token(&token)?;
 
+    // Phase 37 Decision 17: nothing to pay until the owner sets the fee.
     let claimed = sqlx::query_scalar!(
         r#"
         UPDATE orders
         SET status = 'payment_claimed', payment_claimed_at = now(), updated_at = now()
-        WHERE public_token = $1 AND status = 'awaiting_payment'
+        WHERE public_token = $1 AND status = 'awaiting_payment' AND NOT delivery_fee_pending
         RETURNING id
         "#,
         token
@@ -594,6 +817,9 @@ pub async fn claim_payment(
     let Some(order_id) = claimed else {
         if order.status == "cancelled" {
             return Err(AppError::InvalidStatusTransition);
+        }
+        if order.delivery_fee_pending {
+            return Err(AppError::DeliveryFeePending);
         }
         return Ok(Json(order));
     };

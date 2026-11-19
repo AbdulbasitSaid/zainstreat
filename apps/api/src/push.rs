@@ -341,7 +341,13 @@ fn order_push(title: String, body: String, order_id: i64) -> OwnerPush {
 }
 
 pub fn new_order(order: &OrderResponse) -> OwnerPush {
-    let fulfilment = if order.delivery_type == "delivery" { "Delivery" } else { "Pickup" };
+    // Phase 37 Decision 13 / 17: the fee, or a reminder that it's needed.
+    let fulfilment = match order.delivery_type.as_str() {
+        "delivery" if order.delivery_fee_pending => "Delivery fee needed".to_string(),
+        "delivery" if order.delivery_fee > rust_decimal::Decimal::ZERO => format!("Delivery €{}", order.delivery_fee),
+        "delivery" => "Delivery".to_string(),
+        _ => "Pickup".to_string(),
+    };
     order_push(
         format!("New order {}", order.payment_reference),
         format!("€{} from {} · {fulfilment}", order.total, order.customer_name),

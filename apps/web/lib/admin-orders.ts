@@ -1,4 +1,5 @@
 import type { EmailDelivery } from "@/components/admin-email-delivery-notice";
+import type { EstimatedBy } from "@/lib/delivery";
 import type { FulfilmentType, OrderStatus } from "@/lib/orders";
 
 export { ORDER_STATUSES, isOrderStatus, type OrderStatus } from "@/lib/orders";
@@ -36,10 +37,13 @@ export interface OrderSummary {
   // Set for an event booking's meals (Phase 31 Decision 20).
   event_id: number | null;
   event_title: string | null;
+  // Waiting for the owner to set the delivery fee (Phase 37 Decision 17).
+  delivery_fee_pending: boolean;
 }
 
 export interface AdminOrderItem {
   id: number;
+  kind: "menu" | "rental";
   item_name: string;
   option_label: string | null;
   unit_price: string;
@@ -57,6 +61,12 @@ export interface AdminOrder {
   notes: string | null;
   subtotal: string;
   delivery_fee: string;
+  // Phase 37: how the fee was worked out (Decisions 12, 17).
+  delivery_distance_km: string | null;
+  delivery_rate_per_km: string | null;
+  delivery_estimated_by: EstimatedBy | null;
+  delivery_fee_pending: boolean;
+  rental_date: string | null;
   total: string;
   status: OrderStatus;
   payment_reference: string;
@@ -94,3 +104,20 @@ export interface AdminOrdersSummary {
   // Orders in payment_claimed, for the auto-refresh badge (Phase 22 Decision 9).
   claimed_ids: number[];
 }
+
+// Phase 37 Decisions 5, 15: only the admin sees the business address.
+export interface AdminDeliverySettings {
+  origin_address: string | null;
+  origin_located: boolean;
+  rate_per_km: string;
+  minimum_fee: string;
+  max_distance_km: string | null;
+  delivery_enabled: boolean;
+  updated_at: string;
+}
+
+export const ESTIMATED_BY_LABELS: Record<EstimatedBy, string> = {
+  route: "Driving distance",
+  straight_line: "Straight-line estimate",
+  manual: "Set by you",
+};

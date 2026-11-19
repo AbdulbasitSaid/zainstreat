@@ -39,7 +39,9 @@ export function CartLineItem({ line }: { line: CartLine }) {
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <p className="m-0 font-semibold break-words">{line.name}</p>
         {line.optionLabel && <p className="m-0 text-xs text-text-muted">{line.optionLabel}</p>}
-        <p className="m-0 text-sm text-text-muted">{formatPrice(line.unitPrice)}</p>
+        <p className="m-0 text-sm text-text-muted">
+          {line.kind === "rental" ? t("pricePerEvent", { price: formatPrice(line.unitPrice) }) : formatPrice(line.unitPrice)}
+        </p>
         {line.minQuantity > 1 && (
           <p className="m-0 text-xs font-semibold text-primary">{t("minimumOrder", { count: line.minQuantity })}</p>
         )}

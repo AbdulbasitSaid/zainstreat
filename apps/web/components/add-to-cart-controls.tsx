@@ -8,7 +8,7 @@ import { useCartFeedback } from "@/lib/cart-feedback";
 import { formatPrice } from "@/lib/format";
 import { PREVIEW_DISABLED_TITLE, usePreview } from "@/lib/preview-context";
 import { useReducedMotion } from "@/lib/use-reduced-motion";
-import type { MenuItem, MenuItemPriceOption } from "@/lib/api";
+import type { MenuItem, MenuItemPriceOption, Rental } from "@/lib/api";
 
 const FOCUS_CLASSES =
   "focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-accent focus-visible:outline-offset-2";
@@ -62,21 +62,17 @@ function AddGlyph({ onBrand, checked = false }: { onBrand: boolean; checked?: bo
   );
 }
 
-export function AddToCartControls({ item, onBrand = false }: { item: MenuItem; onBrand?: boolean }) {
-  const t = useTranslations("MenuPage");
-  const { addLine } = useCart();
+// The add feedback shared by menu items and rentals (Phase 30, Phase 37
+// Decision 2): the ✓, the ring and the fly all start at the anchor button,
+// even for an option chosen in the dialog (which closes straight away).
+function useAddFeedback(onBrand: boolean) {
   const { announceAdd } = useCartFeedback();
   const reducedMotion = useReducedMotion();
-  const preview = usePreview();
-  const dialogRef = useRef<HTMLDialogElement>(null);
-  // The tile's own button: the ✓, the ring and the fly all start here, even
-  // for an option chosen in the dialog (which closes straight away).
   const anchorRef = useRef<HTMLButtonElement>(null);
   const addedTimer = useRef<number | null>(null);
   // Increments per add: shows the ✓ and replays the ring (its React key).
   const [addCount, setAddCount] = useState(0);
   const [justAdded, setJustAdded] = useState(false);
-  const previewProps = preview ? { disabled: true, title: PREVIEW_DISABLED_TITLE } : {};
 
   useEffect(
     () => () => {
@@ -85,26 +81,10 @@ export function AddToCartControls({ item, onBrand = false }: { item: MenuItem; o
     [],
   );
 
-  if (!item.is_available) return null;
-
-  const addOption = (option: MenuItemPriceOption | null, unitPrice: string) => {
-    addLine({
-      itemId: item.id,
-      priceOptionId: option?.id ?? null,
-      name: item.name,
-      optionLabel: option?.label ?? null,
-      unitPrice,
-      imageUrl: item.image_url,
-      minQuantity: item.min_quantity,
-    });
+  const flash = (name: string, optionLabel: string | null, imageUrl: string | null) => {
     const anchor = anchorRef.current;
     if (anchor) {
-      announceAdd({
-        name: item.name,
-        optionLabel: option?.label ?? null,
-        imageUrl: item.image_url,
-        origin: anchor.getBoundingClientRect(),
-      });
+      announceAdd({ name, optionLabel, imageUrl, origin: anchor.getBoundingClientRect() });
     }
     setAddCount((count) => count + 1);
     setJustAdded(true);
@@ -123,6 +103,65 @@ export function AddToCartControls({ item, onBrand = false }: { item: MenuItem; o
         }`}
       />
     ) : null;
+
+  return { anchorRef, justAdded, ring, flash };
+}
+
+// Phase 37 Decision 2: rentals go in the same cart, one at a time.
+export function AddRentalToCart({ rental }: { rental: Rental }) {
+  const t = useTranslations("RentalsPage");
+  const { addLine } = useCart();
+  const { anchorRef, justAdded, ring, flash } = useAddFeedback(false);
+
+  return (
+    <button
+      ref={anchorRef}
+      type="button"
+      aria-label={`${t("addToCart")}: ${rental.name}`}
+      className={addButtonClasses(false)}
+      onClick={() => {
+        addLine({
+          kind: "rental",
+          itemId: rental.id,
+          priceOptionId: null,
+          name: rental.name,
+          optionLabel: null,
+          unitPrice: rental.price,
+          imageUrl: rental.image_url,
+          minQuantity: 1,
+        });
+        flash(rental.name, null, rental.image_url);
+      }}
+    >
+      <AddGlyph onBrand={false} checked={justAdded} />
+      {ring}
+    </button>
+  );
+}
+
+export function AddToCartControls({ item, onBrand = false }: { item: MenuItem; onBrand?: boolean }) {
+  const t = useTranslations("MenuPage");
+  const { addLine } = useCart();
+  const preview = usePreview();
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const { anchorRef, justAdded, ring, flash } = useAddFeedback(onBrand);
+  const previewProps = preview ? { disabled: true, title: PREVIEW_DISABLED_TITLE } : {};
+
+  if (!item.is_available) return null;
+
+  const addOption = (option: MenuItemPriceOption | null, unitPrice: string) => {
+    addLine({
+      kind: "menu",
+      itemId: item.id,
+      priceOptionId: option?.id ?? null,
+      name: item.name,
+      optionLabel: option?.label ?? null,
+      unitPrice,
+      imageUrl: item.image_url,
+      minQuantity: item.min_quantity,
+    });
+    flash(item.name, option?.label ?? null, item.image_url);
+  };
 
   if (item.price !== null) {
     const flatPrice = item.price;

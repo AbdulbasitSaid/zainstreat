@@ -56,7 +56,7 @@ export default async function OrderStatusPage({
           </p>
         )}
         <OrderProgress order={order} />
-        <PaymentClaimButton token={order.public_token} status={order.status} />
+        {!order.delivery_fee_pending && <PaymentClaimButton token={order.public_token} status={order.status} />}
         <OrderReceivedButton token={order.public_token} status={order.status} deliveryType={order.delivery_type} />
         <OrderInvoice order={order} />
         {/* Polling stops once the order is finished (Phase 22 Decision 10). */}

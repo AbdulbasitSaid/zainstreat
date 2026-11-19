@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { getTranslations } from "next-intl/server";
 import { PageHero } from "@/components/page-hero";
+import { AddRentalToCart } from "@/components/add-to-cart-controls";
 import { ButtonAnchor } from "@/components/button";
 import { ImageSlot } from "@/components/image-slot";
 import { Notice } from "@/components/notice";
@@ -29,7 +30,7 @@ export async function generateMetadata({
   };
 }
 
-// Phase 36 Decision 10: a list, reserved on WhatsApp; no cart.
+// Phase 36 Decision 10, ordered through the cart since Phase 37 Decision 2.
 export default async function RentalsPage() {
   const [t, rentals] = await Promise.all([getTranslations("RentalsPage"), getRentals()]);
 
@@ -65,19 +66,12 @@ export default async function RentalsPage() {
                 <div className="flex flex-1 flex-col gap-1.5 p-5">
                   <h2 className="m-0 text-[1.15rem]">{rental.name}</h2>
                   {rental.description && <p className="m-0 text-[0.95rem] text-text-muted">{rental.description}</p>}
-                  <p className="m-0 mt-auto pt-2 text-[1.05rem] font-semibold text-primary">
-                    {t("pricePerEvent", { price: formatPrice(rental.price) })}
-                  </p>
-                  <ButtonAnchor
-                    href={buildWhatsAppLink(t("whatsappMessage", { name: rental.name }))}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    color="whatsapp"
-                    variant="outline"
-                    className="mt-3 self-start"
-                  >
-                    {t("reserve")}
-                  </ButtonAnchor>
+                  <div className="mt-auto flex items-center justify-between gap-3 pt-2">
+                    <p className="m-0 text-[1.05rem] font-semibold text-primary">
+                      {t("pricePerEvent", { price: formatPrice(rental.price) })}
+                    </p>
+                    <AddRentalToCart rental={rental} />
+                  </div>
                 </div>
               </li>
             ))}

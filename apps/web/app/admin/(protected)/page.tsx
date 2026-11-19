@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { STATUS_LABELS, type OrderStatus } from "@/lib/admin-orders";
-import { getAdminOrdersSummary } from "@/lib/admin-orders-api";
+import { getAdminDeliverySettings, getAdminOrdersSummary } from "@/lib/admin-orders-api";
 import { AdminAutoRefresh, NewOrderHighlight } from "@/components/admin-auto-refresh";
 import { AdminStatusBadge } from "@/components/admin-status-badge";
 import { formatDateTime, formatPrice } from "@/lib/format";
@@ -24,12 +24,23 @@ const DASHBOARD_STATUSES: OrderStatus[] = [
 ];
 
 export default async function AdminDashboardPage() {
-  const summary = await getAdminOrdersSummary();
+  const [summary, delivery] = await Promise.all([getAdminOrdersSummary(), getAdminDeliverySettings()]);
 
   return (
     <AdminAutoRefresh recentOrderIds={summary.recent.map((order) => order.id)} claimedIds={summary.claimed_ids}>
       <div className="flex flex-col gap-10">
         <h1 className="m-0">Dashboard</h1>
+
+        {/* Phase 37 Decision 6: delivery ships switched off. */}
+        {!delivery.delivery_enabled && (
+          <p className="m-0 rounded-card bg-accent-light px-5 py-4">
+            Delivery is off — check the business address in{" "}
+            <Link href="/settings#delivery" className="font-semibold text-primary underline">
+              Settings
+            </Link>{" "}
+            and switch it on.
+          </p>
+        )}
 
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <div className="rounded-card bg-background-soft p-5">
@@ -80,6 +91,11 @@ export default async function AdminDashboardPage() {
                     <span className="text-text-muted">{formatDateTime(order.created_at)}</span>
                     <span className="font-semibold">{formatPrice(order.total)}</span>
                     <AdminStatusBadge status={order.status} />
+                    {order.delivery_fee_pending && (
+                      <span className="rounded-full bg-accent-light px-2 py-0.5 text-xs font-semibold text-primary-dark">
+                        Delivery fee needed
+                      </span>
+                    )}
                   </Link>
                 </NewOrderHighlight>
               ))}

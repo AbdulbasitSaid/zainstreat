@@ -1,5 +1,6 @@
 pub mod auth;
 pub mod categories;
+pub mod delivery;
 pub mod drafts;
 pub mod enquiries;
 pub mod events;
@@ -30,6 +31,11 @@ pub fn admin_router() -> Router<AppState> {
         .route("/orders/summary", get(orders::orders_summary))
         .route("/orders/{id}", get(orders::get_order))
         .route("/orders/{id}/status", patch(orders::update_order_status))
+        // Phase 37: the delivery fee.
+        .route("/orders/{id}/delivery-fee", put(delivery::set_order_fee))
+        .route("/delivery-settings", get(delivery::get_settings).put(delivery::save_settings))
+        .route("/delivery/suggest", get(delivery::suggest))
+        .route("/delivery/quote", post(delivery::quote))
         .route("/categories", get(categories::list_categories).post(categories::create_category))
         .route("/categories/{id}", get(categories::get_category))
         .route("/categories/{id}/draft", put(categories::save_category_draft))

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button, buttonClasses } from "@/components/button";
 import { Notice } from "@/components/notice";
+import { AdminQuoteDelivery } from "@/components/admin-quote-delivery";
 import type { CateringEnquiryDetail } from "@/lib/admin-enquiries";
 import { FULFILMENT_LABELS } from "@/lib/admin-orders";
 import { formatDateTime, formatPrice } from "@/lib/format";
@@ -106,6 +107,18 @@ export function AdminQuoteEditor({ enquiry }: { enquiry: CateringEnquiryDetail }
 
   function updateLine(index: number, patch: Partial<Line>) {
     setLines((current) => current.map((line, i) => (i === index ? { ...line, ...patch } : line)));
+    touch();
+  }
+
+  // Phase 37 Decision 14: one "Delivery (… km)" line, updated on recalculation.
+  function setDeliveryLine(distanceKm: string, fee: string) {
+    const deliveryLine: Line = { description: `Delivery (${distanceKm} km)`, quantity: "1", unitPrice: fee };
+    setLines((current) => {
+      const index = current.findIndex((line) => line.description.startsWith("Delivery ("));
+      if (index >= 0) return current.map((line, i) => (i === index ? deliveryLine : line));
+      const withoutEmpty = current.filter((line) => line.description.trim() !== "" || line.unitPrice.trim() !== "");
+      return [...withoutEmpty, deliveryLine];
+    });
     touch();
   }
 
@@ -277,6 +290,9 @@ export function AdminQuoteEditor({ enquiry }: { enquiry: CateringEnquiryDetail }
             }}
           />
           <FieldError message={errors.delivery_address} />
+          <div className="mt-2 flex flex-col">
+            <AdminQuoteDelivery address={address} onCalculated={(quote) => setDeliveryLine(quote.distance_km, quote.fee)} />
+          </div>
         </div>
       )}
 

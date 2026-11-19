@@ -105,6 +105,7 @@ async fn main() {
     let email = api::email::EmailConfig::from_env();
     let payment = api::payment::PaymentConfig::from_env();
     let push = api::push::PushConfig::from_env();
+    let delivery = api::delivery::DeliveryConfig::from_env();
 
     // Phase 31 Decision 8: release unpaid event bookings after their hold.
     api::events::spawn_hold_sweeper(pool.clone(), email.clone(), push.clone(), payment.clone());
@@ -115,7 +116,7 @@ async fn main() {
         api::retention::spawn_retention_sweeper(pool.clone());
     }
 
-    let app = match api::build_app(pool, cookie_secure, media, email, payment, push).await {
+    let app = match api::build_app(pool, cookie_secure, media, email, payment, push, delivery).await {
         Ok(app) => app,
         Err(error) => {
             tracing::error!(%error, "failed to build application");

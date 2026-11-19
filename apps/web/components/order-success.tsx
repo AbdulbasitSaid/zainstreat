@@ -11,9 +11,9 @@ export function OrderSuccess({ order }: { order: OrderResponse }) {
   return (
     <div className="mx-auto flex max-w-[640px] flex-col gap-6 py-8 text-center">
       <h2 className="m-0">{t("successHeading", { id: order.id })}</h2>
-      <p className="m-0 text-text-muted">{t("successBody")}</p>
+      <p className="m-0 text-text-muted">{t(order.delivery_fee_pending ? "successBodyFeePending" : "successBody")}</p>
       <OrderInvoice order={order} />
-      <PaymentClaimButton token={order.public_token} status={order.status} />
+      {!order.delivery_fee_pending && <PaymentClaimButton token={order.public_token} status={order.status} />}
       <p className="m-0 text-sm text-text-muted">
         {t("saveLink")}{" "}
         <Link href={`/order/${order.public_token}`} className="font-semibold text-primary underline">

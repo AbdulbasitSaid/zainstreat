@@ -96,14 +96,13 @@
     "heading": "Cateringverhuur",
     "intro": "Serveermateriaal en kookbenodigdheden",
     "pricePerEvent": "{price} per evenement",
-    "reserve": "Reserveer via WhatsApp",
-    "whatsappMessage": "Hoi! Ik wil graag huren: {name}.",
-    "bookingHeading": "Reserveren",
-    "bookingNote": "Neem contact op via WhatsApp om huurartikelen te reserveren en de beschikbaarheid te bevestigen.",
+    "bookingHeading": "Vragen?",
+    "bookingNote": "Voeg verhuurartikelen toe aan je winkelwagen en kies de datum bij het afrekenen. Vragen over beschikbaarheid? Stuur ons een WhatsApp-bericht.",
     "whatsappButton": "Stuur ons een WhatsApp",
     "whatsappGeneral": "Hoi! Ik wil graag cateringmateriaal huren.",
     "empty": "Er staat nu geen verhuur online. Stuur ons een WhatsApp-bericht.",
-    "loadError": "We konden de verhuur nu niet laden. Probeer het straks opnieuw."
+    "loadError": "We konden de verhuur nu niet laden. Probeer het straks opnieuw.",
+    "addToCart": "In winkelwagen"
   },
   "Cart": {
     "metaTitle": "Winkelwagen | Zain's Treat n More",
@@ -117,7 +116,9 @@
     "remove": "Verwijderen",
     "increaseQuantity": "Aantal {name} verhogen",
     "decreaseQuantity": "Aantal {name} verlagen",
-    "minimumOrder": "Minimale bestelling: {count}"
+    "minimumOrder": "Minimale bestelling: {count}",
+    "pricePerEvent": "{price} per evenement",
+    "deliveryFromRate": "De bezorgkosten worden bij het afrekenen berekend: {rate} per km."
   },
   "Order": {
     "metaTitle": "Bestelling Plaatsen | Zain's Treat n More",
@@ -190,7 +191,12 @@
       "required": "{field} is verplicht.",
       "invalid": "Voer een geldige {field} in.",
       "tooShort": "{field} is te kort.",
-      "tooLong": "{field} is te lang."
+      "tooLong": "{field} is te lang.",
+      "pickAddress": "Kies je adres uit de suggesties.",
+      "calculating": "Even geduld — we berekenen de bezorgkosten nog.",
+      "noQuote": "We kunnen niet op dit adres bezorgen. Kies afhalen of stuur ons een WhatsApp-bericht.",
+      "tooSoon": "{field} moet morgen of later zijn.",
+      "tooFar": "{field} moet binnen een jaar zijn."
     },
     "tracking": {
       "progressLabel": "Voortgang van je bestelling",
@@ -214,7 +220,35 @@
       "receivedOnSiteConfirm": "Ja, alles is klaar"
     },
     "eventOrder": "Deze betaling hoort bij je reservering voor een evenement.",
-    "viewBooking": "Bekijk je reservering"
+    "viewBooking": "Bekijk je reservering",
+    "deliveryRateHint": "({rate} per km)",
+    "deliveryOff": "Bezorgen is nu niet mogelijk — alleen afhalen.",
+    "addressSearchHint": "Typ je straat en huisnummer.",
+    "searchingAddresses": "Zoeken…",
+    "noMatches": "Geen Nederlands adres gevonden. Controleer de spelling of stuur ons een WhatsApp-bericht.",
+    "calculating": "Bezorgkosten berekenen…",
+    "deliveryEstimate": "Ongeveer {km} km · Bezorging {fee}",
+    "outOfRange": "Zo ver bezorgen we nog niet. Kies afhalen of stuur ons een WhatsApp-bericht.",
+    "deliveryUnavailable": "We kunnen de bezorgkosten nu niet berekenen. Kies afhalen of stuur ons een WhatsApp-bericht.",
+    "deliveryWhatsappMessage": "Hoi! Ik wil graag bestellen met bezorging. Kunnen jullie helpen?",
+    "askOnWhatsapp": "Vraag het via WhatsApp",
+    "lookupDown": "We kunnen nu geen adressen opzoeken. Typ je adres, plaats je bestelling en we bevestigen de bezorgkosten voordat je betaalt.",
+    "addressExtraLabel": "Appartement, verdieping of instructies (optioneel)",
+    "rentalDateLabel": "Huurdatum",
+    "rentalDateHint": "De dag van je evenement. We spreken de ophaal- en terugbrengtijden met je af.",
+    "deliveryNowUnavailable": "Bezorgen is nu niet mogelijk. Kies afhalen.",
+    "lookupBack": "Adressen opzoeken werkt weer. Kies je adres uit de suggesties.",
+    "rentalDateRejected": "Controleer de huurdatum.",
+    "feeChanged": "De bezorgkosten zijn gewijzigd naar {fee}. Controleer je totaal en plaats de bestelling opnieuw.",
+    "perEvent": "per evenement",
+    "subtotal": "Subtotaal",
+    "deliveryFeeLine": "Bezorging ({km} km)",
+    "deliveryToConfirm": "Nog te bevestigen",
+    "totalPlusDelivery": "{subtotal} + bezorging",
+    "feePendingAtCheckout": "We mailen je de bezorgkosten en het eindtotaal voordat je betaalt.",
+    "feePendingNote": "We bevestigen je bezorgkosten. Je krijgt snel een e-mail met het eindtotaal en de betaalgegevens.",
+    "rentalDateLine": "Huurdatum: {date}",
+    "successBodyFeePending": "Bedankt! We bevestigen je bezorgkosten en mailen je de betaalgegevens."
   },
   "Quote": {
     "metaTitle": "Je offerte",
@@ -412,6 +446,7 @@
     "sharingHosting": "Amazon Web Services (AWS), in Frankfurt, Duitsland: hosting, back-ups en het versturen van onze e-mails.",
     "sharingMail": "Onze e-mailprovider, die de mails ontvangt die je naar contact@zainstreat.com stuurt.",
     "sharingPush": "De pushdiensten van Apple, Google of Mozilla, die bestelmeldingen naar de telefoon van de eigenaar sturen. Daarin staat je naam.",
+    "sharingDelivery": "PDOK (de adresservice van de Nederlandse overheid) en Google Maps: kies je voor bezorging, dan ontvangt PDOK het adres dat je typt zodat je het kunt kiezen, en ontvangt Google alleen de kaartcoördinaten om de rijafstand voor de bezorgkosten te berekenen.",
     "sharingWhatsapp": "Als je ons via WhatsApp een bericht stuurt, verwerkt WhatsApp (Meta) dat gesprek onder zijn eigen privacybeleid.",
     "sharingTransfers": "Als een dienstverlener gegevens buiten de Europese Economische Ruimte verwerkt, gebeurt dat onder de standaardcontractbepalingen van de Europese Commissie.",
     "retentionHeading": "Hoe lang we ze bewaren",

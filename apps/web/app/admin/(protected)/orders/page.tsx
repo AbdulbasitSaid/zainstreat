@@ -98,7 +98,14 @@ export default async function AdminOrdersPage({
                       </span>
                     </td>
                     <td className="py-3 pr-4 font-semibold">{formatPrice(order.total)}</td>
-                    <td className="py-3 pr-4"><AdminStatusBadge status={order.status} /></td>
+                    <td className="py-3 pr-4">
+                      <AdminStatusBadge status={order.status} />
+                      {order.delivery_fee_pending && (
+                      <span className="ml-2 rounded-full bg-accent-light px-2 py-0.5 text-xs font-semibold text-primary-dark">
+                        Delivery fee needed
+                      </span>
+                    )}
+                    </td>
                     <td className="py-3 text-text-muted">{formatDateTime(order.created_at)}</td>
                   </NewOrderHighlight>
                 ))}

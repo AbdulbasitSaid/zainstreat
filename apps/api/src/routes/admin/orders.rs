@@ -29,6 +29,7 @@ struct OrderSummaryRow {
     catering_enquiry_id: Option<i64>,
     event_id: Option<i64>,
     event_title: Option<String>,
+    delivery_fee_pending: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -47,6 +48,8 @@ pub struct OrderSummaryResponse {
     /// Set for an event booking's meals (Phase 31 Decision 20).
     pub event_id: Option<i64>,
     pub event_title: Option<String>,
+    /// Waiting for the owner to set the delivery fee (Phase 37 Decision 17).
+    pub delivery_fee_pending: bool,
 }
 
 impl From<OrderSummaryRow> for OrderSummaryResponse {
@@ -62,6 +65,7 @@ impl From<OrderSummaryRow> for OrderSummaryResponse {
             catering_enquiry_id: row.catering_enquiry_id,
             event_id: row.event_id,
             event_title: row.event_title,
+            delivery_fee_pending: row.delivery_fee_pending,
         }
     }
 }
@@ -127,7 +131,7 @@ pub async fn list_orders(
     let orders = sqlx::query_as!(
         OrderSummaryRow,
         r#"
-        SELECT id, customer_name, delivery_type, total, status,
+        SELECT id, customer_name, delivery_type, total, status, delivery_fee_pending,
                created_at as "created_at: DateTime<Utc>",
                (SELECT q.enquiry_id FROM catering_quotes q WHERE q.order_id = orders.id) as "catering_enquiry_id?",
                (SELECT b.event_id FROM event_bookings b WHERE b.order_id = orders.id) as "event_id?",
@@ -159,6 +163,8 @@ pub async fn list_orders(
 #[derive(Debug, Serialize)]
 pub struct AdminOrderItemResponse {
     pub id: i64,
+    /// `menu` or `rental` (Phase 37 Decision 3).
+    pub kind: String,
     pub item_name: String,
     pub option_label: Option<String>,
     #[serde(with = "rust_decimal::serde::str")]
@@ -181,6 +187,14 @@ pub struct AdminOrderResponse {
     pub subtotal: Decimal,
     #[serde(with = "rust_decimal::serde::str")]
     pub delivery_fee: Decimal,
+    /// Phase 37: how the fee was worked out (Decisions 12, 17).
+    #[serde(with = "rust_decimal::serde::str_option")]
+    pub delivery_distance_km: Option<Decimal>,
+    #[serde(with = "rust_decimal::serde::str_option")]
+    pub delivery_rate_per_km: Option<Decimal>,
+    pub delivery_estimated_by: Option<String>,
+    pub delivery_fee_pending: bool,
+    pub rental_date: Option<chrono::NaiveDate>,
     #[serde(with = "rust_decimal::serde::str")]
     pub total: Decimal,
     pub status: String,
@@ -216,6 +230,8 @@ pub async fn get_order(
         r#"
         SELECT id, customer_name, customer_email, customer_phone, delivery_type,
                delivery_address, notes, subtotal, delivery_fee, total, status,
+               delivery_distance_km, delivery_rate_per_km, delivery_estimated_by,
+               delivery_fee_pending, rental_date as "rental_date: chrono::NaiveDate",
                payment_claimed_at as "payment_claimed_at: DateTime<Utc>",
                payment_confirmed_at as "payment_confirmed_at: DateTime<Utc>",
                ready_at as "ready_at: DateTime<Utc>",
@@ -239,7 +255,7 @@ pub async fn get_order(
     let items = sqlx::query_as!(
         AdminOrderItemResponse,
         r#"
-        SELECT id, item_name, option_label, unit_price, quantity, subtotal
+        SELECT id, kind, item_name, option_label, unit_price, quantity, subtotal
         FROM order_items
         WHERE order_id = $1
         ORDER BY id
@@ -262,6 +278,11 @@ pub async fn get_order(
         notes: order.notes,
         subtotal: order.subtotal,
         delivery_fee: order.delivery_fee,
+        delivery_distance_km: order.delivery_distance_km,
+        delivery_rate_per_km: order.delivery_rate_per_km,
+        delivery_estimated_by: order.delivery_estimated_by,
+        delivery_fee_pending: order.delivery_fee_pending,
+        rental_date: order.rental_date,
         total: order.total,
         status: order.status,
         payment_reference: payment_reference(order.id),
@@ -307,7 +328,7 @@ pub async fn update_order_status(
     // Locked so a concurrent customer claim or second admin tab can't slip
     // a status change in between the check and the update.
     let current = sqlx::query!(
-        "SELECT status, delivery_type, completed_by FROM orders WHERE id = $1 FOR UPDATE",
+        "SELECT status, delivery_type, completed_by, delivery_fee_pending FROM orders WHERE id = $1 FOR UPDATE",
         id
     )
     .fetch_optional(&mut *tx)
@@ -326,6 +347,10 @@ pub async fn update_order_status(
     .contains(&payload.status.as_str())
     {
         return Err(AppError::InvalidStatusTransition);
+    }
+    // Phase 37 Decision 17: no payment to confirm until the fee is set.
+    if current.delivery_fee_pending && payload.status == "processing" {
+        return Err(AppError::DeliveryFeePending);
     }
     let reopened = is_reopen(&current.status, &payload.status);
 
@@ -349,7 +374,7 @@ pub async fn update_order_status(
             cancelled_at = CASE WHEN $2 = 'cancelled' THEN now() ELSE cancelled_at END
         WHERE id = $1
         RETURNING id, customer_name, customer_email, delivery_type, total, status,
-                  public_token, locale,
+                  public_token, locale, delivery_fee_pending,
                   created_at as "created_at: DateTime<Utc>",
                   (SELECT q.enquiry_id FROM catering_quotes q WHERE q.order_id = orders.id) as "catering_enquiry_id?",
                   (SELECT b.event_id FROM event_bookings b WHERE b.order_id = orders.id) as "event_id?",
@@ -407,6 +432,7 @@ pub async fn update_order_status(
             catering_enquiry_id: order.catering_enquiry_id,
             event_id: order.event_id,
             event_title: order.event_title,
+            delivery_fee_pending: order.delivery_fee_pending,
         }));
     }
 
@@ -442,6 +468,7 @@ pub async fn update_order_status(
         catering_enquiry_id: order.catering_enquiry_id,
         event_id: order.event_id,
         event_title: order.event_title,
+        delivery_fee_pending: order.delivery_fee_pending,
     }))
 }
 
@@ -488,7 +515,7 @@ pub async fn orders_summary(
     let recent = sqlx::query_as!(
         OrderSummaryRow,
         r#"
-        SELECT id, customer_name, delivery_type, total, status,
+        SELECT id, customer_name, delivery_type, total, status, delivery_fee_pending,
                created_at as "created_at: DateTime<Utc>",
                (SELECT q.enquiry_id FROM catering_quotes q WHERE q.order_id = orders.id) as "catering_enquiry_id?",
                (SELECT b.event_id FROM event_bookings b WHERE b.order_id = orders.id) as "event_id?",

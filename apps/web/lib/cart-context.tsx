@@ -12,8 +12,13 @@ import {
 } from "react";
 import { parsePrice } from "@/lib/format";
 
+// A menu item or a rental (Phase 37 Decision 2). For a rental, `itemId` is
+// the rental's id.
+export type CartLineKind = "menu" | "rental";
+
 export interface CartLine {
   key: string;
+  kind: CartLineKind;
   itemId: number;
   priceOptionId: number | null;
   name: string;
@@ -35,13 +40,21 @@ type CartAction =
   | { type: "clear" };
 
 const STORAGE_KEY = "zainstreat:cart:v1";
+// The API takes at most 99 of one rental (Phase 37 Decision 2).
+const RENTAL_MAX_QUANTITY = 99;
 
-function lineKey(itemId: number, priceOptionId: number | null): string {
-  return `${itemId}:${priceOptionId ?? "flat"}`;
+function capQuantity(kind: CartLineKind, quantity: number): number {
+  return kind === "rental" ? Math.min(quantity, RENTAL_MAX_QUANTITY) : quantity;
 }
 
-// Lines stored before Phase 36 have no minQuantity; they read as 1.
-type StoredCartLine = Omit<CartLine, "minQuantity"> & { minQuantity?: number };
+function lineKey(kind: CartLineKind, itemId: number, priceOptionId: number | null): string {
+  // Rentals get their own key space, so ids never collide with menu items.
+  return kind === "rental" ? `rental:${itemId}` : `${itemId}:${priceOptionId ?? "flat"}`;
+}
+
+// Lines stored before Phase 36 have no minQuantity (read as 1), and before
+// Phase 37 no kind (read as "menu").
+type StoredCartLine = Omit<CartLine, "minQuantity" | "kind"> & { minQuantity?: number; kind?: CartLineKind };
 
 function isCartLine(value: unknown): value is StoredCartLine {
   if (typeof value !== "object" || value === null) return false;
@@ -56,6 +69,7 @@ function isCartLine(value: unknown): value is StoredCartLine {
     (v.imageUrl === null || typeof v.imageUrl === "string") &&
     typeof v.quantity === "number" &&
     v.quantity > 0 &&
+    (v.kind === undefined || v.kind === "menu" || v.kind === "rental") &&
     (v.minQuantity === undefined || (typeof v.minQuantity === "number" && v.minQuantity >= 1))
   );
 }
@@ -65,7 +79,7 @@ function cartReducer(lines: CartLine[], action: CartAction): CartLine[] {
     case "hydrate":
       return action.lines;
     case "add": {
-      const key = lineKey(action.line.itemId, action.line.priceOptionId);
+      const key = lineKey(action.line.kind, action.line.itemId, action.line.priceOptionId);
       const existing = lines.find((line) => line.key === key);
       if (existing) {
         // Refresh display fields too: an admin may have replaced the photo
@@ -77,7 +91,7 @@ function cartReducer(lines: CartLine[], action: CartAction): CartLine[] {
                 name: action.line.name,
                 imageUrl: action.line.imageUrl,
                 minQuantity: action.line.minQuantity,
-                quantity: Math.max(line.quantity + action.quantity, action.line.minQuantity),
+                quantity: capQuantity(line.kind, Math.max(line.quantity + action.quantity, action.line.minQuantity)),
               }
             : line,
         );
@@ -91,7 +105,7 @@ function cartReducer(lines: CartLine[], action: CartAction): CartLine[] {
         return lines.filter((candidate) => candidate.key !== action.key);
       }
       return lines.map((line) =>
-        line.key === action.key ? { ...line, quantity: action.quantity } : line,
+        line.key === action.key ? { ...line, quantity: capQuantity(line.kind, action.quantity) } : line,
       );
     }
     case "remove":
@@ -107,6 +121,7 @@ interface CartContextValue {
   lines: CartLine[];
   itemCount: number;
   subtotal: number;
+  hasRentals: boolean;
   addLine: (line: NewCartLine, quantity?: number) => void;
   setQuantity: (key: string, quantity: number) => void;
   removeLine: (key: string) => void;
@@ -127,7 +142,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         if (Array.isArray(parsed) && parsed.every(isCartLine)) {
           dispatch({
             type: "hydrate",
-            lines: parsed.map((line) => ({ ...line, minQuantity: line.minQuantity ?? 1 })),
+            lines: parsed.map((line) => ({ ...line, minQuantity: line.minQuantity ?? 1, kind: line.kind ?? "menu" })),
           });
         }
       }
@@ -166,9 +181,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
     [lines],
   );
 
+  const hasRentals = useMemo(() => lines.some((line) => line.kind === "rental"), [lines]);
+
   const value = useMemo(
-    () => ({ lines, itemCount, subtotal, addLine, setQuantity, removeLine, clearCart }),
-    [lines, itemCount, subtotal, addLine, setQuantity, removeLine, clearCart],
+    () => ({ lines, itemCount, subtotal, hasRentals, addLine, setQuantity, removeLine, clearCart }),
+    [lines, itemCount, subtotal, hasRentals, addLine, setQuantity, removeLine, clearCart],
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
