@@ -1,15 +1,21 @@
-import type { CSSProperties } from "react";
-import { MenuItemCard } from "@/components/menu-item-card";
-import { bentoLayout } from "@/lib/menu-bento";
-import type { MenuItem } from "@/lib/api";
+import type { CSSProperties, ReactNode } from "react";
+import { MenuItemCard, RentalCard } from "@/components/menu-item-card";
+import { bentoLayout, type TilePlacement } from "@/lib/menu-bento";
+import type { MenuItem, Rental } from "@/lib/api";
 
 type AreaVars = CSSProperties & { "--sm-area": string; "--lg-area": string };
 
 // Phase 25 Decisions 7–10: one grid for /menu and the homepage's featured
-// items. Below `sm` it's a plain list; from `sm` each tile is placed
-// explicitly from the pattern, so visual order is DOM (`display_order`)
-// order.
-export function MenuBentoGrid({ items }: { items: MenuItem[] }) {
+// items (and /rentals since Phase 37). Below `sm` it's a plain list; from
+// `sm` each tile is placed explicitly from the pattern, so visual order is
+// DOM (`display_order`) order.
+function BentoGrid<T extends { id: number }>({
+  items,
+  renderTile,
+}: {
+  items: T[];
+  renderTile: (item: T, placement: TilePlacement) => ReactNode;
+}) {
   const layout = bentoLayout(items.length);
 
   return (
@@ -22,10 +28,23 @@ export function MenuBentoGrid({ items }: { items: MenuItem[] }) {
             style={style}
             className="sm:[grid-area:var(--sm-area)] lg:[grid-area:var(--lg-area)]"
           >
-            <MenuItemCard item={item} placement={layout[i]} />
+            {renderTile(item, layout[i])}
           </div>
         );
       })}
     </div>
+  );
+}
+
+export function MenuBentoGrid({ items }: { items: MenuItem[] }) {
+  return <BentoGrid items={items} renderTile={(item, placement) => <MenuItemCard item={item} placement={placement} />} />;
+}
+
+export function RentalBentoGrid({ rentals }: { rentals: Rental[] }) {
+  return (
+    <BentoGrid
+      items={rentals}
+      renderTile={(rental, placement) => <RentalCard rental={rental} placement={placement} />}
+    />
   );
 }

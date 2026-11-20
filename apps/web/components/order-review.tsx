@@ -59,7 +59,7 @@ export function OrderReview({
 
       <OrderLineSummary lines={lines} perEventLabel={t("perEvent")} />
 
-      <OrderTotals subtotal={subtotal.toFixed(2)} delivery={delivery} />
+      <OrderTotals subtotal={subtotal.toFixed(2)} delivery={delivery} estimated />
       {delivery === "pending" && <p className="m-0 text-right text-sm text-text-muted">{t("feePendingAtCheckout")}</p>}
 
       {unavailableNames && unavailableNames.length > 0 && (

@@ -32,11 +32,9 @@
     "footerNavLabel": "Footer-navigatie",
     "footerExploreHeading": "Ontdek",
     "footerSupportHeading": "Ondersteuning",
-    "newsletterHeading": "Blijf op de <em>Hoogte</em>",
-    "newsletterPlaceholder": "E-mail",
-    "newsletterComingSoon": "Aanmelden is nog niet actief — volg ons ondertussen op Instagram of WhatsApp.",
     "instagramLabel": "Instagram",
-    "whatsappLabel": "WhatsApp"
+    "whatsappLabel": "WhatsApp",
+    "followHeading": "Volg ons op <em>Instagram</em>"
   },
   "HomePage": {
     "metaTitle": "Zain's Treat n More | Halal Maaltijden, Snacks & Catering",
@@ -54,12 +52,12 @@
     "servicesMeals": "Maaltijden",
     "servicesSnacks": "Snacks",
     "servicesCatering": "Catering",
-    "servicesEventRentals": "Evenementenverhuur",
+    "servicesEventRentals": "Cateringverhuur",
     "whyChooseUsEyebrow": "Onze Belofte",
     "whyChooseUs": "Waarom Voor Ons <em>Kiezen</em>",
     "cateringCtaHeadline": "Een evenement plannen? Laat ons de catering verzorgen.",
     "requestCateringQuote": "Vraag Cateringofferte Aan",
-    "aboutPreview": "Bij Zain's Treat n More geloven we dat elke gelegenheid heerlijk eten en uitstekende service verdient — vers bereide maaltijden, heerlijke snacks, professionele catering en evenementenverhuur, gemaakt met 100% halal, hygiënisch bereide, verse ingrediënten.",
+    "aboutPreview": "Bij Zain's Treat n More geloven we dat elke gelegenheid heerlijk eten en uitstekende service verdient — vers bereide maaltijden, heerlijke snacks, professionele catering en cateringverhuur, gemaakt met 100% halal, hygiënisch bereide, verse ingrediënten.",
     "learnMore": "Meer Informatie",
     "trustHalalDesc": "Elk gerecht bereid volgens halal-normen",
     "trustFreshDesc": "Vers gemaakt voor elke bestelling",
@@ -70,7 +68,7 @@
     "viewFullMenu": "Bekijk Volledig Menu",
     "servicesEyebrow": "Wat Wij Bieden",
     "servicesHeading": "Iets <em>Heerlijks</em> voor Elke Gelegenheid",
-    "servicesSupporting": "Van dagelijkse halal maaltijden en snacks tot complete catering en verhuur voor evenementen: wij zorgen voor het eten en de details, zodat u kunt genieten van het moment.",
+    "servicesSupporting": "Van dagelijkse halal maaltijden en snacks tot complete catering en cateringverhuur: wij zorgen voor het eten en de details, zodat u kunt genieten van het moment.",
     "exploreServices": "Ontdek Onze Diensten"
   },
   "MenuPage": {
@@ -95,7 +93,6 @@
     "metaDescription": "Chafing dishes, kookpannen, koelboxen en meer te huur voor je evenement.",
     "heading": "Cateringverhuur",
     "intro": "Serveermateriaal en kookbenodigdheden",
-    "pricePerEvent": "{price} per evenement",
     "bookingHeading": "Vragen?",
     "bookingNote": "Voeg verhuurartikelen toe aan je winkelwagen en kies de datum bij het afrekenen. Vragen over beschikbaarheid? Stuur ons een WhatsApp-bericht.",
     "whatsappButton": "Stuur ons een WhatsApp",
@@ -118,7 +115,7 @@
     "decreaseQuantity": "Aantal {name} verlagen",
     "minimumOrder": "Minimale bestelling: {count}",
     "pricePerEvent": "{price} per evenement",
-    "deliveryFromRate": "De bezorgkosten worden bij het afrekenen berekend: {rate} per km."
+    "deliveryFromRate": "Je geschatte bezorgkosten worden bij het afrekenen berekend: {rate} per km."
   },
   "Order": {
     "metaTitle": "Bestelling Plaatsen | Zain's Treat n More",
@@ -193,7 +190,7 @@
       "tooShort": "{field} is te kort.",
       "tooLong": "{field} is te lang.",
       "pickAddress": "Kies je adres uit de suggesties.",
-      "calculating": "Even geduld — we berekenen de bezorgkosten nog.",
+      "calculating": "Even geduld — we berekenen je geschatte bezorgkosten nog.",
       "noQuote": "We kunnen niet op dit adres bezorgen. Kies afhalen of stuur ons een WhatsApp-bericht.",
       "tooSoon": "{field} moet morgen of later zijn.",
       "tooFar": "{field} moet binnen een jaar zijn."
@@ -226,8 +223,7 @@
     "addressSearchHint": "Typ je straat en huisnummer.",
     "searchingAddresses": "Zoeken…",
     "noMatches": "Geen Nederlands adres gevonden. Controleer de spelling of stuur ons een WhatsApp-bericht.",
-    "calculating": "Bezorgkosten berekenen…",
-    "deliveryEstimate": "Ongeveer {km} km · Bezorging {fee}",
+    "calculating": "Geschatte bezorgkosten berekenen…",
     "routeAttribution": "Rijafstand via",
     "outOfRange": "Zo ver bezorgen we nog niet. Kies afhalen of stuur ons een WhatsApp-bericht.",
     "deliveryUnavailable": "We kunnen de bezorgkosten nu niet berekenen. Kies afhalen of stuur ons een WhatsApp-bericht.",
@@ -240,7 +236,7 @@
     "deliveryNowUnavailable": "Bezorgen is nu niet mogelijk. Kies afhalen.",
     "lookupBack": "Adressen opzoeken werkt weer. Kies je adres uit de suggesties.",
     "rentalDateRejected": "Controleer de huurdatum.",
-    "feeChanged": "De bezorgkosten zijn gewijzigd naar {fee}. Controleer je totaal en plaats de bestelling opnieuw.",
+    "feeChanged": "Je geschatte bezorgkosten zijn gewijzigd naar {fee}. Controleer je totaal en plaats de bestelling opnieuw.",
     "perEvent": "per evenement",
     "subtotal": "Subtotaal",
     "deliveryFeeLine": "Bezorging ({km} km)",
@@ -249,7 +245,11 @@
     "feePendingAtCheckout": "We mailen je de bezorgkosten en het eindtotaal voordat je betaalt.",
     "feePendingNote": "We bevestigen je bezorgkosten. Je krijgt snel een e-mail met het eindtotaal en de betaalgegevens.",
     "rentalDateLine": "Huurdatum: {date}",
-    "successBodyFeePending": "Bedankt! We bevestigen je bezorgkosten en mailen je de betaalgegevens."
+    "successBodyFeePending": "Bedankt! We bevestigen je bezorgkosten en mailen je de betaalgegevens.",
+    "deliveryEstimateLabel": "Geschatte bezorgkosten",
+    "deliveryEstimateDetail": "Gebaseerd op een rijafstand van ongeveer {km} km.",
+    "deliveryEstimatePrompt": "Kies je adres uit de suggesties om je geschatte bezorgkosten te zien.",
+    "estimatedDeliveryFeeLine": "Geschatte bezorging ({km} km)"
   },
   "Quote": {
     "metaTitle": "Je offerte",
@@ -301,12 +301,12 @@
     "offer1": "Maaltijden",
     "offer2": "Snacks",
     "offer3": "Catering",
-    "offer4": "Evenementenverhuur",
+    "offer4": "Cateringverhuur",
     "offer5": "Maaltijdbezorging"
   },
   "ServicesPage": {
     "metaTitle": "Onze Diensten | Zain's Treat n More",
-    "metaDescription": "Maaltijden, snacks, catering en evenementenverhuur van Zain's Treat n More — vraag een offerte aan voor uw volgende evenement.",
+    "metaDescription": "Maaltijden, snacks, catering en cateringverhuur van Zain's Treat n More — vraag een offerte aan voor uw volgende evenement.",
     "heading": "Onze <em>Diensten</em>",
     "mealsHeading": "Maaltijden",
     "mealsCopy": "Vers bereide maaltijden voor individuen, gezinnen en groepen.",
@@ -315,8 +315,8 @@
     "cateringHeading": "Catering",
     "cateringCopy": "Catering voor bruiloften, verjaardagen, bedrijfsevenementen, familiebijeenkomsten, buitenfeesten en gemeenschaps-/religieuze evenementen.",
     "requestCateringQuote": "Vraag Cateringofferte Aan",
-    "eventRentalsHeading": "Evenementenverhuur",
-    "eventRentalsCopy": "Verhuurdiensten rondom evenementen die klanten helpen onvergetelijke gelegenheden te organiseren.",
+    "eventRentalsHeading": "Cateringverhuur",
+    "eventRentalsCopy": "Chafing dishes, kookpannen, koelboxen en meer — de serveeruitrusting die je nodig hebt voor je evenement.",
     "seeRentals": "Bekijk verhuur",
     "requestQuote": "Vraag Offerte Aan"
   },
@@ -344,7 +344,7 @@
     "formMessage": "Bericht",
     "formSubjectGeneral": "Algemene Vraag",
     "formSubjectCatering": "Catering",
-    "formSubjectEventRental": "Evenementenverhuur",
+    "formSubjectEventRental": "Cateringverhuur",
     "formSubjectMenu": "Menuvraag",
     "formSubjectOrder": "Bestelvraag",
     "formSubjectOther": "Overig",
@@ -371,7 +371,7 @@
     "service": {
       "catering": "Catering",
       "meal_delivery": "Maaltijdbezorging",
-      "event_rental": "Evenementenverhuur",
+      "event_rental": "Cateringverhuur",
       "other": "Overig"
     },
     "cateringMessageLabel": "Bericht (optioneel)",
@@ -397,7 +397,6 @@
     "metaTitle": "Algemene Voorwaarden | Zain's Treat n More",
     "metaDescription": "Lees de algemene voorwaarden voor het bestellen bij en gebruiken van de website van Zain's Treat n More.",
     "heading": "Algemene Voorwaarden",
-    "legalReviewNotice": "Concept voorwaarden — in afwachting van beoordeling door een juridisch professional vóór livegang.",
     "orderingHeading": "Bestellen",
     "orderingCopy": "Door een bestelling te plaatsen bij Zain's Treat n More bevestig je dat de verstrekte gegevens correct zijn en dat je gemachtigd bent de bestelling te plaatsen.",
     "paymentHeading": "Betaling",
@@ -411,7 +410,7 @@
     "cateringHeading": "Cateringbestellingen",
     "cateringCopy": "Cateringbestellingen kunnen vooraankondiging, een minimale bestelgrootte en een aanbetaling vereisen, afhankelijk van de omvang van het evenement.",
     "eventBookingsHeading": "Evenementboekingen",
-    "eventBookingsCopy": "Boekingen voor evenementenverhuur zijn afhankelijk van beschikbaarheid en moeten vóór de evenementdatum worden bevestigd.",
+    "eventBookingsCopy": "Boekingen voor cateringverhuur zijn afhankelijk van beschikbaarheid en moeten vóór de evenementdatum worden bevestigd.",
     "customerResponsibilitiesHeading": "Verantwoordelijkheden Van De Klant",
     "customerResponsibilitiesCopy": "Klanten zijn verantwoordelijk voor het verstrekken van correcte bestel-, bezorg- en contactgegevens, inclusief eventuele allergieën of dieetwensen.",
     "websiteUsageHeading": "Gebruik Van De Website",
@@ -500,7 +499,7 @@
   "UtilityBar": {
     "halal": "100% Halal",
     "fresh": "Dagelijks Vers Bereid",
-    "catering": "Catering & Evenementenverhuur",
+    "catering": "Catering & Verhuur",
     "whatsapp": "Bestellen via WhatsApp"
   },
   "Whatsapp": {

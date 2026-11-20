@@ -6,10 +6,13 @@ import { formatPrice } from "@/lib/format";
 export function OrderTotals({
   subtotal,
   delivery,
+  estimated = false,
 }: {
   subtotal: string;
   // null for pickup (and every order without a delivery charge).
   delivery: { fee: string; distanceKm: string | null } | "pending" | null;
+  // Checkout's quoted fee, before the order is placed.
+  estimated?: boolean;
 }) {
   const t = useTranslations("Order");
   const rowClass = "m-0 flex justify-between gap-4 text-text-muted";
@@ -36,7 +39,7 @@ export function OrderTotals({
       <p className={rowClass}>
         <span>
           {delivery !== "pending" && delivery.distanceKm
-            ? t("deliveryFeeLine", { km: delivery.distanceKm })
+            ? t(estimated ? "estimatedDeliveryFeeLine" : "deliveryFeeLine", { km: delivery.distanceKm })
             : t("deliveryOption")}
         </span>
         <span>{delivery === "pending" ? t("deliveryToConfirm") : formatPrice(delivery.fee)}</span>

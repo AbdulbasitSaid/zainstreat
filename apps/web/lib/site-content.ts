@@ -85,7 +85,7 @@ export const SITE_IMAGE_LABELS: Record<SiteImageSlot, string> = {
   category_meals: "Category: Meals",
   category_snacks: "Category: Snacks",
   category_catering: "Category: Catering",
-  category_event_rentals: "Category: Event rentals",
+  category_event_rentals: "Category: Catering rentals",
   about_hero: "Kitchen photo (about + homepage)",
   about_mission: "About: mission",
   contact: "Contact page",

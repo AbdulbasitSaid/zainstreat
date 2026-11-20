@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { useTranslations } from "next-intl";
 import { getTranslations } from "next-intl/server";
 import { Reveal } from "@/components/reveal";
-import { Notice } from "@/components/notice";
 import { localeAlternates } from "@/lib/seo";
 
 export async function generateMetadata({
@@ -40,7 +39,6 @@ export default function TermsPage() {
   return (
     <main className="container max-w-[68ch]">
       <h1>{t("heading")}</h1>
-      <Notice>{t("legalReviewNotice")}</Notice>
 
       {SECTIONS.map((section) => (
         <Reveal key={section}>

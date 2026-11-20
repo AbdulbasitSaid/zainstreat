@@ -1,10 +1,11 @@
+import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import Image from "next/image";
 import { ImageSlot } from "@/components/image-slot";
-import { AddToCartControls } from "@/components/add-to-cart-controls";
+import { AddRentalToCart, AddToCartControls } from "@/components/add-to-cart-controls";
 import { LiquidCard } from "@/components/liquid-card";
 import { formatPrice } from "@/lib/format";
-import type { MenuItem } from "@/lib/api";
+import type { MenuItem, Rental } from "@/lib/api";
 import type { TilePlacement, TileShape, TileSlot, TileTint } from "@/lib/menu-bento";
 
 type ShapeClasses = { root: string; photo: string; body: string; description: string };
@@ -82,9 +83,65 @@ function lowestPrice(item: MenuItem): string | null {
 
 export function MenuItemCard({ item, placement }: { item: MenuItem; placement: TilePlacement }) {
   const t = useTranslations("MenuPage");
+  const price = lowestPrice(item);
+
+  return (
+    <BentoCard
+      placement={placement}
+      name={item.name}
+      imageUrl={item.image_url}
+      description={item.description}
+      dimmed={!item.is_available}
+      badge={item.is_available ? null : t("unavailable")}
+      note={item.min_quantity > 1 ? t("minimumOrder", { count: item.min_quantity }) : null}
+      price={price === null ? null : item.price === null ? t("fromPrice", { price: formatPrice(price) }) : formatPrice(price)}
+      action={(onBrand) => <AddToCartControls item={item} onBrand={onBrand} />}
+    />
+  );
+}
+
+// Phase 37: rentals in the same bento tiles. Admin crops their photos
+// square, so `contain` on white shows the whole photo in any tile shape.
+export function RentalCard({ rental, placement }: { rental: Rental; placement: TilePlacement }) {
+  return (
+    <BentoCard
+      placement={placement}
+      name={rental.name}
+      imageUrl={rental.image_url}
+      imageFit="contain"
+      description={rental.description}
+      price={formatPrice(rental.price)}
+      action={(onBrand) => <AddRentalToCart rental={rental} onBrand={onBrand} />}
+    />
+  );
+}
+
+// One bento tile: photo, name, description, price and an add button.
+function BentoCard({
+  placement,
+  name,
+  imageUrl,
+  imageFit = "cover",
+  description,
+  dimmed = false,
+  badge = null,
+  note = null,
+  price,
+  action,
+}: {
+  placement: TilePlacement;
+  name: string;
+  imageUrl: string | null;
+  imageFit?: "cover" | "contain";
+  description: string | null;
+  dimmed?: boolean;
+  badge?: string | null;
+  note?: string | null;
+  price: string | null;
+  action: (onBrand: boolean) => ReactNode;
+}) {
   const { sm, lg, tint } = placement;
   const tintClass = TINT_CLASS[tint];
-  const price = lowestPrice(item);
 
   return (
     <LiquidCard
@@ -92,15 +149,17 @@ export function MenuItemCard({ item, placement }: { item: MenuItem; placement: T
       strokeClassName={tint === "white" ? "stroke-text/10" : undefined}
       className={`flex h-full flex-col overflow-hidden rounded-card shadow-sm transition-shadow duration-300 ease-out-expo hover:shadow-[0_18px_36px_rgba(43,17,20,0.16)] ${SM_SHAPE[sm.shape].root} ${
         LG_SHAPE[lg.shape].root
-      } ${tintClass.root} ${item.is_available ? "" : "opacity-60 grayscale-30"}`.trim()}
+      } ${tintClass.root} ${dimmed ? "opacity-60 grayscale-30" : ""}`.trim()}
     >
       <div
-        className={`relative h-50 w-full shrink-0 sm:min-h-0 ${SM_SHAPE[sm.shape].photo} ${LG_SHAPE[lg.shape].photo}`}
+        className={`relative h-50 w-full shrink-0 sm:min-h-0 ${SM_SHAPE[sm.shape].photo} ${LG_SHAPE[lg.shape].photo} ${
+          imageFit === "contain" ? "bg-white" : ""
+        }`.trim()}
       >
-        {item.image_url ? (
+        {imageUrl ? (
           <Image
-            src={item.image_url}
-            alt={item.name}
+            src={imageUrl}
+            alt={name}
             fill
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 600px"
             // Phase 14's uploaded photos are absolute URLs served by the API
@@ -111,15 +170,15 @@ export function MenuItemCard({ item, placement }: { item: MenuItem; placement: T
             // `https://api.$DOMAIN` URLs now get real format conversion
             // (Phase 17 Decision 9). Relative seed-data paths (same origin)
             // are unaffected and keep optimizing.
-            unoptimized={item.image_url.startsWith("http://")}
-            className="object-cover"
+            unoptimized={imageUrl.startsWith("http://")}
+            className={imageFit === "contain" ? "object-contain p-3" : "object-cover"}
           />
         ) : (
-          <ImageSlot label={item.name} className="h-full min-h-0 rounded-none border-0" />
+          <ImageSlot label={name} className="h-full min-h-0 rounded-none border-0" />
         )}
-        {!item.is_available && (
+        {badge && (
           <span className="absolute top-3 right-3 rounded-full bg-primary-dark px-3 py-1 text-[0.7rem] font-semibold tracking-wide text-text-light uppercase">
-            {t("unavailable")}
+            {badge}
           </span>
         )}
       </div>
@@ -128,8 +187,8 @@ export function MenuItemCard({ item, placement }: { item: MenuItem; placement: T
           LG_SHAPE[lg.shape].body
         }`}
       >
-        <h3 className="m-0 line-clamp-2 text-[1.05rem] text-inherit">{item.name}</h3>
-        {item.description && (
+        <h3 className="m-0 line-clamp-2 text-[1.05rem] text-inherit">{name}</h3>
+        {description && (
           <p
             className={`m-0 line-clamp-3 text-[0.9rem] ${tintClass.muted} ${descriptionClass(
               sm,
@@ -137,21 +196,13 @@ export function MenuItemCard({ item, placement }: { item: MenuItem; placement: T
               SM_LONG_DESCRIPTION,
             )} ${descriptionClass(lg, LG_SHAPE, LG_LONG_DESCRIPTION)}`}
           >
-            {item.description}
+            {description}
           </p>
         )}
-        {item.min_quantity > 1 && (
-          <p className={`m-0 text-[0.8rem] font-semibold ${tintClass.price}`}>
-            {t("minimumOrder", { count: item.min_quantity })}
-          </p>
-        )}
+        {note && <p className={`m-0 text-[0.8rem] font-semibold ${tintClass.price}`}>{note}</p>}
         <div className="mt-auto flex items-center justify-between gap-3 pt-2">
-          {price !== null && (
-            <p className={`m-0 text-[1.05rem] font-semibold ${tintClass.price}`}>
-              {item.price === null ? t("fromPrice", { price: formatPrice(price) }) : formatPrice(price)}
-            </p>
-          )}
-          <AddToCartControls item={item} onBrand={tint === "brand"} />
+          {price !== null && <p className={`m-0 text-[1.05rem] font-semibold ${tintClass.price}`}>{price}</p>}
+          {action(tint === "brand")}
         </div>
       </div>
     </LiquidCard>

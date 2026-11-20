@@ -32,11 +32,9 @@
     "footerNavLabel": "Footer navigation",
     "footerExploreHeading": "Explore",
     "footerSupportHeading": "Support",
-    "newsletterHeading": "Stay in the <em>Loop</em>",
-    "newsletterPlaceholder": "Email",
-    "newsletterComingSoon": "Sign-ups aren't connected yet — follow us on Instagram or WhatsApp in the meantime.",
     "instagramLabel": "Instagram",
-    "whatsappLabel": "WhatsApp"
+    "whatsappLabel": "WhatsApp",
+    "followHeading": "Follow us on <em>Instagram</em>"
   },
   "HomePage": {
     "metaTitle": "Zain's Treat n More | Halal Meals, Snacks & Catering",
@@ -54,12 +52,12 @@
     "servicesMeals": "Meals",
     "servicesSnacks": "Snacks",
     "servicesCatering": "Catering",
-    "servicesEventRentals": "Event Rentals",
+    "servicesEventRentals": "Catering Rentals",
     "whyChooseUsEyebrow": "Our Promise",
     "whyChooseUs": "Why <em>Choose</em> Us",
     "cateringCtaHeadline": "Planning an event? Let us handle the catering.",
     "requestCateringQuote": "Request Catering Quote",
-    "aboutPreview": "At Zain's Treat n More, we believe every occasion deserves great food and exceptional service — freshly prepared meals, delicious snacks, professional catering, and event rentals, made with 100% halal, hygienically prepared, fresh ingredients.",
+    "aboutPreview": "At Zain's Treat n More, we believe every occasion deserves great food and exceptional service — freshly prepared meals, delicious snacks, professional catering, and catering rentals, made with 100% halal, hygienically prepared, fresh ingredients.",
     "learnMore": "Learn More",
     "trustHalalDesc": "Every dish prepared to halal standards",
     "trustFreshDesc": "Made fresh for every order",
@@ -70,7 +68,7 @@
     "viewFullMenu": "View Full Menu",
     "servicesEyebrow": "What We Offer",
     "servicesHeading": "Something <em>Delicious</em> for Every Occasion",
-    "servicesSupporting": "From everyday halal meals and snacks to full-service catering and event rentals, we take care of the food and the details so you can enjoy the moment.",
+    "servicesSupporting": "From everyday halal meals and snacks to full-service catering and catering rentals, we take care of the food and the details so you can enjoy the moment.",
     "exploreServices": "Explore Our Services"
   },
   "MenuPage": {
@@ -95,7 +93,6 @@
     "metaDescription": "Chafing dishes, cooking pots, coolers and more to rent for your event.",
     "heading": "Catering Rentals",
     "intro": "Serving equipment and cooking essentials",
-    "pricePerEvent": "{price} per event",
     "bookingHeading": "Questions?",
     "bookingNote": "Add rentals to your cart and pick the date at checkout. Questions about availability? Message us on WhatsApp.",
     "whatsappButton": "Message us on WhatsApp",
@@ -118,7 +115,7 @@
     "decreaseQuantity": "Decrease quantity of {name}",
     "minimumOrder": "Minimum order: {count}",
     "pricePerEvent": "{price} per event",
-    "deliveryFromRate": "Delivery fee is calculated at checkout from {rate} per km."
+    "deliveryFromRate": "Your estimated delivery fee is worked out at checkout, at {rate} per km."
   },
   "Order": {
     "metaTitle": "Place Your Order | Zain's Treat n More",
@@ -193,7 +190,7 @@
       "tooShort": "{field} is too short.",
       "tooLong": "{field} is too long.",
       "pickAddress": "Please pick your address from the suggestions.",
-      "calculating": "One moment — we're still calculating the delivery fee.",
+      "calculating": "One moment — we're still calculating your estimated delivery fee.",
       "noQuote": "We can't deliver to this address. Choose pickup or message us on WhatsApp.",
       "tooSoon": "{field} must be tomorrow or later.",
       "tooFar": "{field} must be within a year."
@@ -226,8 +223,7 @@
     "addressSearchHint": "Start typing your street and house number.",
     "searchingAddresses": "Searching…",
     "noMatches": "No Dutch addresses match. Check the spelling or message us on WhatsApp.",
-    "calculating": "Calculating delivery…",
-    "deliveryEstimate": "About {km} km · Delivery {fee}",
+    "calculating": "Calculating your estimated delivery fee…",
     "routeAttribution": "Driving distance by",
     "outOfRange": "We don't deliver this far yet. Choose pickup or message us on WhatsApp.",
     "deliveryUnavailable": "We can't calculate delivery right now. Choose pickup or message us on WhatsApp.",
@@ -240,7 +236,7 @@
     "deliveryNowUnavailable": "Delivery isn't available right now. Please choose pickup.",
     "lookupBack": "Address lookup is working again. Please pick your address from the suggestions.",
     "rentalDateRejected": "Please check the rental date.",
-    "feeChanged": "The delivery fee changed to {fee}. Please check your total and place the order again.",
+    "feeChanged": "Your estimated delivery fee changed to {fee}. Please check your total and place the order again.",
     "perEvent": "per event",
     "subtotal": "Subtotal",
     "deliveryFeeLine": "Delivery ({km} km)",
@@ -249,7 +245,11 @@
     "feePendingAtCheckout": "We'll email you the delivery fee and the final total before you pay.",
     "feePendingNote": "We're confirming your delivery fee. You'll get an email with the final total and payment details shortly.",
     "rentalDateLine": "Rental date: {date}",
-    "successBodyFeePending": "Thank you! We'll confirm your delivery fee and email you the payment details."
+    "successBodyFeePending": "Thank you! We'll confirm your delivery fee and email you the payment details.",
+    "deliveryEstimateLabel": "Estimated delivery fee",
+    "deliveryEstimateDetail": "Based on a driving distance of about {km} km.",
+    "deliveryEstimatePrompt": "Pick your address from the suggestions to see your estimated delivery fee.",
+    "estimatedDeliveryFeeLine": "Estimated delivery ({km} km)"
   },
   "Quote": {
     "metaTitle": "Your quote",
@@ -301,12 +301,12 @@
     "offer1": "Meals",
     "offer2": "Snacks",
     "offer3": "Catering",
-    "offer4": "Event rentals",
+    "offer4": "Catering rentals",
     "offer5": "Meal delivery"
   },
   "ServicesPage": {
     "metaTitle": "Our Services | Zain's Treat n More",
-    "metaDescription": "Meals, snacks, catering, and event rental services from Zain's Treat n More — request a quote for your next event.",
+    "metaDescription": "Meals, snacks, catering, and catering rentals from Zain's Treat n More — request a quote for your next event.",
     "heading": "Our <em>Services</em>",
     "mealsHeading": "Meals",
     "mealsCopy": "Freshly prepared meals for individuals, families, and groups.",
@@ -315,8 +315,8 @@
     "cateringHeading": "Catering",
     "cateringCopy": "Catering for weddings, birthdays, corporate events, family gatherings, outdoor celebrations, and community/religious events.",
     "requestCateringQuote": "Request Catering Quote",
-    "eventRentalsHeading": "Event Rentals",
-    "eventRentalsCopy": "Event-related rental services that help customers organize memorable occasions.",
+    "eventRentalsHeading": "Catering Rentals",
+    "eventRentalsCopy": "Chafing dishes, cooking pots, coolers and more — the serving equipment you need to host your event.",
     "seeRentals": "See rentals",
     "requestQuote": "Request a Quote"
   },
@@ -344,7 +344,7 @@
     "formMessage": "Message",
     "formSubjectGeneral": "General Enquiry",
     "formSubjectCatering": "Catering",
-    "formSubjectEventRental": "Event Rental",
+    "formSubjectEventRental": "Catering Rental",
     "formSubjectMenu": "Menu Enquiry",
     "formSubjectOrder": "Order Enquiry",
     "formSubjectOther": "Other",
@@ -371,7 +371,7 @@
     "service": {
       "catering": "Catering",
       "meal_delivery": "Meal Delivery",
-      "event_rental": "Event Rental",
+      "event_rental": "Catering Rental",
       "other": "Other"
     },
     "cateringMessageLabel": "Message (optional)",
@@ -397,7 +397,6 @@
     "metaTitle": "Terms & Conditions | Zain's Treat n More",
     "metaDescription": "Read the terms and conditions for ordering from and using the Zain's Treat n More website.",
     "heading": "Terms & Conditions",
-    "legalReviewNotice": "Draft terms — pending review by a legal professional before go-live.",
     "orderingHeading": "Ordering",
     "orderingCopy": "By placing an order with Zain's Treat n More, you confirm that the details you provide are accurate and that you are authorized to place the order.",
     "paymentHeading": "Payment",
@@ -411,7 +410,7 @@
     "cateringHeading": "Catering Orders",
     "cateringCopy": "Catering orders may require advance notice, a minimum order size, and a deposit depending on the scale of the event.",
     "eventBookingsHeading": "Event Bookings",
-    "eventBookingsCopy": "Event rental bookings are subject to availability and should be confirmed in advance of the event date.",
+    "eventBookingsCopy": "Catering rental bookings are subject to availability and should be confirmed in advance of the event date.",
     "customerResponsibilitiesHeading": "Customer Responsibilities",
     "customerResponsibilitiesCopy": "Customers are responsible for providing accurate order, delivery, and contact information, including any allergy or dietary requirements.",
     "websiteUsageHeading": "Website Usage",
@@ -500,7 +499,7 @@
   "UtilityBar": {
     "halal": "100% Halal",
     "fresh": "Freshly Prepared Daily",
-    "catering": "Catering & Event Rentals",
+    "catering": "Catering & Rentals",
     "whatsapp": "WhatsApp Ordering"
   },
   "Whatsapp": {

@@ -29,7 +29,7 @@ export async function generateMetadata(): Promise<Metadata> {
     metadataBase: new URL(process.env.DOMAIN ? `https://${process.env.DOMAIN}` : "http://localhost:3000"),
     title: "Zain's Treat n More",
     description:
-      "Halal meals, snacks, catering, and event rentals from Zain's Treat n More — browse the menu and order online.",
+      "Halal meals, snacks, catering, and catering rentals from Zain's Treat n More — browse the menu and order online.",
     openGraph: {
       siteName: "Zain's Treat n More",
       images: [logo ?? "/logo.png"],

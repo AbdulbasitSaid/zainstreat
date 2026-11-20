@@ -48,35 +48,10 @@ export function SiteFooter() {
           <div>
             <p className="max-w-[42ch] text-on-dark-body">{t("tagline")}</p>
 
-            <div className="mt-6">
-              <h3 className="mb-3 text-text-light">
-                {t.rich("newsletterHeading", { em: (chunks) => <em>{chunks}</em> })}
-              </h3>
-              <form className="flex max-w-[360px] items-center gap-2 rounded-full bg-text-light py-1.5 pr-1.5 pl-5">
-                <input
-                  type="email"
-                  name="email"
-                  placeholder={t("newsletterPlaceholder")}
-                  aria-label={t("newsletterPlaceholder")}
-                  disabled
-                  className="min-w-0 flex-1 border-none bg-transparent p-0 text-text placeholder:text-text-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
-                />
-                <button
-                  type="submit"
-                  disabled
-                  aria-label={t("newsletterPlaceholder")}
-                  className="group/liquid relative isolate flex h-[2.4rem] w-[2.4rem] shrink-0 items-center justify-center rounded-full bg-primary text-text-light disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
-                >
-                  →
-                  <LiquidSurface pathClassName="fill-primary" splashClassName="fill-primary" />
-                </button>
-              </form>
-              <p className="mt-2.5 max-w-[36ch] text-[0.8rem] text-on-dark-faint">
-                {t("newsletterComingSoon")}
-              </p>
-            </div>
-
-            <div className="mt-7 flex gap-3">
+            <h3 className="mt-6 mb-3 text-text-light">
+              {t.rich("followHeading", { em: (chunks) => <em>{chunks}</em> })}
+            </h3>
+            <div className="flex gap-3">
               <a
                 href="https://instagram.com/zain_treats"
                 target="_blank"

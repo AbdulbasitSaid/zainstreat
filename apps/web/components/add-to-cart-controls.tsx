@@ -108,17 +108,17 @@ function useAddFeedback(onBrand: boolean) {
 }
 
 // Phase 37 Decision 2: rentals go in the same cart, one at a time.
-export function AddRentalToCart({ rental }: { rental: Rental }) {
+export function AddRentalToCart({ rental, onBrand = false }: { rental: Rental; onBrand?: boolean }) {
   const t = useTranslations("RentalsPage");
   const { addLine } = useCart();
-  const { anchorRef, justAdded, ring, flash } = useAddFeedback(false);
+  const { anchorRef, justAdded, ring, flash } = useAddFeedback(onBrand);
 
   return (
     <button
       ref={anchorRef}
       type="button"
       aria-label={`${t("addToCart")}: ${rental.name}`}
-      className={addButtonClasses(false)}
+      className={addButtonClasses(onBrand)}
       onClick={() => {
         addLine({
           kind: "rental",
@@ -133,7 +133,7 @@ export function AddRentalToCart({ rental }: { rental: Rental }) {
         flash(rental.name, null, rental.image_url);
       }}
     >
-      <AddGlyph onBrand={false} checked={justAdded} />
+      <AddGlyph onBrand={onBrand} checked={justAdded} />
       {ring}
     </button>
   );

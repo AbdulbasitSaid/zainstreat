@@ -32,11 +32,9 @@
     "footerNavLabel": "Navigation du pied de page",
     "footerExploreHeading": "Découvrir",
     "footerSupportHeading": "Aide",
-    "newsletterHeading": "Restez <em>informé</em>",
-    "newsletterPlaceholder": "E-mail",
-    "newsletterComingSoon": "Les inscriptions ne sont pas encore actives — suivez-nous sur Instagram ou WhatsApp en attendant.",
     "instagramLabel": "Instagram",
-    "whatsappLabel": "WhatsApp"
+    "whatsappLabel": "WhatsApp",
+    "followHeading": "Suivez-nous sur <em>Instagram</em>"
   },
   "HomePage": {
     "metaTitle": "Zain's Treat n More | Plats halal, snacks et traiteur",
@@ -54,12 +52,12 @@
     "servicesMeals": "Plats",
     "servicesSnacks": "Snacks",
     "servicesCatering": "Traiteur",
-    "servicesEventRentals": "Location pour événements",
+    "servicesEventRentals": "Location de matériel traiteur",
     "whyChooseUsEyebrow": "Notre promesse",
     "whyChooseUs": "Pourquoi nous <em>choisir</em>",
     "cateringCtaHeadline": "Vous organisez un événement ? Confiez-nous le service traiteur.",
     "requestCateringQuote": "Demander un devis traiteur",
-    "aboutPreview": "Chez Zain's Treat n More, nous pensons que chaque occasion mérite une cuisine savoureuse et un service exceptionnel — des plats fraîchement préparés, de délicieux snacks, un service traiteur professionnel et de la location pour événements, avec des ingrédients frais, 100 % halal et préparés avec hygiène.",
+    "aboutPreview": "Chez Zain's Treat n More, nous pensons que chaque occasion mérite une cuisine savoureuse et un service exceptionnel — des plats fraîchement préparés, de délicieux snacks, un service traiteur professionnel et de la location de matériel traiteur, avec des ingrédients frais, 100 % halal et préparés avec hygiène.",
     "learnMore": "En savoir plus",
     "trustHalalDesc": "Chaque plat est préparé selon les normes halal",
     "trustFreshDesc": "Préparé frais pour chaque commande",
@@ -70,7 +68,7 @@
     "viewFullMenu": "Voir tout le menu",
     "servicesEyebrow": "Ce que nous proposons",
     "servicesHeading": "Quelque chose de <em>délicieux</em> pour chaque occasion",
-    "servicesSupporting": "Des repas et snacks halal du quotidien jusqu'au service traiteur complet et à la location pour vos événements, nous nous occupons des plats et des détails pour que vous profitiez du moment.",
+    "servicesSupporting": "Des repas et snacks halal du quotidien jusqu'au service traiteur complet et à la location de matériel traiteur, nous nous occupons des plats et des détails pour que vous profitiez du moment.",
     "exploreServices": "Découvrir nos services"
   },
   "MenuPage": {
@@ -95,7 +93,6 @@
     "metaDescription": "Chauffe-plats, marmites, glacières et plus à louer pour votre événement.",
     "heading": "Location de matériel traiteur",
     "intro": "Matériel de service et essentiels de cuisine",
-    "pricePerEvent": "{price} par événement",
     "bookingHeading": "Des questions ?",
     "bookingNote": "Ajoutez les articles à louer à votre panier et choisissez la date lors de la commande. Des questions sur la disponibilité ? Écrivez-nous sur WhatsApp.",
     "whatsappButton": "Écrivez-nous sur WhatsApp",
@@ -118,7 +115,7 @@
     "decreaseQuantity": "Diminuer la quantité de {name}",
     "minimumOrder": "Commande minimum : {count}",
     "pricePerEvent": "{price} par événement",
-    "deliveryFromRate": "Les frais de livraison sont calculés lors de la commande : {rate} par km."
+    "deliveryFromRate": "Vos frais de livraison estimés sont calculés lors de la commande : {rate} par km."
   },
   "Order": {
     "metaTitle": "Passer votre commande | Zain's Treat n More",
@@ -193,7 +190,7 @@
       "tooShort": "{field} est trop court.",
       "tooLong": "{field} est trop long.",
       "pickAddress": "Veuillez choisir votre adresse dans les suggestions.",
-      "calculating": "Un instant — nous calculons encore les frais de livraison.",
+      "calculating": "Un instant — nous calculons encore vos frais de livraison estimés.",
       "noQuote": "Nous ne pouvons pas livrer à cette adresse. Choisissez le retrait ou écrivez-nous sur WhatsApp.",
       "tooSoon": "{field} doit être demain ou plus tard.",
       "tooFar": "{field} doit être dans moins d'un an."
@@ -226,8 +223,7 @@
     "addressSearchHint": "Commencez à saisir votre rue et votre numéro.",
     "searchingAddresses": "Recherche…",
     "noMatches": "Aucune adresse néerlandaise ne correspond. Vérifiez l'orthographe ou écrivez-nous sur WhatsApp.",
-    "calculating": "Calcul de la livraison…",
-    "deliveryEstimate": "Environ {km} km · Livraison {fee}",
+    "calculating": "Calcul de vos frais de livraison estimés…",
     "routeAttribution": "Distance en voiture par",
     "outOfRange": "Nous ne livrons pas encore aussi loin. Choisissez le retrait ou écrivez-nous sur WhatsApp.",
     "deliveryUnavailable": "Nous ne pouvons pas calculer la livraison pour le moment. Choisissez le retrait ou écrivez-nous sur WhatsApp.",
@@ -240,7 +236,7 @@
     "deliveryNowUnavailable": "La livraison n'est pas disponible pour le moment. Veuillez choisir le retrait.",
     "lookupBack": "La recherche d'adresses fonctionne à nouveau. Choisissez votre adresse dans les suggestions.",
     "rentalDateRejected": "Veuillez vérifier la date de location.",
-    "feeChanged": "Les frais de livraison sont passés à {fee}. Vérifiez votre total et passez à nouveau la commande.",
+    "feeChanged": "Vos frais de livraison estimés sont passés à {fee}. Vérifiez votre total et passez à nouveau la commande.",
     "perEvent": "par événement",
     "subtotal": "Sous-total",
     "deliveryFeeLine": "Livraison ({km} km)",
@@ -249,7 +245,11 @@
     "feePendingAtCheckout": "Nous vous enverrons par e-mail les frais de livraison et le total final avant votre paiement.",
     "feePendingNote": "Nous confirmons vos frais de livraison. Vous recevrez bientôt un e-mail avec le total final et les informations de paiement.",
     "rentalDateLine": "Date de location : {date}",
-    "successBodyFeePending": "Merci ! Nous confirmerons vos frais de livraison et vous enverrons les informations de paiement par e-mail."
+    "successBodyFeePending": "Merci ! Nous confirmerons vos frais de livraison et vous enverrons les informations de paiement par e-mail.",
+    "deliveryEstimateLabel": "Frais de livraison estimés",
+    "deliveryEstimateDetail": "Selon une distance en voiture d'environ {km} km.",
+    "deliveryEstimatePrompt": "Choisissez votre adresse dans les suggestions pour voir vos frais de livraison estimés.",
+    "estimatedDeliveryFeeLine": "Livraison estimée ({km} km)"
   },
   "Quote": {
     "metaTitle": "Votre devis",
@@ -301,12 +301,12 @@
     "offer1": "Plats",
     "offer2": "Snacks",
     "offer3": "Traiteur",
-    "offer4": "Location pour événements",
+    "offer4": "Location de matériel traiteur",
     "offer5": "Livraison de repas"
   },
   "ServicesPage": {
     "metaTitle": "Nos services | Zain's Treat n More",
-    "metaDescription": "Plats, snacks, service traiteur et location pour événements par Zain's Treat n More — demandez un devis pour votre prochain événement.",
+    "metaDescription": "Plats, snacks, service traiteur et location de matériel traiteur par Zain's Treat n More — demandez un devis pour votre prochain événement.",
     "heading": "Nos <em>services</em>",
     "mealsHeading": "Plats",
     "mealsCopy": "Des plats fraîchement préparés pour les particuliers, les familles et les groupes.",
@@ -315,8 +315,8 @@
     "cateringHeading": "Traiteur",
     "cateringCopy": "Service traiteur pour mariages, anniversaires, événements d'entreprise, réunions de famille, fêtes en plein air et événements communautaires ou religieux.",
     "requestCateringQuote": "Demander un devis traiteur",
-    "eventRentalsHeading": "Location pour événements",
-    "eventRentalsCopy": "Des services de location pour vous aider à organiser des moments inoubliables.",
+    "eventRentalsHeading": "Location de matériel traiteur",
+    "eventRentalsCopy": "Chauffe-plats, marmites, glacières et plus — le matériel de service dont vous avez besoin pour votre événement.",
     "seeRentals": "Voir la location",
     "requestQuote": "Demander un devis"
   },
@@ -344,7 +344,7 @@
     "formMessage": "Message",
     "formSubjectGeneral": "Question générale",
     "formSubjectCatering": "Traiteur",
-    "formSubjectEventRental": "Location pour événement",
+    "formSubjectEventRental": "Location de matériel traiteur",
     "formSubjectMenu": "Question sur le menu",
     "formSubjectOrder": "Question sur une commande",
     "formSubjectOther": "Autre",
@@ -371,7 +371,7 @@
     "service": {
       "catering": "Traiteur",
       "meal_delivery": "Livraison de repas",
-      "event_rental": "Location pour événement",
+      "event_rental": "Location de matériel traiteur",
       "other": "Autre"
     },
     "cateringMessageLabel": "Message (facultatif)",
@@ -397,7 +397,6 @@
     "metaTitle": "Conditions générales | Zain's Treat n More",
     "metaDescription": "Consultez les conditions générales de commande et d'utilisation du site de Zain's Treat n More.",
     "heading": "Conditions générales",
-    "legalReviewNotice": "Projet de conditions — en attente de relecture par un juriste avant la mise en ligne.",
     "orderingHeading": "Commandes",
     "orderingCopy": "En passant une commande auprès de Zain's Treat n More, vous confirmez que les informations fournies sont exactes et que vous êtes autorisé(e) à passer cette commande.",
     "paymentHeading": "Paiement",
@@ -411,7 +410,7 @@
     "cateringHeading": "Commandes traiteur",
     "cateringCopy": "Les commandes traiteur peuvent nécessiter un délai de prévenance, une quantité minimale et un acompte selon l'ampleur de l'événement.",
     "eventBookingsHeading": "Réservations pour événements",
-    "eventBookingsCopy": "Les réservations de location pour événements sont soumises à disponibilité et doivent être confirmées avant la date de l'événement.",
+    "eventBookingsCopy": "Les réservations de matériel traiteur sont soumises à disponibilité et doivent être confirmées avant la date de l'événement.",
     "customerResponsibilitiesHeading": "Responsabilités du client",
     "customerResponsibilitiesCopy": "Le client est responsable de fournir des informations exactes sur sa commande, la livraison et ses coordonnées, y compris toute allergie ou exigence alimentaire.",
     "websiteUsageHeading": "Utilisation du site",
@@ -500,7 +499,7 @@
   "UtilityBar": {
     "halal": "100 % halal",
     "fresh": "Préparé frais chaque jour",
-    "catering": "Traiteur et location pour événements",
+    "catering": "Traiteur et location de matériel",
     "whatsapp": "Commande par WhatsApp"
   },
   "Whatsapp": {

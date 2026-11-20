@@ -322,20 +322,33 @@ export function OrderDetailsForm({
           )}
           {/* Announced as it changes (Decision 11). */}
           <div id="order-address-estimate" aria-live="polite">
+            {!values.addressLookupDown && quoteStatus === "idle" && !errors.deliveryAddress && (
+              <p className="m-0 rounded-card border border-dashed border-text/20 px-4 py-3 text-sm text-text-muted">
+                {t("deliveryEstimatePrompt")}
+              </p>
+            )}
             {!values.addressLookupDown && quoteStatus === "loading" && (
-              <p className="m-0 text-sm text-text-muted">{t("calculating")}</p>
+              <div className="flex items-center gap-3 rounded-card bg-background-soft px-4 py-3 text-sm text-text-muted">
+                <span
+                  aria-hidden="true"
+                  className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-primary/30 border-t-primary motion-reduce:animate-none"
+                />
+                {t("calculating")}
+              </div>
             )}
             {!values.addressLookupDown && quoteStatus === "ready" && values.deliveryQuote && (
-              <>
-                <p className="m-0 font-semibold text-primary">
-                  {t("deliveryEstimate", {
-                    km: values.deliveryQuote.distance_km,
-                    fee: formatPrice(values.deliveryQuote.fee),
-                  })}
+              <div className="rounded-card bg-background-soft px-4 py-3">
+                <p className="m-0 flex items-baseline justify-between gap-4">
+                  <span className="font-semibold">{t("deliveryEstimateLabel")}</span>
+                  <span className="text-xl font-semibold text-primary">{formatPrice(values.deliveryQuote.fee)}</span>
+                </p>
+                <p className="m-0 mt-1 text-sm text-text-muted">
+                  {t("deliveryEstimateDetail", { km: values.deliveryQuote.distance_km })}
+                  {deliveryInfo && ` ${t("deliveryRateHint", { rate: formatPrice(deliveryInfo.rate_per_km) })}`}
                 </p>
                 {/* Mapbox Product Terms §1.4.1: attribution wherever its routing is used. */}
                 {values.deliveryQuote.estimated_by === "route" && (
-                  <p className="m-0 mt-1 text-xs text-text-muted">
+                  <p className="m-0 mt-2 text-xs text-text-muted">
                     {t("routeAttribution")}{" "}
                     <a href="https://www.mapbox.com/about/maps" target="_blank" rel="noopener noreferrer" className="underline">
                       © Mapbox
@@ -345,7 +358,7 @@ export function OrderDetailsForm({
                     </a>
                   </p>
                 )}
-              </>
+              </div>
             )}
             {(quoteStatus === "out_of_range" || quoteStatus === "unavailable" || quoteStatus === "error" || quoteStatus === "not_found") && (
               <Notice>

@@ -137,15 +137,15 @@ WHERE m.name = 'Puff Puff (small chops size)'
 
 -- Phase 36 rentals. Not truncated above: seed.sql reseeds the menu, and
 -- the owner's rentals are separate, so this only adds missing ones.
-INSERT INTO rentals (name, description, price, display_order)
-SELECT v.name, v.description, v.price, v.display_order
+INSERT INTO rentals (name, description, price, image_url, display_order)
+SELECT v.name, v.description, v.price, v.image_url, v.display_order
 FROM (VALUES
-    ('Chafing Dish – 10 L', 'Keeps food warm on the buffet.', 15.00::NUMERIC(10, 2), 1),
-    ('Chafing Dish – 5 L', 'Keeps food warm on the buffet.', 12.00, 2),
-    ('Double Cocktail Dispenser', 'Two-tank drinks dispenser.', 25.00, 3),
-    ('Large Cooking Pot', 'Holds up to 10 kg of rice.', 30.00, 4),
-    ('Cooler', 'Keeps food or drinks hot or cold.', 10.00, 5),
-    ('Electric Warmer Pot', 'Keeps dishes warm.', 10.00, 6),
-    ('Gas Burner', 'Supports up to 50 kg.', 15.00, 7)
-) AS v(name, description, price, display_order)
+    ('Chafing Dish – 10 L', 'Keeps food warm on the buffet.', 15.00::NUMERIC(10, 2), '/images/rentals/chafing-dish.jpg', 1),
+    ('Chafing Dish – 5 L', 'Keeps food warm on the buffet.', 12.00, '/images/rentals/chafing-dish.jpg', 2),
+    ('Double Cocktail Dispenser', 'Two-tank drinks dispenser.', 25.00, NULL, 3),
+    ('Large Cooking Pot', 'Holds up to 10 kg of rice.', 30.00, NULL, 4),
+    ('Cooler', 'Keeps food or drinks hot or cold.', 10.00, NULL, 5),
+    ('Electric Warmer Pot', 'Keeps dishes warm.', 10.00, NULL, 6),
+    ('Gas Burner', 'Supports up to 50 kg.', 15.00, NULL, 7)
+) AS v(name, description, price, image_url, display_order)
 WHERE NOT EXISTS (SELECT 1 FROM rentals r WHERE r.name = v.name AND r.deleted_at IS NULL);

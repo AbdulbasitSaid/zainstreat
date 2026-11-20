@@ -8,8 +8,10 @@ import { gsap, useGSAP } from "@/lib/gsap";
 const TOP = 52;
 const BOTTOM = 150;
 
-// A wave twice the pot's width, so sliding it one width left loops.
-const WAVE = "M0 8 Q20 0 40 8 T80 8 T120 8 T160 8 T200 8 T240 8 T280 8 T320 8 V200 H0 Z";
+// The wave repeats every 80 units, so sliding it 160 left loops seamlessly.
+// It runs to 400 so that, slid all the way, it still reaches past the pot's
+// inside right wall (172); at 320 that edge showed at the end of each loop.
+const WAVE = "M0 8 Q20 0 40 8 T80 8 T120 8 T160 8 T200 8 T240 8 T280 8 T320 8 T360 8 T400 8 V200 H0 Z";
 
 /**
  * The seats meter as a cooking pot filling with soup (Phase 31 Decision
