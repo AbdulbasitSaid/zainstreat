@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT capacity, now() >= LEAST(meal_orders_close_at, rsvp_closes_at, starts_at) as \"bookings_closed!\"\n           FROM events WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "capacity",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "bookings_closed!",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      null
+    ]
+  },
+  "hash": "817e98df6988cb65a94ba66b326120bc41312cf88e1dd264fe69d242cc85873b"
+}

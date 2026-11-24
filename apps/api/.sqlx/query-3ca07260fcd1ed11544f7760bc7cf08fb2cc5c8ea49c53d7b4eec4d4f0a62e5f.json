@@ -1,0 +1,92 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, category_id, name, description, price, image_url, is_available, is_featured, min_quantity,\n               draft, draft_updated_at as \"draft_updated_at: DateTime<Utc>\",\n               published_at as \"published_at: DateTime<Utc>\", translations\n        FROM menu_items\n        WHERE deleted_at IS NULL\n        ORDER BY display_order, id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "category_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "price",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 5,
+        "name": "image_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "is_available",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 7,
+        "name": "is_featured",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 8,
+        "name": "min_quantity",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 9,
+        "name": "draft",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 10,
+        "name": "draft_updated_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "published_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 12,
+        "name": "translations",
+        "type_info": "Jsonb"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "3ca07260fcd1ed11544f7760bc7cf08fb2cc5c8ea49c53d7b4eec4d4f0a62e5f"
+}

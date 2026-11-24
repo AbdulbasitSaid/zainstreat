@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                    UPDATE categories SET translations = $2\n                    WHERE id = $1 AND deleted_at IS NULL AND translations = $3\n                      AND name = $4 AND description IS NOT DISTINCT FROM $5\n                    ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Jsonb",
+        "Jsonb",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "296c4fbfdda6199f947d61ba4fd6bdd5a87e7682cbdb4ca10024793ccf526bab"
+}

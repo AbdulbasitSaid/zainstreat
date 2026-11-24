@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO menu_items (category_id, name, description, price, image_url, is_featured, min_quantity, display_order, published_at, translations)\n        VALUES ($1, $2, $3, $4, $5, $6, $7,\n            (SELECT COALESCE(MAX(display_order), -1) + 1 FROM menu_items WHERE category_id = $1), NULL, $8)\n        RETURNING id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text",
+        "Text",
+        "Numeric",
+        "Text",
+        "Bool",
+        "Int4",
+        "Jsonb"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "f2ac52277f53f37d74a56b2db5549f10e666c9d14779dc0b320c3f7d9ebc9841"
+}

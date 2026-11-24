@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE translation_settings\n        SET keep_version = keep_version + (keep_words IS DISTINCT FROM $1::text[])::int,\n            keep_words = $1, auto_translate = $2, stop_at_percent = $3, updated_at = now()\n        WHERE updated_at = $4\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "TextArray",
+        "Bool",
+        "Int4",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7f5a0c90913aeb7ba8c1e86b652e728d4ced0febe0837cd8e186c4390ad7249a"
+}
