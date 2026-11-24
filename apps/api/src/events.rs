@@ -469,6 +469,7 @@ pub async fn notify(
             body,
             reply_to: None,
             track,
+            attachments: Vec::new(),
         });
     }
 
@@ -535,6 +536,7 @@ pub async fn notify(
                 body,
                 reply_to: Some(booking.customer_email.clone()),
                 track: None,
+                attachments: Vec::new(),
             });
         }
     }
@@ -585,6 +587,9 @@ pub fn spawn_hold_sweeper(pool: PgPool, email: EmailConfig, push: PushConfig, pa
                 }
                 Err(error) => tracing::error!(%error, "event hold sweep failed"),
             }
+            // Phase 38 Decision 17: after the holds, so seats released at
+            // the deadline are already off the list.
+            crate::attendees::notify_closed_events(&pool, &email).await;
         }
     });
 }

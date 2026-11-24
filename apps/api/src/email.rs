@@ -1,6 +1,7 @@
 use lettre::Address;
 use lettre::message::Mailbox;
 use lettre::message::header::ContentType;
+use lettre::message::{Attachment, MultiPart, SinglePart};
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::{AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor};
 use chrono::{DateTime, Utc};
@@ -45,6 +46,14 @@ pub struct OutgoingEmail {
     pub reply_to: Option<String>,
     /// Customer emails only (Phase 25 Decision 6a).
     pub track: Option<DeliveryRef>,
+    /// Files sent along, like the attendee list (Phase 38 Decision 17).
+    pub attachments: Vec<EmailAttachment>,
+}
+
+pub struct EmailAttachment {
+    pub filename: String,
+    pub content_type: String,
+    pub bytes: Vec<u8>,
 }
 
 /// Where to record a customer email's outcome in `email_deliveries`.
@@ -284,16 +293,25 @@ fn build_message(settings: &SesSettings, email: &OutgoingEmail) -> Result<Messag
         None => from.clone(),
     };
 
-    Message::builder()
+    let builder = Message::builder()
         .from(from)
         .reply_to(reply_to)
         .to(email.to.parse::<Mailbox>().map_err(|e| e.to_string())?)
-        .subject(format!("{}{}", settings.subject_prefix, email.subject))
-        // Without a charset, mail clients read the UTF-8 body as
-        // Windows-1252 and € arrives as "â‚¬" (Phase 36 Decision 1).
-        .header(ContentType::TEXT_PLAIN)
-        .body(email.body.clone())
-        .map_err(|e| e.to_string())
+        .subject(format!("{}{}", settings.subject_prefix, email.subject));
+    if email.attachments.is_empty() {
+        return builder
+            // Without a charset, mail clients read the UTF-8 body as
+            // Windows-1252 and € arrives as "â‚¬" (Phase 36 Decision 1).
+            .header(ContentType::TEXT_PLAIN)
+            .body(email.body.clone())
+            .map_err(|e| e.to_string());
+    }
+    let mut parts = MultiPart::mixed().singlepart(SinglePart::plain(email.body.clone()));
+    for attachment in &email.attachments {
+        let content_type = ContentType::parse(&attachment.content_type).map_err(|e| e.to_string())?;
+        parts = parts.singlepart(Attachment::new(attachment.filename.clone()).body(attachment.bytes.clone(), content_type));
+    }
+    builder.multipart(parts).map_err(|e| e.to_string())
 }
 
 async fn send(settings: &SesSettings, email: &OutgoingEmail) -> Result<(), String> {
@@ -352,6 +370,7 @@ mod tests {
             body: "Hello".into(),
             reply_to: reply_to.map(str::to_string),
             track: None,
+            attachments: Vec::new(),
         }
     }
 
@@ -389,6 +408,23 @@ mod tests {
     fn email_subject_has_no_prefix_when_unset() {
         let message = build_message(&settings(""), &outgoing(None)).unwrap();
         assert_eq!(header(&message, "Subject").as_deref(), Some("New order"));
+    }
+
+    #[test]
+    fn email_carries_attachments() {
+        let email = OutgoingEmail {
+            attachments: vec![EmailAttachment {
+                filename: "abula-attendees.csv".into(),
+                content_type: "text/csv; charset=utf-8".into(),
+                bytes: b"Name\nAmina\n".to_vec(),
+            }],
+            ..outgoing(None)
+        };
+        let message = build_message(&settings(""), &email).unwrap();
+        let raw = String::from_utf8(message.formatted()).unwrap();
+        assert!(raw.contains("multipart/mixed"), "{raw}");
+        assert!(raw.contains("attachment; filename=\"abula-attendees.csv\""), "{raw}");
+        assert!(raw.contains("Hello"), "{raw}");
     }
 
     #[test]
