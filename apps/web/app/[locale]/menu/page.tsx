@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { PageHero } from "@/components/page-hero";
 import { Notice } from "@/components/notice";
 import { CategoryFilter } from "@/components/category-filter";
@@ -8,6 +8,7 @@ import { MenuFilterProvider, MenuFilterResults } from "@/components/menu-filter-
 import { Reveal } from "@/components/reveal";
 import { getCategories, getMenuItems } from "@/lib/api";
 import { localeAlternates } from "@/lib/seo";
+import type { AppLocale } from "@/i18n/routing";
 
 export const dynamic = "force-dynamic";
 
@@ -38,12 +39,13 @@ export default async function MenuPage({
   searchParams: Promise<{ category?: string | string[] }>;
 }) {
   const t = await getTranslations("MenuPage");
+  const locale = (await getLocale()) as AppLocale;
   const resolvedSearchParams = await searchParams;
   const selectedCategoryId = parseCategoryId(resolvedSearchParams.category);
 
   const [categories, items] = await Promise.all([
-    getCategories(),
-    getMenuItems(selectedCategoryId),
+    getCategories(locale),
+    getMenuItems(locale, selectedCategoryId),
   ]);
 
   const visibleCategories =

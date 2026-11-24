@@ -75,6 +75,12 @@ services:
       VAPID_SUBJECT: ${VAPID_SUBJECT:-}
       # Phase 37: driving distances for the delivery fee. Unset = straight-line estimate.
       MAPBOX_ACCESS_TOKEN: ${MAPBOX_ACCESS_TOKEN:-}
+      # Phase 38: DeepL for nl/fr menu text. Unset = translations typed in admin.
+      DEEPL_API_KEY: ${DEEPL_API_KEY:-}
+      # Phase 38 Decision 29: shared with web, which renders the attendee
+      # PDF for the owner email (at http://web:3000 unless WEB_INTERNAL_URL
+      # says otherwise). Unset = the email carries the CSV only.
+      INTERNAL_RENDER_TOKEN: ${INTERNAL_RENDER_TOKEN:-}
       PUBLIC_SITE_URL: ${PUBLIC_SITE_URL:-http://localhost:3000}
       PUBLIC_ADMIN_URL: ${PUBLIC_ADMIN_URL:-http://cms.localhost:3000}
       BANK_ACCOUNT_NAME: ${BANK_ACCOUNT_NAME:-}
@@ -105,6 +111,8 @@ services:
     environment:
       API_BASE_URL: http://api:${API_PORT:-8080}
       BUSINESS_KVK: ${BUSINESS_KVK:-}
+      # Phase 38 Decision 29: guards /api/internal/attendees-pdf.
+      INTERNAL_RENDER_TOKEN: ${INTERNAL_RENDER_TOKEN:-}
     ports:
       - "${WEB_PORT:-3000}:3000"
     depends_on:

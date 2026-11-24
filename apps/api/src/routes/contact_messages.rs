@@ -150,6 +150,7 @@ pub async fn create_contact_message(
             ),
             reply_to: Some(payload.email.trim().to_string()),
             track: None,
+            attachments: Vec::new(),
         });
     }
 

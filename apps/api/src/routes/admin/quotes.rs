@@ -428,6 +428,7 @@ pub async fn send_quote(
         body,
         reply_to: None,
         track: Some(DeliveryRef { pool: pool.clone(), order_id: None, quote_id: Some(quote.id), kind: "quote" }),
+        attachments: Vec::new(),
     });
 
     Ok(Json(SendQuoteResponse {

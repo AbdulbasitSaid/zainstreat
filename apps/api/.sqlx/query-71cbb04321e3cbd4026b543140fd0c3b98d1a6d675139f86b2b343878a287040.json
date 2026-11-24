@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, capacity, max_party_size,\n               (now() < LEAST(meal_orders_close_at, rsvp_closes_at, starts_at, closed_at)) as \"rsvp_open!\"\n        FROM events\n        WHERE slug = $1 AND published_at IS NOT NULL AND archived_at IS NULL\n        FOR UPDATE\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "capacity",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "max_party_size",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "rsvp_open!",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "71cbb04321e3cbd4026b543140fd0c3b98d1a6d675139f86b2b343878a287040"
+}

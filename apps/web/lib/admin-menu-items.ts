@@ -1,7 +1,10 @@
+import type { Translations, TranslationStatusPair } from "@/lib/admin-translations";
+
 export interface AdminPriceOption {
   id: number;
   label: string;
   price: string;
+  translations: Translations;
 }
 
 export interface AdminMenuItem {
@@ -24,6 +27,9 @@ export interface AdminMenuItem {
   has_draft: boolean;
   draft: MenuItemFields | null;
   draft_updated_at: string | null;
+  // Phase 38: live nl/fr, and the state of the version the form edits.
+  translations: Translations;
+  translation_status: TranslationStatusPair;
 }
 
 // The editable content: the create body, the draft-save body and the
@@ -33,9 +39,11 @@ export interface MenuItemFields {
   name: string;
   description: string | null;
   price: string | null;
-  price_options: { label: string; price: string }[];
+  price_options: { label: string; price: string; translations?: Translations }[];
   image_url: string | null;
   is_featured: boolean;
   // Phase 36 Decision 5; drafts saved before Phase 36 don't have it.
   min_quantity?: number;
+  // Phase 38; drafts saved before Phase 38 don't have it.
+  translations?: Translations;
 }

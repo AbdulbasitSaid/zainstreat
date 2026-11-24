@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE menu_items SET draft = $2 WHERE id = $1 AND draft = $3",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Jsonb",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d2d86196e00778989cfd495da112393d413dd3a55fa3cad430728fe6c28dfdc2"
+}

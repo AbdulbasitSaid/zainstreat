@@ -702,6 +702,32 @@ Pulls "delivery fee calculation" forward from Beyond MVP.
   event's address, never shown to customers. The quote editor gets a
   "Calculate delivery" helper.
 
+## Phase 38 — Menu Translations & Event Attendee Export
+
+Planned 2026-11-24 (see
+`specs/2026-11-24-phase-38-menu-translations-attendee-export/requirement.md`).
+Client feedback: the menu shows English on `/nl` and `/fr`, and the
+owner needs the attendee list once an event's registration has closed.
+
+- Menu item, category, price-option and rental names and descriptions
+  get Dutch and French versions, machine-translated from English by the
+  **DeepL API** when the owner saves. The owner can override them, and a
+  "keep as is" word list protects dish names. Existing content is filled
+  in automatically by a background sweep. DeepL's free allowance is
+  guarded in code: live usage, an 80 % stop line, per-run caps, no retry
+  loops and an owner on/off switch. Past the stop line the owner types
+  translations. Public menu responses are
+  localized, with English as the fallback.
+- Orders save each line's name in the customer's language for their
+  invoice, emails and tracking page; admin and kitchen keep English.
+- Once an event's bookings close, the Bookings tab shows "Registration
+  closed" with **Export attendees**: confirmed guests only, one row per
+  guest with plate and choices, as a CSV and a branded PDF file
+  (rendered with `@react-pdf/renderer` in the site's fonts and colours).
+  The owner can also **close bookings by hand** at any time, and reopen
+  them before the event's own deadline. The owner is emailed the CSV and
+  the PDF automatically when bookings close.
+
 ## Later — iDEAL Payments
 
 Agreed in the 2026-10-18 call but blocked on the client opening a

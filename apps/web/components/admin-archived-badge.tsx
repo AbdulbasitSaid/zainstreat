@@ -14,3 +14,12 @@ export function AdminArchivedBadge() {
     </span>
   );
 }
+
+// Phase 38: Dutch or French missing, out of date, or DeepL gave up.
+export function AdminTranslationBadge() {
+  return (
+    <span className="inline-block rounded-full border border-accent px-3 py-1 text-xs font-semibold text-text">
+      Needs translation
+    </span>
+  );
+}

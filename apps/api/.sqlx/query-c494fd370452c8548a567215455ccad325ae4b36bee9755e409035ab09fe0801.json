@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE categories SET draft = $2 WHERE id = $1 AND draft = $3",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Jsonb",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c494fd370452c8548a567215455ccad325ae4b36bee9755e409035ab09fe0801"
+}

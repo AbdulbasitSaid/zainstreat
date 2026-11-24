@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/button";
 import { Notice } from "@/components/notice";
 import { AdminImageUpload } from "@/components/admin-image-upload";
+import { AdminTranslationTabs, useTranslationSettings } from "@/components/admin-translation-tabs";
 import type { AdminRental, RentalFields } from "@/lib/admin-rentals";
+import type { Translations } from "@/lib/admin-translations";
 
 interface FieldErrorItem {
   field: string;
@@ -35,6 +37,9 @@ export function AdminRentalForm({ initialValue }: { initialValue?: AdminRental }
   const router = useRouter();
   const [name, setName] = useState(initialValue?.name ?? "");
   const [description, setDescription] = useState(initialValue?.description ?? "");
+  // Phase 38: DeepL fills what's missing on save (rentals have no drafts).
+  const [translations, setTranslations] = useState<Translations>(initialValue?.translations ?? {});
+  const translationSettings = useTranslationSettings();
   const [price, setPrice] = useState(initialValue?.price ?? "");
   const [imageUrl, setImageUrl] = useState<string | null>(initialValue?.image_url ?? null);
   const [isAvailable, setIsAvailable] = useState(initialValue?.is_available ?? true);
@@ -67,6 +72,7 @@ export function AdminRentalForm({ initialValue }: { initialValue?: AdminRental }
       image_url: imageUrl,
       is_available: isAvailable,
       display_order: Number.parseInt(displayOrder, 10) || 0,
+      translations,
     };
     const response = await fetch(initialValue ? `/api/admin/rentals/${initialValue.id}` : "/api/admin/rentals", {
       method: initialValue ? "PUT" : "POST",
@@ -120,39 +126,52 @@ export function AdminRentalForm({ initialValue }: { initialValue?: AdminRental }
     <form onSubmit={handleSubmit} noValidate className="flex max-w-[32rem] flex-col gap-5">
       {notice && <Notice>{notice}</Notice>}
 
-      <div>
-        <label htmlFor="rental-name" className="mb-1.5 block text-sm font-semibold">
-          Name
-        </label>
-        <input
-          id="rental-name"
-          type="text"
-          className="field"
-          maxLength={120}
-          value={name}
-          aria-invalid={fieldError("name") ? true : undefined}
-          onChange={(event) => setName(event.target.value)}
-        />
-        {fieldError("name") && <p className="m-0 mt-1 text-sm text-primary-dark">{fieldError("name")}</p>}
-      </div>
+      <AdminTranslationTabs
+        idPrefix="rental"
+        english={{ name, description }}
+        englishFields={
+          <>
+        <div>
+          <label htmlFor="rental-name" className="mb-1.5 block text-sm font-semibold">
+            Name
+          </label>
+          <input
+            id="rental-name"
+            type="text"
+            className="field"
+            maxLength={120}
+            value={name}
+            aria-invalid={fieldError("name") ? true : undefined}
+            onChange={(event) => setName(event.target.value)}
+          />
+          {fieldError("name") && <p className="m-0 mt-1 text-sm text-primary-dark">{fieldError("name")}</p>}
+        </div>
 
-      <div>
-        <label htmlFor="rental-description" className="mb-1.5 block text-sm font-semibold">
-          Description <span className="font-normal text-text-muted">(optional)</span>
-        </label>
-        <textarea
-          id="rental-description"
-          className="field"
-          rows={3}
-          maxLength={500}
-          value={description}
-          aria-invalid={fieldError("description") ? true : undefined}
-          onChange={(event) => setDescription(event.target.value)}
-        />
-        {fieldError("description") && (
-          <p className="m-0 mt-1 text-sm text-primary-dark">{fieldError("description")}</p>
-        )}
-      </div>
+        <div>
+          <label htmlFor="rental-description" className="mb-1.5 block text-sm font-semibold">
+            Description <span className="font-normal text-text-muted">(optional)</span>
+          </label>
+          <textarea
+            id="rental-description"
+            className="field"
+            rows={3}
+            maxLength={500}
+            value={description}
+            aria-invalid={fieldError("description") ? true : undefined}
+            onChange={(event) => setDescription(event.target.value)}
+          />
+          {fieldError("description") && (
+            <p className="m-0 mt-1 text-sm text-primary-dark">{fieldError("description")}</p>
+          )}
+        </div>
+          </>
+        }
+        translations={translations}
+        onChange={setTranslations}
+        status={initialValue?.translation_status}
+        fillsOn="save"
+        settings={translationSettings}
+      />
 
       <div>
         <label htmlFor="rental-price" className="mb-1.5 block text-sm font-semibold">

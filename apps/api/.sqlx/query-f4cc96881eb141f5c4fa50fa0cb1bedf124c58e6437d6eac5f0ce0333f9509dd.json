@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, slug, area, content->'en'->>'title' as \"title!\",\n               starts_at as \"starts_at: DateTime<Utc>\",\n               to_char(starts_at AT TIME ZONE 'Europe/Amsterdam', 'Dy FMDD Mon YYYY, HH24:MI') as \"starts_at_label!\",\n               LEAST(meal_orders_close_at, rsvp_closes_at, starts_at, closed_at) as \"bookings_close_at!: DateTime<Utc>\",\n               now() >= LEAST(meal_orders_close_at, rsvp_closes_at, starts_at, closed_at) as \"bookings_closed!\"\n        FROM events WHERE id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "slug",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "area",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "title!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "starts_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "starts_at_label!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "bookings_close_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "bookings_closed!",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      null,
+      false,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "f4cc96881eb141f5c4fa50fa0cb1bedf124c58e6437d6eac5f0ce0333f9509dd"
+}

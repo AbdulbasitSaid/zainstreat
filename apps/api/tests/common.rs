@@ -2,6 +2,7 @@ use api::email::EmailConfig;
 use api::payment::PaymentConfig;
 use api::delivery::{DeliveryConfig, FakeBackend};
 use api::push::PushConfig;
+use api::translation::TranslationConfig;
 use api::{MediaConfig, build_app};
 use argon2::Argon2;
 use argon2::password_hash::PasswordHasher;
@@ -96,6 +97,7 @@ pub async fn build_test_app_with_delivery(pool: PgPool, delivery: DeliveryConfig
         PaymentConfig::from_env(),
         PushConfig::disabled(),
         delivery,
+        TranslationConfig::disabled(),
     )
     .await
     .expect("failed to build app in test")
@@ -110,6 +112,7 @@ async fn send_raw(pool: PgPool, request: Request<Body>) -> (StatusCode, HeaderMa
         PaymentConfig::from_env(),
         PushConfig::disabled(),
         test_delivery(),
+        TranslationConfig::disabled(),
     )
     .await
     .expect("failed to build app in test");
@@ -133,6 +136,7 @@ pub async fn build_test_app(pool: PgPool) -> axum::Router {
         PaymentConfig::from_env(),
         PushConfig::disabled(),
         test_delivery(),
+        TranslationConfig::disabled(),
     )
     .await
     .expect("failed to build app in test")
@@ -149,6 +153,7 @@ pub async fn build_test_app_with_push(pool: PgPool, push: PushConfig) -> axum::R
         PaymentConfig::from_env(),
         push,
         test_delivery(),
+        TranslationConfig::disabled(),
     )
     .await
     .expect("failed to build app in test")
@@ -411,5 +416,40 @@ pub async fn post_multipart_with_cookie(
         builder = builder.header("cookie", cookie);
     }
     let (status, _headers, resp_body) = send(pool, builder.body(Body::from(body)).unwrap()).await;
+    (status, resp_body)
+}
+
+/// The same app with a DeepL backend (Phase 38): usually a fake.
+#[allow(dead_code)]
+pub async fn build_test_app_with_translation(pool: PgPool, translation: TranslationConfig) -> axum::Router {
+    build_app(
+        pool,
+        false,
+        test_media_config().await,
+        EmailConfig::from_env(),
+        PaymentConfig::from_env(),
+        PushConfig::disabled(),
+        test_delivery(),
+        translation,
+    )
+    .await
+    .expect("failed to build app in test")
+}
+
+/// Any method with a JSON body and an optional cookie, on a prebuilt app.
+#[allow(dead_code)]
+pub async fn send_json_on(
+    app: axum::Router,
+    method: &str,
+    uri: &str,
+    body: Option<Value>,
+    cookie: Option<&str>,
+) -> (StatusCode, Value) {
+    let mut builder = Request::builder().method(method).uri(uri).header("content-type", "application/json");
+    if let Some(cookie) = cookie {
+        builder = builder.header("cookie", cookie);
+    }
+    let body = body.map(|body| Body::from(body.to_string())).unwrap_or_else(Body::empty);
+    let (status, _headers, resp_body) = send_on(app, builder.body(body).unwrap()).await;
     (status, resp_body)
 }

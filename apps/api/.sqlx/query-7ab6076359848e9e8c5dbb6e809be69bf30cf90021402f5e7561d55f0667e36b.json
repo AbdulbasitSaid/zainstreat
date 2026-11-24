@@ -1,0 +1,50 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, name, description, translations, draft, published_at IS NOT NULL as \"published!\"\n        FROM categories WHERE deleted_at IS NULL ORDER BY id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "translations",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 4,
+        "name": "draft",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 5,
+        "name": "published!",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      true,
+      null
+    ]
+  },
+  "hash": "7ab6076359848e9e8c5dbb6e809be69bf30cf90021402f5e7561d55f0667e36b"
+}

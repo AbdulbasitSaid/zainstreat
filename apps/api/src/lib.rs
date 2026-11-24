@@ -1,3 +1,4 @@
+pub mod attendees;
 pub mod delivery;
 pub mod email;
 pub mod error;
@@ -13,6 +14,8 @@ pub mod rate_limit;
 pub mod retention;
 pub mod routes;
 pub mod site_content;
+pub mod translation;
+pub mod translation_sweep;
 pub mod validation;
 
 use axum::Router;
@@ -47,6 +50,7 @@ pub struct AppState {
     pub payment: payment::PaymentConfig,
     pub push: push::PushConfig,
     pub delivery: delivery::DeliveryConfig,
+    pub translation: translation::TranslationConfig,
 }
 
 impl FromRef<AppState> for PgPool {
@@ -85,6 +89,12 @@ impl FromRef<AppState> for delivery::DeliveryConfig {
     }
 }
 
+impl FromRef<AppState> for translation::TranslationConfig {
+    fn from_ref(state: &AppState) -> translation::TranslationConfig {
+        state.translation.clone()
+    }
+}
+
 /// `tower-sessions-sqlx-store` pulls in sqlx's `time` feature alongside this
 /// crate's own `chrono` feature; with both active, sqlx's compile-time query
 /// macros stop accepting `chrono::DateTime<Utc>` as a *bind parameter* type
@@ -115,6 +125,8 @@ pub(crate) fn chrono_date_to_offset(date: chrono::NaiveDate) -> time::Date {
     .expect("valid calendar date")
 }
 
+// One config per outside service; a struct would only rename the list.
+#[allow(clippy::too_many_arguments)]
 pub async fn build_app(
     pool: PgPool,
     cookie_secure: bool,
@@ -123,6 +135,7 @@ pub async fn build_app(
     payment: payment::PaymentConfig,
     push: push::PushConfig,
     delivery: delivery::DeliveryConfig,
+    translation: translation::TranslationConfig,
 ) -> Result<Router, sqlx::Error> {
     let session_store = PostgresStore::new(pool.clone());
     session_store.migrate().await?;
@@ -176,5 +189,6 @@ pub async fn build_app(
             payment,
             push,
             delivery,
+            translation,
         }))
 }

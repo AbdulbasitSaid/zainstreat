@@ -397,6 +397,55 @@ SES SMTP; without credentials the API logs every send as a no-op.
 - **Trying the PDOK-down path locally:** run the API with
   `PDOK_BASE_URL=http://127.0.0.1:9` (nothing listens there).
 
+## Menu translations (Phase 38)
+
+- **What it does.** Menu item, category, price-option and rental names
+  and descriptions are shown in Dutch and French on `/nl` and `/fr`,
+  machine-translated from English by the **DeepL API** when the owner
+  saves, and filled in for existing content by a five-minute background
+  sweep after deploy. The owner can edit any translation in the admin
+  forms' Nederlands / Français tabs; their edits are never overwritten.
+  Dish names on **Settings → Translations → Words to keep** are left as
+  they are.
+- **Key.** DeepL API Free (no card; the user confirmed on 2026-11-24
+  that it allows commercial use, with a 1,000,000-character allowance).
+  A Free key ends in `:fx` and is sent to `api-free.deepl.com`; any
+  other key goes to `api.deepl.com`. To set it up (once):
+  1. Create the key at deepl.com → Account → API keys.
+  2. `gh secret set DEEPL_API_KEY --env <env>` and pipe the key in.
+     Never commit it or put it in the web app.
+  3. First deploy after adding it: Promote with
+     `allow_env_changes: DEEPL_API_KEY`.
+- **The allowance can't be overrun.** Before every request the API
+  checks DeepL's own usage (`/v2/usage`, cached ten minutes) and sends
+  nothing past the stop line (80 % by default, set in Settings). One save
+  sends at most 5,000 characters, one sweep at most 20,000, a row that
+  fails three times is parked, and if usage can't be read nothing is
+  sent. Only text changes are translated: price, photo or availability
+  edits send nothing. Settings shows "{used} of {limit} characters".
+- **Without a key, past the stop line, or switched off**, the site shows
+  English wherever a translation is missing and the owner types Dutch
+  and French in admin.
+- **What leaves the server.** Menu text only, never customer data. Logs
+  carry row ids and character counts, never the text.
+
+## Event attendees: close, CSV and PDF (Phase 38)
+
+- **Closing.** The admin's Bookings tab has **Close bookings** (stops
+  bookings, waitlist joins and guest cancellations straight away) and,
+  until the event's own deadline, **Reopen bookings**. Closing, by hand or
+  by deadline, emails the owner the attendee list once.
+- **PDF.** **Download PDF** is rendered by the web app
+  (`@react-pdf/renderer`, fonts in `apps/web/assets/fonts/`). The owner
+  email gets the same PDF from web's internal endpoint
+  `/api/internal/attendees-pdf`, which Caddy hides on every public host.
+- **Secret (once):**
+  1. `openssl rand -hex 32 | gh secret set INTERNAL_RENDER_TOKEN --env <env>`.
+  2. First deploy after adding it: Promote with
+     `allow_env_changes: INTERNAL_RENDER_TOKEN`.
+  Without it the email still goes, with the CSV only, and the API logs
+  "attendee pdf render failed" with the event id.
+
 ## Security headers, privacy and retention (Phase 33)
 
 - **Headers.** Caddy sends HSTS, `nosniff`, `Referrer-Policy`,

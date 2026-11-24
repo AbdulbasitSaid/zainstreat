@@ -6,6 +6,7 @@ use crate::MediaConfig;
 use crate::chrono_to_offset;
 use crate::error::{AppError, FieldError};
 use crate::routes::admin::menu_items::{delete_media_object, is_valid_media_url};
+use crate::translation::{self, Notice, StatusPair, TranslationConfig, Unit};
 use axum::{
     Json,
     extract::{Path, State},
@@ -14,6 +15,7 @@ use axum::{
 use chrono::{DateTime, Utc};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use sqlx::PgPool;
 
 const NAME_MAX_CHARS: usize = 120;
@@ -32,6 +34,11 @@ pub struct AdminRentalResponse {
     pub display_order: i32,
     pub is_archived: bool,
     pub updated_at: DateTime<Utc>,
+    /// Phase 38 Decision 1: name and description in nl/fr.
+    pub translations: Value,
+    pub translation_status: StatusPair,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub translation_notice: Option<Notice>,
 }
 
 struct RentalRow {
@@ -44,22 +51,39 @@ struct RentalRow {
     display_order: i32,
     deleted_at: Option<DateTime<Utc>>,
     updated_at: DateTime<Utc>,
+    translations: Value,
 }
 
-impl From<RentalRow> for AdminRentalResponse {
-    fn from(row: RentalRow) -> Self {
-        Self {
-            id: row.id,
-            name: row.name,
-            description: row.description,
-            price: row.price,
-            image_url: row.image_url,
-            is_available: row.is_available,
-            display_order: row.display_order,
-            is_archived: row.deleted_at.is_some(),
-            updated_at: row.updated_at,
+fn rental_unit(name: &str, description: Option<&str>, translations: Value) -> Unit {
+    Unit::new(translation::english(&[("name", Some(name)), ("description", description)]), translations)
+}
+
+impl RentalRow {
+    fn into_response(self, keep_version: i32) -> AdminRentalResponse {
+        let translation_status =
+            rental_unit(&self.name, self.description.as_deref(), self.translations.clone()).status(keep_version);
+        AdminRentalResponse {
+            translations: self.translations,
+            translation_status,
+            translation_notice: None,
+            id: self.id,
+            name: self.name,
+            description: self.description,
+            price: self.price,
+            image_url: self.image_url,
+            is_available: self.is_available,
+            display_order: self.display_order,
+            is_archived: self.deleted_at.is_some(),
+            updated_at: self.updated_at,
         }
     }
+}
+
+async fn respond(pool: &PgPool, id: i64, notice: Option<Notice>) -> Result<AdminRentalResponse, AppError> {
+    let keep_version = translation::load_settings(pool).await?.keep_version;
+    let mut response = load_rental(pool, id).await?.into_response(keep_version);
+    response.translation_notice = notice;
+    Ok(response)
 }
 
 #[derive(Debug, Deserialize)]
@@ -71,6 +95,23 @@ pub struct RentalFields {
     pub image_url: Option<String>,
     pub is_available: bool,
     pub display_order: i32,
+    /// Phase 38 Decision 5: the owner's nl/fr, if edited.
+    #[serde(default = "translation::empty_translations")]
+    pub translations: Value,
+}
+
+/// Phase 38 Decisions 2, 3, 5: the owner's nl/fr edits, then DeepL.
+async fn translate_rental(
+    config: &TranslationConfig,
+    pool: &PgPool,
+    fields: &mut RentalFields,
+) -> Result<Option<Notice>, AppError> {
+    let description = clean_description(fields.description.as_deref());
+    let mut units = [rental_unit(fields.name.trim(), description.as_deref(), fields.translations.clone())];
+    let notice = translation::prepare(config, pool, &mut units).await?;
+    let [unit] = units;
+    fields.translations = unit.translations;
+    Ok(notice)
 }
 
 #[derive(Debug, Deserialize)]
@@ -137,7 +178,8 @@ pub async fn list_rentals(State(pool): State<PgPool>) -> Result<Json<Vec<AdminRe
         RentalRow,
         r#"
         SELECT id, name, description, price, image_url, is_available, display_order,
-               deleted_at as "deleted_at: DateTime<Utc>", updated_at as "updated_at: DateTime<Utc>"
+               deleted_at as "deleted_at: DateTime<Utc>", updated_at as "updated_at: DateTime<Utc>",
+               translations
         FROM rentals
         WHERE deleted_at IS NULL
         ORDER BY display_order, id
@@ -146,7 +188,8 @@ pub async fn list_rentals(State(pool): State<PgPool>) -> Result<Json<Vec<AdminRe
     .fetch_all(&pool)
     .await?;
 
-    Ok(Json(rows.into_iter().map(AdminRentalResponse::from).collect()))
+    let keep_version = translation::load_settings(&pool).await?.keep_version;
+    Ok(Json(rows.into_iter().map(|row| row.into_response(keep_version)).collect()))
 }
 
 async fn load_rental(pool: &PgPool, id: i64) -> Result<RentalRow, AppError> {
@@ -154,7 +197,8 @@ async fn load_rental(pool: &PgPool, id: i64) -> Result<RentalRow, AppError> {
         RentalRow,
         r#"
         SELECT id, name, description, price, image_url, is_available, display_order,
-               deleted_at as "deleted_at: DateTime<Utc>", updated_at as "updated_at: DateTime<Utc>"
+               deleted_at as "deleted_at: DateTime<Utc>", updated_at as "updated_at: DateTime<Utc>",
+               translations
         FROM rentals
         WHERE id = $1
         "#,
@@ -169,16 +213,19 @@ pub async fn get_rental(
     State(pool): State<PgPool>,
     Path(id): Path<i64>,
 ) -> Result<Json<AdminRentalResponse>, AppError> {
-    Ok(Json(load_rental(&pool, id).await?.into()))
+    Ok(Json(respond(&pool, id, None).await?))
 }
 
 /// A 0-row conditional UPDATE: gone or archived → 404, moved on → 409
 /// with the live rental.
 async fn rental_or_conflict(pool: &PgPool, id: i64) -> AppError {
     match load_rental(pool, id).await {
-        Ok(row) if row.deleted_at.is_none() => AppError::Conflict(
-            serde_json::to_value(AdminRentalResponse::from(row)).expect("serializable"),
-        ),
+        Ok(row) if row.deleted_at.is_none() => match translation::load_settings(pool).await {
+            Ok(settings) => AppError::Conflict(
+                serde_json::to_value(row.into_response(settings.keep_version)).expect("serializable"),
+            ),
+            Err(err) => AppError::Database(err),
+        },
         Ok(_) => AppError::NotFound,
         Err(err) => err,
     }
@@ -187,14 +234,16 @@ async fn rental_or_conflict(pool: &PgPool, id: i64) -> AppError {
 pub async fn create_rental(
     State(pool): State<PgPool>,
     State(media): State<MediaConfig>,
-    Json(fields): Json<RentalFields>,
+    State(translator): State<TranslationConfig>,
+    Json(mut fields): Json<RentalFields>,
 ) -> Result<(StatusCode, Json<AdminRentalResponse>), AppError> {
     validate_rental(&fields, &media, None)?;
+    let notice = translate_rental(&translator, &pool, &mut fields).await?;
 
     let id = sqlx::query_scalar!(
         r#"
-        INSERT INTO rentals (name, description, price, image_url, is_available, display_order)
-        VALUES ($1, $2, $3, $4, $5, $6)
+        INSERT INTO rentals (name, description, price, image_url, is_available, display_order, translations)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING id
         "#,
         fields.name.trim(),
@@ -203,11 +252,12 @@ pub async fn create_rental(
         fields.image_url,
         fields.is_available,
         fields.display_order,
+        fields.translations,
     )
     .fetch_one(&pool)
     .await?;
 
-    Ok((StatusCode::CREATED, Json(load_rental(&pool, id).await?.into())))
+    Ok((StatusCode::CREATED, Json(respond(&pool, id, notice).await?)))
 }
 
 /// A replaced photo is deleted from storage: rentals have no preview that
@@ -215,21 +265,23 @@ pub async fn create_rental(
 pub async fn update_rental(
     State(pool): State<PgPool>,
     State(media): State<MediaConfig>,
+    State(translator): State<TranslationConfig>,
     Path(id): Path<i64>,
-    Json(payload): Json<UpdateRentalRequest>,
+    Json(mut payload): Json<UpdateRentalRequest>,
 ) -> Result<Json<AdminRentalResponse>, AppError> {
     let current = load_rental(&pool, id).await?;
     if current.deleted_at.is_some() {
         return Err(AppError::NotFound);
     }
+    validate_rental(&payload.fields, &media, current.image_url.as_deref())?;
+    let notice = translate_rental(&translator, &pool, &mut payload.fields).await?;
     let fields = &payload.fields;
-    validate_rental(fields, &media, current.image_url.as_deref())?;
 
     let previous_image = sqlx::query_scalar!(
         r#"
         UPDATE rentals r
         SET name = $3, description = $4, price = $5, image_url = $6, is_available = $7,
-            display_order = $8, updated_at = now()
+            display_order = $8, translations = $9, updated_at = now()
         FROM (SELECT id, image_url FROM rentals WHERE id = $1 FOR UPDATE) before
         WHERE r.id = before.id AND r.updated_at = $2 AND r.deleted_at IS NULL
         RETURNING before.image_url
@@ -242,6 +294,7 @@ pub async fn update_rental(
         fields.image_url,
         fields.is_available,
         fields.display_order,
+        fields.translations,
     )
     .fetch_optional(&pool)
     .await?;
@@ -255,7 +308,7 @@ pub async fn update_rental(
         delete_media_object(&media, &previous).await;
     }
 
-    Ok(Json(load_rental(&pool, id).await?.into()))
+    Ok(Json(respond(&pool, id, notice).await?))
 }
 
 /// Soft delete; the photo stays in storage, like an archived menu item's.
@@ -280,5 +333,5 @@ pub async fn archive_rental(
         return Err(rental_or_conflict(&pool, id).await);
     }
 
-    Ok(Json(load_rental(&pool, id).await?.into()))
+    Ok(Json(respond(&pool, id, None).await?))
 }

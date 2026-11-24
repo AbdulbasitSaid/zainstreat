@@ -41,10 +41,18 @@
 	header {$CSP_HEADER:Content-Security-Policy-Report-Only} "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://api.{$DOMAIN}; font-src 'self'; connect-src 'self' https://api.{$DOMAIN}; worker-src 'self'; frame-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests"
 }
 
+# The API fetches attendee PDFs from web over the Docker network (Phase 38
+# Decision 29); the render endpoint is never public.
+(no-internal) {
+	@internal path /api/internal /api/internal/*
+	respond @internal 404
+}
+
 {$DOMAIN} {
 	import noindex-{$NOINDEX:false}
 	import security-headers
 	import csp-public
+	import no-internal
 	log {
 		format json
 	}
@@ -64,6 +72,7 @@ cms.{$DOMAIN} {
 	header X-Robots-Tag "noindex, nofollow"
 	import security-headers
 	import csp-cms
+	import no-internal
 	reverse_proxy web:3000
 }
 

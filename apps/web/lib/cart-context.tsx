@@ -10,7 +10,10 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useLocale } from "next-intl";
 import { parsePrice } from "@/lib/format";
+import type { LocalizedText } from "@/lib/api";
+import type { AppLocale } from "@/i18n/routing";
 
 // A menu item or a rental (Phase 37 Decision 2). For a rental, `itemId` is
 // the rental's id.
@@ -28,6 +31,10 @@ export interface CartLine {
   quantity: number;
   // The item's minimum order when it was added (Phase 36 Decision 3).
   minQuantity: number;
+  // Phase 38 Decision 8: every language, so the cart follows the site's.
+  // Lines stored before Phase 38 have neither and show `name` as stored.
+  names?: LocalizedText;
+  optionLabels?: LocalizedText | null;
 }
 
 type NewCartLine = Omit<CartLine, "key" | "quantity">;
@@ -70,8 +77,25 @@ function isCartLine(value: unknown): value is StoredCartLine {
     typeof v.quantity === "number" &&
     v.quantity > 0 &&
     (v.kind === undefined || v.kind === "menu" || v.kind === "rental") &&
-    (v.minQuantity === undefined || (typeof v.minQuantity === "number" && v.minQuantity >= 1))
+    (v.minQuantity === undefined || (typeof v.minQuantity === "number" && v.minQuantity >= 1)) &&
+    (v.names === undefined || isLocalizedText(v.names)) &&
+    (v.optionLabels === undefined || v.optionLabels === null || isLocalizedText(v.optionLabels))
   );
+}
+
+function isLocalizedText(value: unknown): value is LocalizedText {
+  if (typeof value !== "object" || value === null) return false;
+  const v = value as Record<string, unknown>;
+  return typeof v.en === "string" && typeof v.nl === "string" && typeof v.fr === "string";
+}
+
+// The line as the current language shows it (Phase 38 Decision 8).
+function localizeLine(line: CartLine, locale: AppLocale): CartLine {
+  return {
+    ...line,
+    name: line.names?.[locale] ?? line.name,
+    optionLabel: line.optionLabels?.[locale] ?? line.optionLabel,
+  };
 }
 
 function cartReducer(lines: CartLine[], action: CartAction): CartLine[] {
@@ -89,6 +113,8 @@ function cartReducer(lines: CartLine[], action: CartAction): CartLine[] {
             ? {
                 ...line,
                 name: action.line.name,
+                names: action.line.names,
+                optionLabels: action.line.optionLabels,
                 imageUrl: action.line.imageUrl,
                 minQuantity: action.line.minQuantity,
                 quantity: capQuantity(line.kind, Math.max(line.quantity + action.quantity, action.line.minQuantity)),
@@ -131,7 +157,9 @@ interface CartContextValue {
 const CartContext = createContext<CartContextValue | null>(null);
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [lines, dispatch] = useReducer(cartReducer, []);
+  const locale = useLocale() as AppLocale;
+  const [storedLines, dispatch] = useReducer(cartReducer, []);
+  const lines = useMemo(() => storedLines.map((line) => localizeLine(line, locale)), [storedLines, locale]);
   const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
@@ -156,11 +184,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!isHydrated) return;
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(lines));
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(storedLines));
     } catch {
       // localStorage unavailable (quota, private browsing) — degrade to in-memory only.
     }
-  }, [lines, isHydrated]);
+  }, [storedLines, isHydrated]);
 
   const addLine = useCallback((line: NewCartLine, quantity = 1) => {
     dispatch({ type: "add", line, quantity });

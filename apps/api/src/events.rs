@@ -283,7 +283,7 @@ pub async fn load_booking(pool: &PgPool, booking_id: i64) -> Result<Option<Booki
                e.slug, e.content, e.area, e.address, e.cover_image_url,
                e.starts_at as "starts_at: chrono::DateTime<chrono::Utc>",
                to_char(e.starts_at AT TIME ZONE 'Europe/Amsterdam', 'DD-MM-YYYY HH24:MI') as "starts_local!",
-               (now() < COALESCE(e.meal_orders_close_at, e.starts_at)) as "guest_can_cancel!"
+               (now() < LEAST(e.meal_orders_close_at, e.closed_at, e.starts_at)) as "guest_can_cancel!"
         FROM event_bookings b
         JOIN events e ON e.id = b.event_id
         LEFT JOIN orders o ON o.id = b.order_id
@@ -469,6 +469,7 @@ pub async fn notify(
             body,
             reply_to: None,
             track,
+            attachments: Vec::new(),
         });
     }
 
@@ -535,6 +536,7 @@ pub async fn notify(
                 body,
                 reply_to: Some(booking.customer_email.clone()),
                 track: None,
+                attachments: Vec::new(),
             });
         }
     }
@@ -585,6 +587,9 @@ pub fn spawn_hold_sweeper(pool: PgPool, email: EmailConfig, push: PushConfig, pa
                 }
                 Err(error) => tracing::error!(%error, "event hold sweep failed"),
             }
+            // Phase 38 Decision 17: after the holds, so seats released at
+            // the deadline are already off the list.
+            crate::attendees::notify_closed_events(&pool, &email).await;
         }
     });
 }

@@ -1,6 +1,7 @@
 use crate::MediaConfig;
 use crate::chrono_to_offset;
 use crate::error::{AppError, FieldError};
+use crate::translation::{self, StatusPair, Unit};
 use axum::{
     Json,
     extract::{Path, State},
@@ -8,6 +9,7 @@ use axum::{
 use chrono::{DateTime, Utc};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use sqlx::PgPool;
 use std::collections::HashMap;
 
@@ -16,6 +18,9 @@ pub struct PriceOptionInput {
     pub label: String,
     #[serde(serialize_with = "rust_decimal::serde::str::serialize")]
     pub price: Decimal,
+    /// Phase 38 Decision 1: the label in nl/fr.
+    #[serde(default = "translation::empty_translations")]
+    pub translations: Value,
 }
 
 #[derive(Debug, Serialize)]
@@ -24,6 +29,7 @@ pub struct AdminPriceOptionResponse {
     pub label: String,
     #[serde(with = "rust_decimal::serde::str")]
     pub price: Decimal,
+    pub translations: Value,
 }
 
 struct PriceOptionRow {
@@ -31,6 +37,7 @@ struct PriceOptionRow {
     menu_item_id: i64,
     label: String,
     price: Decimal,
+    translations: Value,
 }
 
 #[derive(Debug, Serialize)]
@@ -57,6 +64,10 @@ pub struct AdminMenuItemResponse {
     pub draft: Option<MenuItemFields>,
     /// The optimistic-concurrency token for draft saves and publish.
     pub draft_updated_at: Option<DateTime<Utc>>,
+    /// Phase 38: the live nl/fr text, and the state of the version the form
+    /// edits (the draft when there is one), item and options combined.
+    pub translations: Value,
+    pub translation_status: StatusPair,
 }
 
 struct MenuItemRow {
@@ -75,6 +86,7 @@ struct MenuItemRow {
     draft: Option<serde_json::Value>,
     draft_updated_at: Option<DateTime<Utc>>,
     published_at: Option<DateTime<Utc>>,
+    translations: Value,
 }
 
 /// A menu item's editable content: the create body, the draft-save body
@@ -93,6 +105,46 @@ pub struct MenuItemFields {
     /// Phase 36 Decision 2. Drafts saved before Phase 36 have no value.
     #[serde(default = "default_min_quantity")]
     pub min_quantity: i32,
+    /// Phase 38 Decision 1: name and description in nl/fr. Drafts saved
+    /// before Phase 38 have none.
+    #[serde(default = "translation::empty_translations")]
+    pub translations: Value,
+}
+
+impl MenuItemFields {
+    /// The item, then each price option, as translation units.
+    pub(crate) fn units(&self) -> Vec<Unit> {
+        let mut units = vec![Unit::new(
+            translation::english(&[("name", Some(&self.name)), ("description", self.description.as_deref())]),
+            self.translations.clone(),
+        )];
+        units.extend(self.price_options.iter().map(|option| {
+            Unit::new(translation::english(&[("label", Some(&option.label))]), option.translations.clone())
+        }));
+        units
+    }
+
+    pub(crate) fn set_units(&mut self, units: Vec<Unit>) {
+        let mut units = units.into_iter();
+        if let Some(item) = units.next() {
+            self.translations = item.translations;
+        }
+        for (option, unit) in self.price_options.iter_mut().zip(units) {
+            option.translations = unit.translations;
+        }
+    }
+
+    pub(crate) fn translation_status(&self, keep_version: i32) -> StatusPair {
+        StatusPair::worst(self.units().iter().map(|unit| unit.status(keep_version)))
+    }
+}
+
+/// Phase 38 Decision 5: keeps the owner's nl/fr edits. DeepL runs on
+/// publish, not on every autosave (Decision 2).
+fn accept_translation_edits(fields: &mut MenuItemFields) {
+    let mut units = fields.units();
+    translation::accept_edits(&mut units);
+    fields.set_units(units);
 }
 
 fn default_min_quantity() -> i32 {
@@ -240,6 +292,7 @@ pub(crate) async fn validate_menu_item(
 fn rows_to_responses(
     items: Vec<MenuItemRow>,
     option_rows: Vec<PriceOptionRow>,
+    keep_version: i32,
 ) -> Vec<AdminMenuItemResponse> {
     let mut options_by_item: HashMap<i64, Vec<AdminPriceOptionResponse>> = HashMap::new();
     for row in option_rows {
@@ -250,17 +303,47 @@ fn rows_to_responses(
                 id: row.id,
                 label: row.label,
                 price: row.price,
+                translations: row.translations,
             });
     }
 
     items
         .into_iter()
-        .map(|item| AdminMenuItemResponse {
-            price_options: options_by_item.remove(&item.id).unwrap_or_default(),
+        .map(|mut item| {
+            let price_options = options_by_item.remove(&item.id).unwrap_or_default();
+            let draft = item.draft.take().and_then(|draft| parse_draft(item.id, draft));
+            let translation_status = match &draft {
+                Some(draft) => draft.translation_status(keep_version),
+                None => MenuItemFields {
+                    category_id: item.category_id,
+                    name: item.name.clone(),
+                    description: item.description.clone(),
+                    price: item.price,
+                    price_options: price_options
+                        .iter()
+                        .map(|option| PriceOptionInput {
+                            label: option.label.clone(),
+                            price: option.price,
+                            translations: option.translations.clone(),
+                        })
+                        .collect(),
+                    image_url: None,
+                    is_featured: item.is_featured,
+                    min_quantity: item.min_quantity,
+                    translations: item.translations.clone(),
+                }
+                .translation_status(keep_version),
+            };
+            (item, price_options, draft, translation_status)
+        })
+        .map(|(item, price_options, draft, translation_status)| AdminMenuItemResponse {
+            price_options,
             is_published: item.published_at.is_some(),
-            has_draft: item.draft.is_some(),
-            draft: item.draft.and_then(|draft| parse_draft(item.id, draft)),
+            has_draft: draft.is_some(),
+            draft,
             draft_updated_at: item.draft_updated_at,
+            translations: item.translations,
+            translation_status,
             id: item.id,
             category_id: item.category_id,
             category_name: item.category_name,
@@ -288,7 +371,7 @@ pub async fn list_menu_items(
                mi.deleted_at as "deleted_at: DateTime<Utc>",
                mi.updated_at as "updated_at: DateTime<Utc>",
                mi.draft, mi.draft_updated_at as "draft_updated_at: DateTime<Utc>",
-               mi.published_at as "published_at: DateTime<Utc>"
+               mi.published_at as "published_at: DateTime<Utc>", mi.translations
         FROM menu_items mi
         JOIN categories c ON c.id = mi.category_id
         ORDER BY mi.display_order, mi.id
@@ -300,7 +383,7 @@ pub async fn list_menu_items(
     let option_rows = sqlx::query_as!(
         PriceOptionRow,
         r#"
-        SELECT id, menu_item_id, label, price
+        SELECT id, menu_item_id, label, price, translations
         FROM menu_item_price_options
         WHERE deleted_at IS NULL
         ORDER BY menu_item_id, display_order, id
@@ -309,7 +392,8 @@ pub async fn list_menu_items(
     .fetch_all(&pool)
     .await?;
 
-    Ok(Json(rows_to_responses(items, option_rows)))
+    let keep_version = translation::load_settings(&pool).await?.keep_version;
+    Ok(Json(rows_to_responses(items, option_rows, keep_version)))
 }
 
 /// Shared by every write handler's success path and by `menu_item_or_conflict`
@@ -330,7 +414,7 @@ pub async fn get_menu_item(
                mi.deleted_at as "deleted_at: DateTime<Utc>",
                mi.updated_at as "updated_at: DateTime<Utc>",
                mi.draft, mi.draft_updated_at as "draft_updated_at: DateTime<Utc>",
-               mi.published_at as "published_at: DateTime<Utc>"
+               mi.published_at as "published_at: DateTime<Utc>", mi.translations
         FROM menu_items mi
         JOIN categories c ON c.id = mi.category_id
         WHERE mi.id = $1
@@ -344,7 +428,7 @@ pub async fn get_menu_item(
     let option_rows = sqlx::query_as!(
         PriceOptionRow,
         r#"
-        SELECT id, menu_item_id, label, price
+        SELECT id, menu_item_id, label, price, translations
         FROM menu_item_price_options
         WHERE menu_item_id = $1 AND deleted_at IS NULL
         ORDER BY display_order, id
@@ -354,8 +438,9 @@ pub async fn get_menu_item(
     .fetch_all(&pool)
     .await?;
 
+    let keep_version = translation::load_settings(&pool).await?.keep_version;
     Ok(Json(
-        rows_to_responses(vec![item], option_rows)
+        rows_to_responses(vec![item], option_rows, keep_version)
             .into_iter()
             .next()
             .expect("one row in, one row out"),
@@ -383,13 +468,14 @@ async fn insert_price_options(
     for (index, option) in options.iter().enumerate() {
         sqlx::query!(
             r#"
-            INSERT INTO menu_item_price_options (menu_item_id, label, price, display_order)
-            VALUES ($1, $2, $3, $4)
+            INSERT INTO menu_item_price_options (menu_item_id, label, price, display_order, translations)
+            VALUES ($1, $2, $3, $4, $5)
             "#,
             item_id,
             option.label.trim(),
             option.price,
             index as i32,
+            option.translations,
         )
         .execute(&mut **tx)
         .await?;
@@ -402,17 +488,18 @@ async fn insert_price_options(
 pub async fn create_menu_item(
     State(pool): State<PgPool>,
     State(media): State<MediaConfig>,
-    Json(payload): Json<MenuItemFields>,
+    Json(mut payload): Json<MenuItemFields>,
 ) -> Result<Json<AdminMenuItemResponse>, AppError> {
     validate_menu_item(&pool, &media, &payload, None).await?;
+    accept_translation_edits(&mut payload);
 
     let mut tx = pool.begin().await?;
 
     let item_id: i64 = sqlx::query_scalar!(
         r#"
-        INSERT INTO menu_items (category_id, name, description, price, image_url, is_featured, min_quantity, display_order, published_at)
+        INSERT INTO menu_items (category_id, name, description, price, image_url, is_featured, min_quantity, display_order, published_at, translations)
         VALUES ($1, $2, $3, $4, $5, $6, $7,
-            (SELECT COALESCE(MAX(display_order), -1) + 1 FROM menu_items WHERE category_id = $1), NULL)
+            (SELECT COALESCE(MAX(display_order), -1) + 1 FROM menu_items WHERE category_id = $1), NULL, $8)
         RETURNING id
         "#,
         payload.category_id,
@@ -422,6 +509,7 @@ pub async fn create_menu_item(
         payload.image_url,
         payload.is_featured,
         payload.min_quantity,
+        payload.translations,
     )
     .fetch_one(&mut *tx)
     .await?;
@@ -441,7 +529,7 @@ pub async fn save_menu_item_draft(
     State(pool): State<PgPool>,
     State(media): State<MediaConfig>,
     Path(id): Path<i64>,
-    Json(payload): Json<SaveMenuItemDraftRequest>,
+    Json(mut payload): Json<SaveMenuItemDraftRequest>,
 ) -> Result<Json<AdminMenuItemResponse>, AppError> {
     let mut tx = pool.begin().await?;
 
@@ -470,6 +558,7 @@ pub async fn save_menu_item_draft(
     // The grandfathering check is against the live image (requirement.md
     // Decision 18).
     validate_menu_item(&pool, &media, &payload.fields, row.image_url.as_deref()).await?;
+    accept_translation_edits(&mut payload.fields);
 
     if row.published_at.is_none() {
         apply_menu_item_fields(&mut tx, id, &payload.fields).await?;
@@ -504,7 +593,7 @@ pub(crate) async fn apply_menu_item_fields(
         r#"
         UPDATE menu_items
         SET category_id = $2, name = $3, description = $4, price = $5,
-            image_url = $6, is_featured = $7, min_quantity = $8, updated_at = now()
+            image_url = $6, is_featured = $7, min_quantity = $8, translations = $9, updated_at = now()
         WHERE id = $1
         "#,
         id,
@@ -515,6 +604,7 @@ pub(crate) async fn apply_menu_item_fields(
         fields.image_url,
         fields.is_featured,
         fields.min_quantity,
+        fields.translations,
     )
     .execute(&mut **tx)
     .await?;

@@ -746,3 +746,74 @@ async fn unpaid_event_orders_offer_tikkie_with_the_total(pool: PgPool) {
     assert_eq!(status, StatusCode::OK);
     assert_eq!(booking_page(&pool, &token).await["order"]["tikkie"], Value::Null, "nothing left to pay");
 }
+
+/// Phase 38 Decisions 22–26: closing by hand stops bookings and guest
+/// cancellations straight away and claims the attendee email; reopening
+/// undoes it without a second email.
+#[sqlx::test]
+async fn the_admin_closes_and_reopens_bookings(pool: PgPool) {
+    let (event_id, abula, _) = seed_event(&pool, 16).await;
+    let cookie = login(&pool).await;
+    let (_, held) = book(&pool, booking(json!([abula]))).await;
+
+    let close = format!("/api/admin/events/{event_id}/close");
+    let reopen = format!("/api/admin/events/{event_id}/reopen");
+    let (status, body, _) = post_with_cookie(pool.clone(), &close, json!({}), Some(&cookie)).await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_eq!(body["bookings_closed"], true);
+    assert_eq!(body["can_reopen"], true);
+    assert!(body["closed_at"].is_string());
+
+    let (status, body) = book(&pool, booking(json!([abula]))).await;
+    assert_eq!(status, StatusCode::CONFLICT);
+    assert_eq!(body["error"], "booking_closed");
+    let (_, event) = get(pool.clone(), &format!("/api/events/{SLUG}")).await;
+    assert_eq!(event["rsvp_open"], false);
+    let (status, _) = post(
+        pool.clone(),
+        &format!("/api/events/bookings/{}/cancel", held["token"].as_str().unwrap()),
+        json!({}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CONFLICT, "no guest cancel once closed");
+
+    let sent: bool = sqlx::query_scalar("SELECT attendees_sent_at IS NOT NULL FROM events")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert!(sent, "the attendee email is claimed on close");
+    let (status, _, _) = post_with_cookie(pool.clone(), &close, json!({}), Some(&cookie)).await;
+    assert_eq!(status, StatusCode::CONFLICT, "already closed");
+
+    let (status, body, _) = post_with_cookie(pool.clone(), &reopen, json!({}), Some(&cookie)).await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_eq!(body["bookings_closed"], false);
+    assert_eq!(body["closed_at"], Value::Null);
+    let (status, _) = book(&pool, booking(json!([abula]))).await;
+    assert_eq!(status, StatusCode::CREATED);
+    let (status, _, _) = post_with_cookie(pool.clone(), &reopen, json!({}), Some(&cookie)).await;
+    assert_eq!(status, StatusCode::CONFLICT, "not closed");
+    assert!(api::attendees::claim_closed_events(&pool, None).await.unwrap().is_empty(), "never a second email");
+}
+
+#[sqlx::test]
+async fn reopening_is_refused_after_the_events_own_deadline(pool: PgPool) {
+    let (event_id, _, _) = seed_event(&pool, 16).await;
+    let cookie = login(&pool).await;
+    let (status, _, _) =
+        post_with_cookie(pool.clone(), &format!("/api/admin/events/{event_id}/close"), json!({}), Some(&cookie)).await;
+    assert_eq!(status, StatusCode::OK);
+    sqlx::query("UPDATE events SET meal_orders_close_at = now() - interval '1 minute'")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let (_, bookings) =
+        get_with_cookie(pool.clone(), &format!("/api/admin/events/{event_id}/bookings"), Some(&cookie)).await;
+    assert_eq!(bookings["can_reopen"], false);
+    let (status, _, _) =
+        post_with_cookie(pool.clone(), &format!("/api/admin/events/{event_id}/reopen"), json!({}), Some(&cookie)).await;
+    assert_eq!(status, StatusCode::CONFLICT);
+    let (status, _, _) = post_with_cookie(pool.clone(), "/api/admin/events/999999/close", json!({}), Some(&cookie)).await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+}

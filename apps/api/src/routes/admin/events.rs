@@ -3,6 +3,7 @@
 //! a `datetime-local` input uses), converted in SQL, so the browser's own
 //! time zone never matters.
 
+use crate::attendees::{self, AttendeesResponse, csv_field};
 use crate::email::EmailConfig;
 use crate::error::{AppError, FieldError};
 use crate::event_options::{OptionGroup, choices_summary, normalize_groups, parse_choices, validate_groups};
@@ -737,10 +738,23 @@ pub struct AdminBookingsResponse {
     pub plate_counts: Vec<PlateCount>,
     pub capacity: i32,
     pub seats_taken: i64,
+    /// Phase 38 Decision 16: the tab leads with the attendee export.
+    pub bookings_closed: bool,
+    /// Decision 25: when the admin closed bookings by hand, Amsterdam time
+    /// ("6 Dec 2026, 18:00").
+    pub closed_at: Option<String>,
+    /// Decision 24: closed by hand, and the event's own deadline is ahead.
+    pub can_reopen: bool,
 }
 
 async fn load_bookings(pool: &PgPool, event_id: i64) -> Result<AdminBookingsResponse, AppError> {
-    let event = sqlx::query!("SELECT capacity FROM events WHERE id = $1", event_id)
+    let event = sqlx::query!(
+        r#"SELECT capacity, now() >= LEAST(meal_orders_close_at, rsvp_closes_at, starts_at, closed_at) as "bookings_closed!",
+                  to_char(closed_at AT TIME ZONE 'Europe/Amsterdam', 'FMDD Mon YYYY, HH24:MI') as closed_at,
+                  (closed_at IS NOT NULL AND now() < LEAST(meal_orders_close_at, rsvp_closes_at, starts_at)) as "can_reopen!"
+           FROM events WHERE id = $1"#,
+        event_id
+    )
         .fetch_optional(pool)
         .await?
         .ok_or(AppError::NotFound)?;
@@ -836,6 +850,9 @@ async fn load_bookings(pool: &PgPool, event_id: i64) -> Result<AdminBookingsResp
         plate_counts,
         capacity: event.capacity,
         seats_taken: seats_taken(&mut conn, event_id).await?,
+        bookings_closed: event.bookings_closed,
+        closed_at: event.closed_at,
+        can_reopen: event.can_reopen,
     })
 }
 
@@ -846,14 +863,81 @@ pub async fn list_bookings(
     Ok(Json(load_bookings(&pool, id).await?))
 }
 
-fn csv_field(value: &str) -> String {
-    // A leading =, +, - or @ would run as a formula in a spreadsheet.
-    let value = if value.starts_with(['=', '+', '-', '@']) { format!("'{value}") } else { value.to_string() };
-    if value.contains([',', '"', '\n', '\r']) {
-        format!("\"{}\"", value.replace('"', "\"\""))
-    } else {
-        value
+/// Phase 38 Decisions 22, 23, 26: stops bookings, waitlist joins and guest
+/// cancellations now, then emails the owner the attendee list. Holds already
+/// awaiting payment keep running, as at a time-based close.
+pub async fn close_event(
+    State(pool): State<PgPool>,
+    State(email): State<EmailConfig>,
+    Path(id): Path<i64>,
+) -> Result<Json<AdminBookingsResponse>, AppError> {
+    let closed = sqlx::query_scalar!(
+        r#"
+        UPDATE events SET closed_at = now(), updated_at = now()
+        WHERE id = $1 AND now() < LEAST(meal_orders_close_at, rsvp_closes_at, starts_at, closed_at)
+        RETURNING id
+        "#,
+        id
+    )
+    .fetch_optional(&pool)
+    .await?;
+    if closed.is_none() {
+        return Err(missing_or_conflict(&pool, id).await);
     }
+    tracing::info!(event_id = id, "admin closed event bookings");
+    attendees::notify_closed_event(&pool, &email, id).await;
+    Ok(Json(load_bookings(&pool, id).await?))
+}
+
+/// Decision 24: undoes a close by hand while the event's own deadline is
+/// still ahead. `attendees_sent_at` stays, so closing again sends no second
+/// email.
+pub async fn reopen_event(State(pool): State<PgPool>, Path(id): Path<i64>) -> Result<Json<AdminBookingsResponse>, AppError> {
+    let reopened = sqlx::query_scalar!(
+        r#"
+        UPDATE events SET closed_at = NULL, updated_at = now()
+        WHERE id = $1 AND closed_at IS NOT NULL
+          AND now() < LEAST(meal_orders_close_at, rsvp_closes_at, starts_at)
+        RETURNING id
+        "#,
+        id
+    )
+    .fetch_optional(&pool)
+    .await?;
+    if reopened.is_none() {
+        return Err(missing_or_conflict(&pool, id).await);
+    }
+    tracing::info!(event_id = id, "admin reopened event bookings");
+    Ok(Json(load_bookings(&pool, id).await?))
+}
+
+async fn missing_or_conflict(pool: &PgPool, id: i64) -> AppError {
+    match sqlx::query_scalar!("SELECT id FROM events WHERE id = $1", id).fetch_optional(pool).await {
+        Ok(Some(_)) => AppError::InvalidStatusTransition,
+        Ok(None) => AppError::NotFound,
+        Err(error) => error.into(),
+    }
+}
+
+/// Phase 38 Decision 13: confirmed guests, one per row, for the check-in
+/// sheet.
+pub async fn list_attendees(
+    State(pool): State<PgPool>,
+    Path(id): Path<i64>,
+) -> Result<Json<AttendeesResponse>, AppError> {
+    Ok(Json(attendees::load_attendees(&pool, id).await?))
+}
+
+/// Phase 38 Decision 14.
+pub async fn attendees_csv(State(pool): State<PgPool>, Path(id): Path<i64>) -> Result<impl IntoResponse, AppError> {
+    let data = attendees::load_attendees(&pool, id).await?;
+    Ok((
+        [
+            (header::CONTENT_TYPE, "text/csv; charset=utf-8".to_string()),
+            (header::CONTENT_DISPOSITION, format!("attachment; filename=\"{}-attendees.csv\"", data.event.slug)),
+        ],
+        attendees::attendees_csv(&data),
+    ))
 }
 
 /// The guest list for the day (Decision 18).
@@ -921,7 +1005,7 @@ pub async fn offer_seats(
     }
     let event = sqlx::query!(
         r#"
-        SELECT capacity, (now() < LEAST(meal_orders_close_at, rsvp_closes_at, starts_at)) as "booking_open!"
+        SELECT capacity, (now() < LEAST(meal_orders_close_at, rsvp_closes_at, starts_at, closed_at)) as "booking_open!"
         FROM events WHERE id = $1 FOR UPDATE
         "#,
         booking.event_id
@@ -987,14 +1071,6 @@ pub async fn preview_event(
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn csv_quotes_and_defuses_formulas() {
-        assert_eq!(csv_field("Amina"), "Amina");
-        assert_eq!(csv_field("Abula; Jollof, extra"), "\"Abula; Jollof, extra\"");
-        assert_eq!(csv_field("=HYPERLINK(1)"), "'=HYPERLINK(1)");
-        assert_eq!(csv_field("say \"hi\""), "\"say \"\"hi\"\"\"");
-    }
 
     #[test]
     fn slugs_are_validated() {

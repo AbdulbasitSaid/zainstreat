@@ -271,6 +271,7 @@ pub async fn accept_quote(
             ),
             reply_to: Some(quote.email.clone()),
             track: None,
+            attachments: Vec::new(),
         });
     }
 
@@ -353,6 +354,7 @@ pub async fn decline_quote(
             ),
             reply_to: Some(row.email.clone()),
             track: None,
+            attachments: Vec::new(),
         });
     }
 

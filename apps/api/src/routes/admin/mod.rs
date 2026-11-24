@@ -13,6 +13,7 @@ pub mod push;
 pub mod quotes;
 pub mod rentals;
 pub mod site_content;
+pub mod translations;
 
 pub(crate) const SESSION_USER_ID_KEY: &str = "user_id";
 
@@ -36,6 +37,9 @@ pub fn admin_router() -> Router<AppState> {
         .route("/delivery-settings", get(delivery::get_settings).put(delivery::save_settings))
         .route("/delivery/suggest", get(delivery::suggest))
         .route("/delivery/quote", post(delivery::quote))
+        // Phase 38: DeepL settings and usage.
+        .route("/translations/status", get(translations::get_status))
+        .route("/translations/settings", put(translations::save_settings))
         .route("/categories", get(categories::list_categories).post(categories::create_category))
         .route("/categories/{id}", get(categories::get_category))
         .route("/categories/{id}/draft", put(categories::save_category_draft))
@@ -84,6 +88,11 @@ pub fn admin_router() -> Router<AppState> {
         .route("/events/{id}/photos", put(events::save_photos))
         .route("/events/{id}/bookings", get(events::list_bookings))
         .route("/events/{id}/bookings.csv", get(events::bookings_csv))
+        // Phase 38: the attendee list once bookings close.
+        .route("/events/{id}/attendees", get(events::list_attendees))
+        .route("/events/{id}/close", post(events::close_event))
+        .route("/events/{id}/reopen", post(events::reopen_event))
+        .route("/events/{id}/attendees.csv", get(events::attendees_csv))
         .route("/events/bookings/{id}/offer", post(events::offer_seats))
         .route("/events/bookings/{id}/cancel", post(events::cancel_booking))
         .route("/preview/events/{slug}", get(events::preview_event))

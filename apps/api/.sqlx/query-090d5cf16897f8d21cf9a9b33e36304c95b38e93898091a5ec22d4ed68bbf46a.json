@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT b.customer_name, b.customer_phone, b.party_size, b.notes, b.order_id,\n               g.plate_name, g.choices,\n               ROW_NUMBER() OVER (PARTITION BY b.id ORDER BY g.position) as \"guest_no!\"\n        FROM event_bookings b\n        JOIN event_booking_guests g ON g.booking_id = b.id\n        WHERE b.event_id = $1 AND b.status = 'confirmed'\n        ORDER BY lower(b.customer_name), b.id, g.position\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "customer_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "customer_phone",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "party_size",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "notes",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "order_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 5,
+        "name": "plate_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "choices",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 7,
+        "name": "guest_no!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      null
+    ]
+  },
+  "hash": "090d5cf16897f8d21cf9a9b33e36304c95b38e93898091a5ec22d4ed68bbf46a"
+}

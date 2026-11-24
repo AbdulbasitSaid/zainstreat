@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE rentals r\n        SET name = $3, description = $4, price = $5, image_url = $6, is_available = $7,\n            display_order = $8, translations = $9, updated_at = now()\n        FROM (SELECT id, image_url FROM rentals WHERE id = $1 FOR UPDATE) before\n        WHERE r.id = before.id AND r.updated_at = $2 AND r.deleted_at IS NULL\n        RETURNING before.image_url\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "image_url",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Timestamptz",
+        "Text",
+        "Text",
+        "Numeric",
+        "Text",
+        "Bool",
+        "Int4",
+        "Jsonb"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "91c4d4cc8d0b01dbb3d2f85e1ba423b4e8a6c9ce543186c9b0cab98d9de15bae"
+}

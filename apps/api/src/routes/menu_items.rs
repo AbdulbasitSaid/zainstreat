@@ -1,19 +1,36 @@
 use crate::error::AppError;
+use crate::order_emails::Locale;
+use crate::translation::{self, LocalizedText};
 use axum::{
     Json,
     extract::{Query, State},
 };
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use sqlx::PgPool;
 use std::collections::HashMap;
 
 #[derive(Debug, Serialize)]
 pub struct PriceOptionResponse {
     pub id: i64,
+    /// In the requested locale (Phase 38 Decision 7).
     pub label: String,
     #[serde(with = "rust_decimal::serde::str")]
     pub price: Decimal,
+    /// Every locale, so the cart can switch language (Decision 8).
+    pub labels: LocalizedText,
+}
+
+impl PriceOptionResponse {
+    pub fn localized(id: i64, label: &str, price: Decimal, translations: &Value, locale: Locale) -> Self {
+        Self {
+            id,
+            label: translation::resolve(translations, locale, "label", label),
+            price,
+            labels: LocalizedText::of(translations, "label", label),
+        }
+    }
 }
 
 struct PriceOptionRow {
@@ -21,6 +38,7 @@ struct PriceOptionRow {
     menu_item_id: i64,
     label: String,
     price: Decimal,
+    translations: Value,
 }
 
 #[derive(Debug, Serialize)]
@@ -37,6 +55,8 @@ pub struct MenuItemResponse {
     /// Phase 36 Decision 2: the cart and `POST /api/orders` enforce it.
     pub min_quantity: i32,
     pub price_options: Vec<PriceOptionResponse>,
+    /// The name in every locale (Phase 38 Decision 8).
+    pub names: LocalizedText,
 }
 
 struct MenuItemRow {
@@ -49,11 +69,14 @@ struct MenuItemRow {
     is_available: bool,
     is_featured: bool,
     min_quantity: i32,
+    translations: Value,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct ListMenuItemsQuery {
     pub category_id: Option<i64>,
+    /// Phase 38 Decision 7: `en`, `nl` or `fr`; anything else is English.
+    pub locale: Option<String>,
 }
 
 /// Returns all non-deleted items, including unavailable ones — see
@@ -73,7 +96,7 @@ pub async fn list_menu_items(
         MenuItemRow,
         r#"
         SELECT mi.id, mi.category_id, mi.name, mi.description, mi.price, mi.image_url,
-               mi.is_available, mi.is_featured, mi.min_quantity
+               mi.is_available, mi.is_featured, mi.min_quantity, mi.translations
         FROM menu_items mi
         JOIN categories c ON c.id = mi.category_id
         WHERE mi.deleted_at IS NULL
@@ -90,7 +113,7 @@ pub async fn list_menu_items(
     let option_rows = sqlx::query_as!(
         PriceOptionRow,
         r#"
-        SELECT id, menu_item_id, label, price
+        SELECT id, menu_item_id, label, price, translations
         FROM menu_item_price_options
         WHERE deleted_at IS NULL
         ORDER BY menu_item_id, display_order, id
@@ -101,16 +124,13 @@ pub async fn list_menu_items(
 
     // Relies on the ORDER BY above: each group's push() calls already
     // arrive in display order, so no secondary sort is needed here.
+    let locale = translation::query_locale(params.locale.as_deref());
     let mut options_by_item: HashMap<i64, Vec<PriceOptionResponse>> = HashMap::new();
     for row in option_rows {
         options_by_item
             .entry(row.menu_item_id)
             .or_default()
-            .push(PriceOptionResponse {
-                id: row.id,
-                label: row.label,
-                price: row.price,
-            });
+            .push(PriceOptionResponse::localized(row.id, &row.label, row.price, &row.translations, locale));
     }
 
     let response = items
@@ -119,8 +139,9 @@ pub async fn list_menu_items(
             price_options: options_by_item.remove(&item.id).unwrap_or_default(),
             id: item.id,
             category_id: item.category_id,
-            name: item.name,
-            description: item.description,
+            name: translation::resolve(&item.translations, locale, "name", &item.name),
+            description: translation::resolve_opt(&item.translations, locale, "description", item.description.as_deref()),
+            names: LocalizedText::of(&item.translations, "name", &item.name),
             price: item.price,
             image_url: item.image_url,
             is_available: item.is_available,

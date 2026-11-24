@@ -5,6 +5,7 @@ use crate::order_emails::{Locale, invoice_email};
 use crate::order_status::CUSTOMER_COMPLETABLE;
 use crate::payment::{PaymentConfig, PaymentInstructions, TikkieInstructions, payment_reference};
 use crate::push::{self, PushConfig};
+use crate::translation;
 use crate::validation::{is_valid_email, is_valid_phone};
 use axum::{
     Json,
@@ -61,6 +62,8 @@ pub struct CreateOrderRequest {
 pub struct OrderItemResponse {
     /// `menu` or `rental` (Phase 37 Decision 3).
     pub kind: String,
+    /// In the customer's language (Phase 38 Decision 9); the admin reads
+    /// the English snapshot.
     pub item_name: String,
     pub option_label: Option<String>,
     #[serde(with = "rust_decimal::serde::str")]
@@ -324,17 +327,20 @@ struct MenuItemRow {
     price: Option<Decimal>,
     is_available: bool,
     min_quantity: i32,
+    translations: serde_json::Value,
 }
 
 struct PriceOptionRow {
     label: String,
     price: Decimal,
+    translations: serde_json::Value,
 }
 
 struct RentalRow {
     name: String,
     price: Decimal,
     is_available: bool,
+    translations: serde_json::Value,
 }
 
 struct PricedLine {
@@ -344,6 +350,9 @@ struct PricedLine {
     price_option_id: Option<i64>,
     item_name: String,
     option_label: Option<String>,
+    /// Phase 38 Decision 9: in the customer's language, when not English.
+    item_name_local: Option<String>,
+    option_label_local: Option<String>,
     unit_price: Decimal,
     quantity: i32,
 }
@@ -380,6 +389,12 @@ pub async fn create_order(
         DeliveryType::Delivery => Some(resolve_delivery(&pool, &delivery, &payload).await?),
     };
 
+    let locale = payload
+        .locale
+        .as_deref()
+        .and_then(Locale::parse)
+        .unwrap_or(Locale::En);
+
     let mut tx = pool.begin().await?;
 
     let mut unavailable: Vec<UnavailableItem> = Vec::new();
@@ -393,7 +408,7 @@ pub async fn create_order(
             let rental_id = item.rental_id.unwrap_or_default();
             let rental = sqlx::query_as!(
                 RentalRow,
-                "SELECT name, price, is_available FROM rentals WHERE id = $1 AND deleted_at IS NULL",
+                "SELECT name, price, is_available, translations FROM rentals WHERE id = $1 AND deleted_at IS NULL",
                 rental_id
             )
             .fetch_optional(&mut *tx)
@@ -404,8 +419,10 @@ pub async fn create_order(
                     menu_item_id: None,
                     rental_id: Some(rental_id),
                     price_option_id: None,
+                    item_name_local: translation::local_snapshot(&rental.translations, locale, "name", &rental.name),
                     item_name: rental.name,
                     option_label: None,
+                    option_label_local: None,
                     unit_price: rental.price,
                     quantity: item.quantity,
                 }),
@@ -418,7 +435,7 @@ pub async fn create_order(
         // changes the price (Phase 25 Decision 17).
         let menu_item = sqlx::query_as!(
             MenuItemRow,
-            "SELECT name, price, is_available, min_quantity FROM menu_items \
+            "SELECT name, price, is_available, min_quantity, translations FROM menu_items \
              WHERE id = $1 AND deleted_at IS NULL AND published_at IS NOT NULL",
             menu_item_id
         )
@@ -445,11 +462,11 @@ pub async fn create_order(
             continue;
         }
 
-        let (unit_price, option_label) = match (item.price_option_id, menu_item.price) {
+        let (unit_price, option_label, option_label_local) = match (item.price_option_id, menu_item.price) {
             (Some(option_id), None) => {
                 let option = sqlx::query_as!(
                     PriceOptionRow,
-                    "SELECT label, price FROM menu_item_price_options \
+                    "SELECT label, price, translations FROM menu_item_price_options \
                      WHERE id = $1 AND menu_item_id = $2 AND deleted_at IS NULL",
                     option_id,
                     menu_item_id
@@ -458,7 +475,11 @@ pub async fn create_order(
                 .await?;
 
                 match option {
-                    Some(option) => (option.price, Some(option.label)),
+                    Some(option) => (
+                        option.price,
+                        translation::local_snapshot(&option.translations, locale, "label", &option.label),
+                        Some(option.label),
+                    ),
                     None => {
                         unavailable.push(UnavailableItem {
                             menu_item_id,
@@ -470,7 +491,7 @@ pub async fn create_order(
                     }
                 }
             }
-            (None, Some(price)) => (price, None),
+            (None, Some(price)) => (price, None, None),
             // A flat-priced item submitted with an option id, or an
             // option-priced item submitted with none — the menu changed
             // shape (Phase 14 doesn't exist yet, but future-proof it).
@@ -499,8 +520,10 @@ pub async fn create_order(
             menu_item_id: Some(menu_item_id),
             rental_id: None,
             price_option_id: item.price_option_id,
+            item_name_local: translation::local_snapshot(&menu_item.translations, locale, "name", &menu_item.name),
             item_name: menu_item.name,
             option_label,
+            option_label_local,
             unit_price,
             quantity: item.quantity,
         });
@@ -524,12 +547,6 @@ pub async fn create_order(
         DeliveryType::Pickup => "pickup",
         DeliveryType::Delivery => "delivery",
     };
-    let locale = payload
-        .locale
-        .as_deref()
-        .and_then(Locale::parse)
-        .unwrap_or(Locale::En);
-
     let order = sqlx::query!(
         r#"
         INSERT INTO orders
@@ -568,8 +585,8 @@ pub async fn create_order(
             r#"
             INSERT INTO order_items
                 (order_id, menu_item_id, price_option_id, item_name, option_label,
-                 unit_price, quantity, subtotal, rental_id, kind)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                 unit_price, quantity, subtotal, rental_id, kind, item_name_local, option_label_local)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
             "#,
             order.id,
             line.menu_item_id,
@@ -581,14 +598,17 @@ pub async fn create_order(
             line_subtotal,
             line.rental_id,
             line.kind,
+            line.item_name_local,
+            line.option_label_local,
         )
         .execute(&mut *tx)
         .await?;
 
+        // The customer sees their language (Decision 9).
         item_responses.push(OrderItemResponse {
             kind: line.kind.to_string(),
-            item_name: line.item_name.clone(),
-            option_label: line.option_label.clone(),
+            item_name: line.item_name_local.clone().unwrap_or_else(|| line.item_name.clone()),
+            option_label: line.option_label_local.clone().or_else(|| line.option_label.clone()),
             unit_price: line.unit_price,
             quantity: line.quantity,
             subtotal: line_subtotal,
@@ -642,6 +662,7 @@ pub async fn create_order(
             body: new_order_owner_email_body(&response, email.admin_url()),
             reply_to: Some(response.customer_email.clone()),
             track: None,
+            attachments: Vec::new(),
         });
     }
 
@@ -658,6 +679,7 @@ pub(crate) fn send_invoice(email: &EmailConfig, pool: &PgPool, order: &OrderResp
         body,
         reply_to: None,
         track: Some(DeliveryRef { pool: pool.clone(), order_id: Some(order.id), quote_id: None, kind: "invoice" }),
+        attachments: Vec::new(),
     });
 }
 
@@ -733,7 +755,9 @@ pub(crate) async fn load_order_by_token(
     let items = sqlx::query_as!(
         OrderItemResponse,
         r#"
-        SELECT kind, item_name, option_label, unit_price, quantity, subtotal
+        SELECT kind, COALESCE(item_name_local, item_name) as "item_name!",
+               COALESCE(option_label_local, option_label) as option_label,
+               unit_price, quantity, subtotal
         FROM order_items
         WHERE order_id = $1
         ORDER BY id
@@ -842,6 +866,7 @@ pub async fn claim_payment(
             ),
             reply_to: Some(order.customer_email.clone()),
             track: None,
+            attachments: Vec::new(),
         });
     }
 
