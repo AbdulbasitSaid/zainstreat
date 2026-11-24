@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE events SET closed_at = now(), updated_at = now()\n        WHERE id = $1 AND now() < LEAST(meal_orders_close_at, rsvp_closes_at, starts_at, closed_at)\n        RETURNING id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "164a8957f28e8f23acf3fbaf0f965c1b66c474819a88cfdf4f5f7617fc6bd80f"
+}

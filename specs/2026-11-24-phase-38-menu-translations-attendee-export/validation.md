@@ -108,6 +108,36 @@
       out. Events that closed more than 24 h before deploy get no email.
 - [ ] API logs for the sweep contain event ids only, no names or emails.
 
+- [ ] **Close bookings** on an open event, after confirming: the public
+      event page shows bookings closed, a new booking and a waitlist join
+      are refused, and a guest's online cancel is refused. Within seconds
+      the owner gets one "Attendee list" email. A sweep tick afterwards
+      sends nothing.
+- [ ] The banner shows "Closed by you on {date}". **Reopen bookings**
+      makes the event bookable again, and closing again sends no second
+      email.
+- [ ] With `rsvp_closes_at` in the past, **Reopen bookings** is hidden and
+      the API answers `409`. Closing an already-closed event → `409`.
+- [ ] `grep -rn 'LEAST(' apps/api/src` shows `closed_at` on every close
+      check.
+- [ ] **Download PDF** (Bookings banner and sheet toolbar) downloads
+      `{slug}-attendees.pdf` straight away, with no print dialog. It is A4,
+      uses the Fraunces headings, Work Sans text, brand colours and logo,
+      shows the plate pills, and repeats the table header on page 2 and
+      later. No row is split across pages, and the footer shows "page n of
+      N". Check it with 1 guest, 0 guests and about 60 guests.
+- [ ] `pnpm build && pnpm start`: the PDF route works in the production
+      build, not only in `pnpm dev`.
+- [ ] Without an admin session, `/api/admin/events/{id}/attendees.pdf` →
+      `401`.
+- [ ] `POST /api/internal/attendees-pdf`: without the bearer token →
+      `401`; with `INTERNAL_RENDER_TOKEN` unset → `404`; through Caddy on
+      staging (public and cms hosts) → `404`.
+- [ ] The owner email carries both `{slug}-attendees.csv` and
+      `{slug}-attendees.pdf`. With the web container stopped, the email
+      still arrives with the CSV only, and the API log has a warning
+      giving the event id.
+
 ## Definition of done
 
 Customers on `/nl` and `/fr` read the menu, categories, options and
@@ -117,6 +147,9 @@ and tracking page while the owner and kitchen keep English. Existing
 content is translated automatically after deploy with no manual step. Once
 an event's bookings close, the owner gets an email with the confirmed
 attendee CSV and a link to a branded, printable check-in sheet, and can
-download both from the Bookings tab at any time. All checks above pass on
+download both from the Bookings tab at any time. The admin can also close
+an event's bookings by hand (and reopen them before the event's own
+deadline). Closing sends the same email right away, now with a real
+branded PDF file attached next to the CSV. All checks above pass on
 staging, with `DEEPL_API_KEY` set after the DeepL plan terms are
 confirmed (risk 1).

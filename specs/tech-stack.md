@@ -663,6 +663,18 @@ or recreated repo can't match.
   closed when usage is unknown. Past the stop line the owner types Dutch
   and French, and English is the fallback.
 
+## PDF Generation (Phase 38)
+
+**Choice:** `@react-pdf/renderer` **4.9.0** (exact pin), rendered in the
+Next.js server (Node runtime route handlers). It embeds the site's
+Fraunces and Work Sans fonts as static TTFs from `apps/web/assets/fonts/`.
+
+**Why:** It produces a real, one-click PDF file that looks like the website
+(flexbox layout, custom fonts, brand colours) without running a headless
+Chromium on the Lightsail box. It is written in React, like the rest of
+the frontend. The API gets PDFs for emails from an internal, token-guarded
+web endpoint instead of keeping a second PDF builder in Rust.
+
 ## Summary Table
 
 | Concern | Choice |
@@ -693,3 +705,4 @@ or recreated repo can't match.
 | Security & privacy | Caddy security headers + CSP, login limiter + lockout, admin Origin check, retention sweeper, admin Privacy tool, CI dependency audits (Phase 33) |
 | Delivery fee | PDOK Locatieserver (address lookup) + Mapbox Directions API (driving distance, haversine fallback), proxied by the API; admin-set rate/minimum/max in `delivery_settings` (Phase 37) |
 | Menu translation | DeepL API (EN → NL/FR) from the API on save + five-minute backfill sweep; stored in `translations` JSONB with English fallback and owner overrides; allowance guard with an 80 % stop line (Phase 38) |
+| PDF generation | `@react-pdf/renderer` 4.9.0 in Next route handlers, site fonts embedded; API fetches PDFs for emails from an internal token-guarded endpoint (Phase 38) |

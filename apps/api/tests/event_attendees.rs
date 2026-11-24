@@ -112,29 +112,29 @@ async fn an_open_event_is_not_closed_or_claimed(pool: PgPool) {
     let (_, body) =
         get_with_cookie(pool.clone(), &format!("/api/admin/events/{event_id}/attendees"), Some(&cookie)).await;
     assert_eq!(body["event"]["bookings_closed"], false);
-    assert_eq!(claim_closed_events(&pool).await.unwrap(), Vec::<i64>::new());
+    assert_eq!(claim_closed_events(&pool, None).await.unwrap(), Vec::<i64>::new());
 }
 
 #[sqlx::test]
 async fn a_closed_event_is_claimed_once(pool: PgPool) {
     let event_id = seed(&pool, "-1 hour").await;
-    assert_eq!(claim_closed_events(&pool).await.unwrap(), vec![event_id]);
-    assert_eq!(claim_closed_events(&pool).await.unwrap(), Vec::<i64>::new(), "never twice");
+    assert_eq!(claim_closed_events(&pool, None).await.unwrap(), vec![event_id]);
+    assert_eq!(claim_closed_events(&pool, None).await.unwrap(), Vec::<i64>::new(), "never twice");
 }
 
 #[sqlx::test]
 async fn archived_unpublished_and_long_past_events_are_never_claimed(pool: PgPool) {
     seed(&pool, "-1 hour").await;
     sqlx::query("UPDATE events SET archived_at = now()").execute(&pool).await.unwrap();
-    assert!(claim_closed_events(&pool).await.unwrap().is_empty());
+    assert!(claim_closed_events(&pool, None).await.unwrap().is_empty());
 
     sqlx::query("UPDATE events SET archived_at = NULL, published_at = NULL").execute(&pool).await.unwrap();
-    assert!(claim_closed_events(&pool).await.unwrap().is_empty());
+    assert!(claim_closed_events(&pool, None).await.unwrap().is_empty());
 
     // Closed and started days before deploy: no burst of old emails.
     sqlx::query("UPDATE events SET published_at = now(), starts_at = now() - interval '3 days', rsvp_closes_at = NULL")
         .execute(&pool)
         .await
         .unwrap();
-    assert!(claim_closed_events(&pool).await.unwrap().is_empty());
+    assert!(claim_closed_events(&pool, None).await.unwrap().is_empty());
 }

@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE events SET attendees_sent_at = now()\n        WHERE attendees_sent_at IS NULL AND archived_at IS NULL AND published_at IS NOT NULL\n          AND now() >= LEAST(meal_orders_close_at, rsvp_closes_at, starts_at, closed_at)\n          AND starts_at > now() - interval '24 hours'\n          AND ($1::BIGINT IS NULL OR id = $1)\n        RETURNING id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "93c3efba5a092f5cd4253200f557ba77e5478152c215785ea4a080689f8ab61a"
+}

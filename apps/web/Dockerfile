@@ -23,6 +23,8 @@ ENV HOSTNAME=0.0.0.0
 COPY --from=build --chown=node:node /app/.next/standalone ./
 COPY --from=build --chown=node:node /app/.next/static ./.next/static
 COPY --from=build --chown=node:node /app/public ./public
+# The attendee PDF reads its fonts and logo from disk (Phase 38 Decision 28).
+COPY --from=build --chown=node:node /app/assets ./assets
 # Pre-created and node-owned so the web_cache volume mounted here
 # (docker-compose.prod.yml) inherits writable ownership on first creation.
 RUN mkdir -p .next/cache && chown -R node:node .next/cache

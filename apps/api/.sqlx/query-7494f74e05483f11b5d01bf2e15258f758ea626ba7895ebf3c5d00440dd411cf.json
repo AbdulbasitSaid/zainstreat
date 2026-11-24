@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT e.id, e.slug, e.content, e.area, e.cover_image_url, e.capacity, e.max_party_size,\n               e.starts_at as \"starts_at: DateTime<Utc>\",\n               e.ends_at as \"ends_at: DateTime<Utc>\",\n               e.meal_orders_close_at as \"meal_orders_close_at: DateTime<Utc>\",\n               LEAST(e.meal_orders_close_at, e.rsvp_closes_at) as \"bookings_close_at: DateTime<Utc>\",\n               (now() >= COALESCE(e.ends_at, e.starts_at)) as \"is_past!\",\n               (now() < LEAST(e.meal_orders_close_at, e.rsvp_closes_at, e.starts_at)) as \"rsvp_open!\",\n               (e.published_at IS NOT NULL) as \"published!\",\n               (SELECT COALESCE(SUM(b.party_size), 0) FROM event_bookings b\n                 WHERE b.event_id = e.id AND b.status IN ('awaiting_payment', 'confirmed'))::BIGINT as \"taken!\"\n        FROM events e\n        WHERE e.slug = $1 AND e.archived_at IS NULL\n          AND ($2 OR e.published_at IS NOT NULL)\n        ",
+  "query": "\n        SELECT e.id, e.slug, e.content, e.area, e.cover_image_url, e.capacity, e.max_party_size,\n               e.starts_at as \"starts_at: DateTime<Utc>\",\n               e.ends_at as \"ends_at: DateTime<Utc>\",\n               e.meal_orders_close_at as \"meal_orders_close_at: DateTime<Utc>\",\n               LEAST(e.meal_orders_close_at, e.rsvp_closes_at, e.closed_at) as \"bookings_close_at: DateTime<Utc>\",\n               (now() >= COALESCE(e.ends_at, e.starts_at)) as \"is_past!\",\n               (now() < LEAST(e.meal_orders_close_at, e.rsvp_closes_at, e.starts_at, e.closed_at)) as \"rsvp_open!\",\n               (e.published_at IS NOT NULL) as \"published!\",\n               (SELECT COALESCE(SUM(b.party_size), 0) FROM event_bookings b\n                 WHERE b.event_id = e.id AND b.status IN ('awaiting_payment', 'confirmed'))::BIGINT as \"taken!\"\n        FROM events e\n        WHERE e.slug = $1 AND e.archived_at IS NULL\n          AND ($2 OR e.published_at IS NOT NULL)\n        ",
   "describe": {
     "columns": [
       {
@@ -103,5 +103,5 @@
       null
     ]
   },
-  "hash": "c0c7dba7d87766666594110d332d7d19c42449d95b58a4ea3d6f05ff701e7cfb"
+  "hash": "7494f74e05483f11b5d01bf2e15258f758ea626ba7895ebf3c5d00440dd411cf"
 }

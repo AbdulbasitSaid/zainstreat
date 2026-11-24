@@ -111,6 +111,9 @@ jobs:
           # Menu translations (Phase 38). Optional: unset means the owner
           # types Dutch and French in admin.
           V_DEEPL_API_KEY: ${{ secrets.DEEPL_API_KEY }}
+          # Attendee PDF on the owner email (Phase 38). Optional: unset
+          # sends the CSV only.
+          V_INTERNAL_RENDER_TOKEN: ${{ secrets.INTERNAL_RENDER_TOKEN }}
           V_BANK_ACCOUNT_NAME: ${{ vars.BANK_ACCOUNT_NAME }}
           V_BANK_IBAN: ${{ vars.BANK_IBAN }}
           V_BANK_BIC: ${{ vars.BANK_BIC }}

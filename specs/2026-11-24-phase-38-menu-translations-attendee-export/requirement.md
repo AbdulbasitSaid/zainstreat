@@ -277,6 +277,90 @@ a final attendee list to work from on the day.
       DEFAULT true`, `stop_at_percent INT DEFAULT 80 CHECK (BETWEEN 10 AND
       100)`), next to the keep list.
 
+### Closing an event by hand (added 2026-11-24)
+
+The user asked for the admin to close an event whenever they choose, then
+export the attendees, including as a real PDF file in the site's design.
+
+22. **The admin can close an event at any time.** A new `events.closed_at
+    TIMESTAMPTZ NULL`. Closing sets it to `now()`. Every close-time check
+    adds it to the existing `LEAST(...)`; Postgres `LEAST` ignores NULLs,
+    so an event that isn't closed by hand behaves exactly as before. The
+    effective close is `LEAST(meal_orders_close_at, rsvp_closes_at,
+    starts_at, closed_at)`. It is used for public booking (`rsvp_open`),
+    the public "bookings close" date, admin re-booking, the Bookings tab's
+    `bookings_closed`, and the attendee email claim (Decision 17). The
+    guest's self-cancel deadline (`COALESCE(meal_orders_close_at,
+    starts_at)`) also gains `closed_at`. After a close the list is final, so
+    a guest who wants to cancel contacts the owner.
+23. **What closing does.** No new bookings, no waitlist joins and no
+    online cancellations. Bookings already awaiting payment keep their
+    hold and become confirmed if paid, the same as a time-based close.
+    Nothing else about the event changes: it stays published and visible,
+    showing "Bookings closed". `POST /api/admin/events/{id}/close` returns
+    409 if the event is already closed (by hand or by time). *As built:* no
+    `updated_at` guard, like publish/archive. The state check is enough
+    for a one-way switch.
+24. **Reopen is allowed** (user's answer). `POST
+    /api/admin/events/{id}/reopen` clears `closed_at`. It's refused (409,
+    "This event's own booking deadline has passed") once
+    `LEAST(meal_orders_close_at, rsvp_closes_at, starts_at) <= now()`,
+    because reopening can't undo a deadline that has passed. Reopening
+    doesn't reset `attendees_sent_at`, so a second close doesn't email
+    again. The owner downloads a fresh list from the tab.
+25. **Close button.** The admin event page (Bookings tab header) shows
+    **Close bookings** while bookings are open. It asks "Close bookings
+    for {title}? Guests can't book, join the waitlist or cancel online
+    after this." with Confirm / Cancel. Once the event is closed by hand,
+    the "Registration closed" banner (Decision 16) adds "Closed by you on
+    {date}" and a **Reopen bookings** button. That button is hidden when
+    reopening would be refused.
+26. **Email on a manual close.** The five-minute sweeper picks up a manual
+    close through the same claim (Decision 17). The close endpoint also
+    runs the claim for that one event straight away, after its
+    transaction commits, so the owner gets the list within seconds. If
+    that send fails, the sweeper doesn't retry, because
+    `attendees_sent_at` is already set (as with Decision 17); the files
+    stay downloadable from the tab.
+
+### Attendee PDF file (added 2026-11-24, replaces the print-only PDF)
+
+27. **A real PDF file** (user's answer). This replaces Decision 15's
+    `window.print()` download. The web server renders it with
+    `@react-pdf/renderer` (pinned at **4.9.0**, the latest release at least
+    two weeks old). It runs in Node, with no headless browser on the
+    Lightsail box. `GET /api/admin/events/{id}/attendees.pdf` is a Next
+    route handler behind the admin session. It fetches the same
+    `getAdminEventAttendees` JSON and returns `application/pdf` with
+    `Content-Disposition: attachment; filename="{slug}-attendees.pdf"`.
+    The on-screen check-in sheet page stays as the preview. Its toolbar's
+    **Download PDF** now links to this file. The browser print styles stay
+    for anyone who prints the page directly.
+28. **The PDF uses the website's design.** It embeds the site fonts
+    (Fraunces for headings, Work Sans for text), shipped as static
+    OFL-licensed TTFs in `apps/web/assets/fonts/` because react-pdf can't
+    use `next/font` or variable fonts. It uses the brand colour tokens from
+    `globals.css`, copied as constants into one `lib/pdf-theme.ts`. The
+    header band shows the site logo (`siteImage(content, "logo")` when it's a
+    PNG or JPEG under 300 KB, else a bundled 200 px copy,
+    `apps/web/assets/pdf-logo.png`, so the attachment stays about 100 KB), the event title, date and area, and "{n}
+    guests". It also shows the plate summary in rounded "pill" boxes like
+    the site's badges. The table has a tick box (its header is blank, because Work Sans has no ✓ glyph), Name, Guest, Plate &
+    choices, Phone and Note, with alternating soft-background rows. The
+    footer reads "Zain's Treat n More · printed {date} · page {n} of
+    {total}". The page is A4 portrait, the table header repeats on every
+    page, and rows don't split across pages.
+29. **The PDF is attached to the owner email too.** The email is sent by
+    the API, but the PDF is built by the web app. The API therefore posts
+    the attendee JSON it already has to an internal web endpoint, `POST
+    {WEB_INTERNAL_URL}/api/internal/attendees-pdf`. That endpoint renders
+    only and never reads the database. It's guarded by a shared
+    `INTERNAL_RENDER_TOKEN` bearer header (a new secret on both services),
+    and Caddy refuses `/api/internal/*` on public hosts. If rendering
+    fails or times out after 15 s, the email still goes with the CSV and
+    the sheet link (fail-soft), and the API logs the event id. The PDF is
+    never stored.
+
 ### Copy
 
 21. No new customer copy beyond the menu content itself (DeepL). Admin copy
@@ -289,8 +373,11 @@ a final attendee list to work from on the day.
 - **Translating site content blocks** (Phase 25 `site_content`). They're
   already per-locale and owner-written.
 - **Translating customer notes or enquiries** for the owner.
-- **A server-generated PDF file** (user chose the branded print page). The
-  owner email attaches the CSV and links to the sheet.
+- ~~A server-generated PDF file~~: now in scope (Decisions 27–29).
+- **Translating the PDF or the sheet.** They're admin documents, in
+  English.
+- **Scheduled reopening, or closing meal orders separately from
+  bookings.** A single close covers both.
 - **QR or door check-in tracking** in the app. The sheet is ticked on
   paper.
 - **DeepL glossaries** (the "keep" word list covers dish names without
@@ -324,3 +411,19 @@ a final attendee list to work from on the day.
    which are what the owner uses.
 5. **Close time edited after the email.** Handled by Decision 17 (no
    resend, and the tab always has the live list).
+6. **react-pdf in Next's server bundle.** `@react-pdf/renderer` has
+   occasionally needed `serverExternalPackages` in Next. *Mitigation:*
+   Group 11 starts with a spike route that renders "hello" in
+   `pnpm build && pnpm start`, before any layout work. If it can't be
+   made to bundle, fall back to keeping the print page (Decision 15) and
+   tell the user.
+7. **Memory on the Lightsail box.** Rendering a long list (about 200
+   guests, around 8 pages) in the web container uses tens of MB for under
+   a second. That's acceptable on the current instance. The email path
+   renders at most one PDF per closed event.
+8. **A new secret.** `INTERNAL_RENDER_TOKEN` must be added to GitHub
+   secrets, and the first deploy needs `allow_env_changes:
+   INTERNAL_RENDER_TOKEN`. *As built:* `WEB_INTERNAL_URL` isn't in
+   compose. The API defaults to `http://web:3000` and the variable only
+   matters when the API runs outside Docker. Without the secret, the email
+   simply goes without the PDF (Decision 29).

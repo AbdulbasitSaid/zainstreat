@@ -1,15 +1,16 @@
-"use client";
-
 import Link from "next/link";
-import { Button } from "@/components/button";
+import { ButtonAnchor } from "@/components/button";
 
-/** Phase 38 Decision 15: on screen only; "Download PDF" is the browser's Save as PDF. */
+/**
+ * Phase 38 Decisions 15, 27: on screen only. "Download PDF" is the real
+ * file (attendees.pdf); printing this page still works for a quick copy.
+ */
 export function AdminAttendeeSheetToolbar({ eventId }: { eventId: number }) {
   return (
     <div className="flex flex-wrap items-center gap-3 print:hidden">
-      <Button type="button" onClick={() => window.print()}>
+      <ButtonAnchor href={`/api/admin/events/${eventId}/attendees.pdf`} download>
         Download PDF
-      </Button>
+      </ButtonAnchor>
       <a
         href={`/api/admin/events/${eventId}/attendees.csv`}
         className="text-sm font-semibold text-primary underline"
@@ -19,9 +20,6 @@ export function AdminAttendeeSheetToolbar({ eventId }: { eventId: number }) {
       <Link href={`/events/${eventId}?tab=bookings`} className="text-sm font-semibold text-primary underline">
         Back to bookings
       </Link>
-      <p className="m-0 w-full text-sm text-text-muted">
-        In the print window, choose &ldquo;Save as PDF&rdquo; and turn on background graphics for the colours.
-      </p>
     </div>
   );
 }

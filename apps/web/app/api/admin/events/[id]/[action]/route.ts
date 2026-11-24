@@ -1,7 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { proxyAdminRequest } from "@/lib/admin-proxy";
 
-const ACTIONS = new Set(["publish", "unpublish", "archive", "unarchive"]);
+// Phase 38 Decisions 22, 24: close and reopen bookings by hand.
+const ACTIONS = new Set(["publish", "unpublish", "archive", "unarchive", "close", "reopen"]);
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string; action: string }> }) {
   const { id, action } = await params;

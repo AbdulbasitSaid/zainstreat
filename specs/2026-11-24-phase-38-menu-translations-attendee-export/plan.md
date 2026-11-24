@@ -321,3 +321,143 @@ Call it from `main.rs` next to `spawn_hold_sweeper`.
   guard stops a burst of emails for old events on deploy.
 - `#[sqlx::test]`: claim returns an event once and never again; an
   archived or unpublished event is never claimed.
+
+## Group 10 — Manual close and reopen (Decisions 22–26)
+
+- Migration `apps/api/migrations/20261124180000_event_closed_at.{up,down}.sql`:
+  `ALTER TABLE events ADD COLUMN closed_at TIMESTAMPTZ` / `DROP COLUMN closed_at`.
+- Add `closed_at` to every close check (9 `LEAST(` sites plus the 2
+  self-cancel `COALESCE`s):
+  - `attendees.rs:67-68, 197` (load and claim).
+  - `routes/events.rs:68, 193, 195, 392` (list, detail, `bookings_close_at`, booking).
+  - `routes/events.rs:636` and `events.rs:286` (guest self-cancel:
+    `LEAST(meal_orders_close_at, closed_at, starts_at)`).
+  - `routes/admin/events.rs:747, 944` (Bookings tab, admin re-book).
+  `grep -rn 'LEAST(meal_orders_close_at\|LEAST(e.meal' apps/api/src` must
+  show `closed_at` on every hit.
+- `routes/admin/events.rs`: `close_event` and `reopen_event` handlers,
+  both taking `{ updated_at }`:
+  - **close:** `UPDATE events SET closed_at = now(), updated_at = now()
+    WHERE id = $1 AND updated_at = $2 AND now() < LEAST(meal_orders_close_at,
+    rsvp_closes_at, starts_at, closed_at) RETURNING ...`. Zero rows → 404 /
+    409 (re-select to tell which). After the commit, run
+    `attendees::notify_event(pool, email, id)`, a one-event variant of
+    `notify_closed_events` that uses the same claim `UPDATE` with `AND id =
+    $1`.
+  - **reopen:** `UPDATE ... SET closed_at = NULL WHERE id = $1 AND updated_at
+    = $2 AND closed_at IS NOT NULL AND now() < LEAST(meal_orders_close_at,
+    rsvp_closes_at, starts_at)`.
+  - Register `POST /events/{id}/close` and `/reopen` in `routes/admin/mod.rs`.
+  - `AdminBookingsResponse` gains `closed_at: Option<String>` (Amsterdam
+    label) and `can_reopen: bool`. The event response gains `updated_at`
+    if it's missing there.
+- Web:
+  - Proxies `app/api/admin/events/[id]/close/route.ts` and `reopen/route.ts`.
+  - `components/admin-event-bookings.tsx`: **Close bookings** with an inline
+    confirm; the banner adds "Closed by you on {date}" and **Reopen
+    bookings** (if `can_reopen`). 409 → "This event changed elsewhere.
+    Reload the page." `router.refresh()` on success.
+  - Public `events/[slug]` and `event-card` already follow `rsvp_open`;
+    check that they show "Bookings closed" with no code change.
+- Tests (`tests/event_attendees.rs` or new `tests/event_close.rs`):
+  - close → public booking 409/closed, waitlist join refused, guest cancel refused;
+  - close sends one email and a later sweep sends none;
+  - reopen → booking works again;
+  - reopen after `rsvp_closes_at` passed → 409;
+  - close with a stale `updated_at` → 409;
+  - close an already-closed event → 409.
+
+## Group 11 — PDF rendering (Decisions 27, 28)
+
+1. **Spike first (risk 6).**
+   - `pnpm add @react-pdf/renderer@4.9.0` (exact).
+   - Add a route that renders `<Document><Page><Text>hi</Text></Page></Document>`
+     via `renderToBuffer`.
+   - Check it under `pnpm build && pnpm start`. Add `serverExternalPackages:
+     ["@react-pdf/renderer"]` to `next.config.ts` if needed.
+   - Mark the route `export const runtime = "nodejs"`.
+2. **Fonts.** Static TTFs in `apps/web/assets/fonts/`:
+   - `Fraunces-SemiBold.ttf` and `Fraunces-Bold.ttf`;
+   - `WorkSans-Regular.ttf` and `WorkSans-SemiBold.ttf`;
+   - their `OFL.txt`.
+   Register them once in `lib/attendee-pdf.tsx` with `Font.register`, using
+   `path.join(process.cwd(), "assets/fonts", ...)`. Check that the
+   Dockerfile's standalone output copies `assets/` (add
+   `outputFileTracingIncludes` if not). Turn off hyphenation
+   (`Font.registerHyphenationCallback((w) => [w])`).
+3. **Theme.**
+   - `lib/pdf-theme.ts` exports colours mirroring `globals.css` tokens
+     (primary, primary-dark, accent, accent-light, background-soft, text,
+     text-muted), with a comment saying to keep them in sync.
+4. **Document.** `lib/attendee-pdf.tsx` exports `AttendeePdf({ data, logo
+   })` and `renderAttendeePdf(data: AdminAttendees, logo: Buffer | null):
+   Promise<Buffer>`. Layout per Decision 28:
+   - A `fixed` table header row (repeats on every page) and `wrap={false}` rows.
+   - A `fixed` footer with `render={({ pageNumber, totalPages }) => ...}`.
+   - An empty state: "No confirmed guests yet."
+5. **Logo.** Fetch the URL from `siteImage(content, "logo")` server-side
+   (a 5 s timeout). Fall back to reading `public/logo.png`.
+6. **Admin download.** `app/api/admin/events/[id]/attendees.pdf/route.ts`:
+   - Same session forwarding as `attendees.csv/route.ts`.
+   - Gets `getAdminEventAttendees`, renders, and returns
+     `new Response(buffer, { headers: { "Content-Type": "application/pdf",
+     "Content-Disposition": ..., "Cache-Control": "no-store" } })`.
+   - API 401/404 pass through.
+7. **Toolbar.** `components/admin-attendee-sheet-toolbar.tsx`: **Download
+   PDF** becomes `<a href="/api/admin/events/{id}/attendees.pdf"
+   download>`. The Bookings banner's "Check-in sheet (PDF)" splits into
+   **Check-in sheet** (preview page) and **Download PDF**.
+
+## Group 12 — PDF on the owner email (Decision 29)
+
+- Web: `app/api/internal/attendees-pdf/route.ts`:
+  - `POST` with the `AdminAttendees` JSON body.
+  - Requires `Authorization: Bearer ${INTERNAL_RENDER_TOKEN}`, compared in
+    constant time. A missing env var means 404, so the route is off when the
+    secret isn't set.
+  - Validate the body shape (a type guard, no `any`) and reuse
+    `renderAttendeePdf`.
+- `proxy.ts`: don't apply the locale or admin rewrites to `/api/internal/*`.
+- `Caddyfile`: `@internal path /api/internal/*` → `respond 404` on both the
+  public and cms hosts.
+- API:
+  - `config` reads `WEB_INTERNAL_URL` (default `http://web:3000`) and
+    `INTERNAL_RENDER_TOKEN` (optional).
+  - `attendees.rs::render_pdf(client, cfg, &Attendees) ->
+    Option<Vec<u8>>`: reqwest POST, 15 s timeout. Any failure → `None` and
+    `tracing::warn!(event_id, "attendee pdf render failed")`.
+  - `notify_closed_events` and `notify_event` attach
+    `{slug}-attendees.pdf` when `Some`.
+  - `attendees::Attendees` must serialize to the same JSON shape as
+    `GET /attendees`. Reuse the response struct.
+- Wiring:
+  - `docker-compose.yml` passes both env vars to `api` and the token to
+    `web`.
+  - `.env.example` and `_deploy.yml` (`V_INTERNAL_RENDER_TOKEN`) get the
+    new vars.
+  - `docs/deployment.md` documents the new secret and `allow_env_changes`.
+- Tests:
+  - An API unit test with a stub HTTP server (or a `render_pdf` that
+    returns `None` with no token) checks the email still sends with only
+    the CSV.
+  - A web check: the route answers 401 without the token and 404 when the
+    env var is unset.
+
+## As built (Groups 10–12)
+
+- Close and reopen take no body. The `updated_at` guard was dropped, like
+  publish and archive (Decision 23).
+- The owner email is assembled in a spawned task, so a close by hand
+  returns at once while the PDF renders (≤ 15 s).
+- `render_pdf` reads `INTERNAL_RENDER_TOKEN` / `WEB_INTERNAL_URL` once
+  (a `OnceLock`) rather than threading another config through
+  `build_app`. Tests run without the token and get `None`.
+- `proxy.ts` needed no change: `/api/internal/*` on a non-cms host already
+  falls through untouched. Caddy's `no-internal` snippet sits on the public
+  and cms hosts.
+- `apps/web/Dockerfile` copies `assets/` (fonts and the 200 px PDF logo)
+  into the runtime image, because they're read from disk and not traced
+  into `standalone`.
+- Smoke-tested locally with 60 guests: 3 A4 pages, about 104 KB, a header
+  that repeats on each page, no split rows, Yoruba and German accents
+  rendered. The API → web render call returned a valid PDF.

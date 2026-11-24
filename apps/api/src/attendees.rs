@@ -11,6 +11,10 @@ use crate::payment::payment_reference;
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 use sqlx::PgPool;
+use std::sync::OnceLock;
+use std::time::Duration;
+
+const PDF_RENDER_TIMEOUT: Duration = Duration::from_secs(15);
 
 #[derive(Debug, Serialize)]
 pub struct AttendeeEvent {
@@ -64,8 +68,8 @@ pub async fn load_attendees(pool: &PgPool, event_id: i64) -> Result<AttendeesRes
         SELECT id, slug, area, content->'en'->>'title' as "title!",
                starts_at as "starts_at: DateTime<Utc>",
                to_char(starts_at AT TIME ZONE 'Europe/Amsterdam', 'Dy FMDD Mon YYYY, HH24:MI') as "starts_at_label!",
-               LEAST(meal_orders_close_at, rsvp_closes_at, starts_at) as "bookings_close_at!: DateTime<Utc>",
-               now() >= LEAST(meal_orders_close_at, rsvp_closes_at, starts_at) as "bookings_closed!"
+               LEAST(meal_orders_close_at, rsvp_closes_at, starts_at, closed_at) as "bookings_close_at!: DateTime<Utc>",
+               now() >= LEAST(meal_orders_close_at, rsvp_closes_at, starts_at, closed_at) as "bookings_closed!"
         FROM events WHERE id = $1
         "#,
         event_id
@@ -185,29 +189,83 @@ pub fn plate_summary(data: &AttendeesResponse) -> String {
         .join("\n")
 }
 
-/// Claims every published, live event whose bookings have just closed, so
-/// the email goes out once even across restarts (Decision 17). The 24-hour
-/// guard keeps events that closed long before deploy from all emailing at
-/// once.
-pub async fn claim_closed_events(pool: &PgPool) -> Result<Vec<i64>, sqlx::Error> {
+/// Claims every published, live event whose bookings have just closed (or
+/// only `only`, after a close by hand), so the email goes out once even
+/// across restarts (Decisions 17, 26). The 24-hour guard keeps events that
+/// closed long before deploy from all emailing at once.
+pub async fn claim_closed_events(pool: &PgPool, only: Option<i64>) -> Result<Vec<i64>, sqlx::Error> {
     sqlx::query_scalar!(
         r#"
         UPDATE events SET attendees_sent_at = now()
         WHERE attendees_sent_at IS NULL AND archived_at IS NULL AND published_at IS NOT NULL
-          AND now() >= LEAST(meal_orders_close_at, rsvp_closes_at, starts_at)
+          AND now() >= LEAST(meal_orders_close_at, rsvp_closes_at, starts_at, closed_at)
           AND starts_at > now() - interval '24 hours'
+          AND ($1::BIGINT IS NULL OR id = $1)
         RETURNING id
-        "#
+        "#,
+        only
     )
     .fetch_all(pool)
     .await
 }
 
+/// Decision 29: the web app renders the PDF (it owns the site's fonts and
+/// design); the API posts it the attendee JSON over the Docker network.
+/// Off without `INTERNAL_RENDER_TOKEN`, and then the email carries the CSV
+/// only.
+struct PdfRenderer {
+    client: reqwest::Client,
+    url: String,
+    token: String,
+}
+
+fn pdf_renderer() -> Option<&'static PdfRenderer> {
+    static RENDERER: OnceLock<Option<PdfRenderer>> = OnceLock::new();
+    RENDERER
+        .get_or_init(|| {
+            let token = std::env::var("INTERNAL_RENDER_TOKEN").ok().filter(|token| !token.trim().is_empty())?;
+            let base = std::env::var("WEB_INTERNAL_URL").unwrap_or_else(|_| "http://web:3000".into());
+            Some(PdfRenderer {
+                client: reqwest::Client::builder().timeout(PDF_RENDER_TIMEOUT).build().expect("reqwest client builds"),
+                url: format!("{}/api/internal/attendees-pdf", base.trim_end_matches('/')),
+                token: token.trim().to_string(),
+            })
+        })
+        .as_ref()
+}
+
+/// The attendee PDF, or `None` if rendering is off or fails (the email
+/// still goes, with the CSV).
+pub async fn render_pdf(data: &AttendeesResponse) -> Option<Vec<u8>> {
+    let renderer = pdf_renderer()?;
+    let body = serde_json::to_vec(data).ok()?;
+    let response = renderer
+        .client
+        .post(&renderer.url)
+        .header(reqwest::header::AUTHORIZATION, format!("Bearer {}", renderer.token))
+        .header(reqwest::header::CONTENT_TYPE, "application/json")
+        .body(body)
+        .send()
+        .await;
+    let bytes = match response {
+        Ok(response) if response.status().is_success() => response.bytes().await.ok(),
+        Ok(response) => {
+            tracing::warn!(event_id = data.event.id, status = response.status().as_u16(), "attendee pdf render failed");
+            return None;
+        }
+        Err(_) => None,
+    };
+    if bytes.is_none() {
+        tracing::warn!(event_id = data.event.id, "attendee pdf render failed");
+    }
+    bytes.map(|bytes| bytes.to_vec())
+}
+
 pub fn owner_email_body(data: &AttendeesResponse, admin_url: &str) -> String {
     format!(
         "Bookings for {} ({}) have closed.\n\nConfirmed guests: {}\n\nPlates to cook:\n{}\n\n\
-         Check-in sheet (print or save as PDF):\n{admin_url}/events/{}/attendees\n\n\
-         The attendee list is attached as a spreadsheet (CSV).",
+         Check-in sheet:\n{admin_url}/events/{}/attendees\n\n\
+         The attendee list is attached as a spreadsheet (CSV) and, when it could be made, a PDF.",
         data.event.title,
         data.event.starts_at_label,
         data.confirmed_guests,
@@ -220,7 +278,16 @@ pub fn owner_email_body(data: &AttendeesResponse, admin_url: &str) -> String {
 /// is sent for an event without confirmed guests; it stays claimed. Logs
 /// carry event ids only (Decision 18).
 pub async fn notify_closed_events(pool: &PgPool, email: &EmailConfig) {
-    let claimed = match claim_closed_events(pool).await {
+    notify(pool, email, None).await;
+}
+
+/// Decision 26: straight after the admin closes `event_id` by hand.
+pub async fn notify_closed_event(pool: &PgPool, email: &EmailConfig, event_id: i64) {
+    notify(pool, email, Some(event_id)).await;
+}
+
+async fn notify(pool: &PgPool, email: &EmailConfig, only: Option<i64>) {
+    let claimed = match claim_closed_events(pool, only).await {
         Ok(claimed) => claimed,
         Err(error) => {
             tracing::error!(%error, "attendee list claim failed");
@@ -241,17 +308,29 @@ pub async fn notify_closed_events(pool: &PgPool, email: &EmailConfig) {
         }
         let Some(business_address) = email.business_notify_address() else { continue };
         tracing::info!(event_id, guests = data.confirmed_guests, "sending attendee list");
-        email.spawn_send(OutgoingEmail {
-            to: business_address,
-            subject: format!("Attendee list: {} ({})", data.event.title, data.event.starts_at_label),
-            body: owner_email_body(&data, email.admin_url()),
-            reply_to: None,
-            track: None,
-            attachments: vec![EmailAttachment {
+        // Rendering can take seconds; a close by hand shouldn't wait for it.
+        let email = email.clone();
+        tokio::spawn(async move {
+            let mut attachments = vec![EmailAttachment {
                 filename: format!("{}-attendees.csv", data.event.slug),
                 content_type: "text/csv; charset=utf-8".into(),
                 bytes: attendees_csv(&data).into_bytes(),
-            }],
+            }];
+            if let Some(pdf) = render_pdf(&data).await {
+                attachments.push(EmailAttachment {
+                    filename: format!("{}-attendees.pdf", data.event.slug),
+                    content_type: "application/pdf".into(),
+                    bytes: pdf,
+                });
+            }
+            email.spawn_send(OutgoingEmail {
+                to: business_address,
+                subject: format!("Attendee list: {} ({})", data.event.title, data.event.starts_at_label),
+                body: owner_email_body(&data, email.admin_url()),
+                reply_to: None,
+                track: None,
+                attachments,
+            });
         });
     }
 }
@@ -266,5 +345,28 @@ mod tests {
         assert_eq!(csv_field("Abula; Jollof, extra"), "\"Abula; Jollof, extra\"");
         assert_eq!(csv_field("=HYPERLINK(1)"), "'=HYPERLINK(1)");
         assert_eq!(csv_field("say \"hi\""), "\"say \"\"hi\"\"\"");
+    }
+
+    /// Decision 29: without the shared token there's no PDF, and the email
+    /// goes with the CSV alone.
+    #[tokio::test]
+    async fn no_pdf_without_a_render_token() {
+        assert!(std::env::var("INTERNAL_RENDER_TOKEN").is_err(), "tests run without the render token");
+        let data = AttendeesResponse {
+            event: AttendeeEvent {
+                id: 1,
+                slug: "abula".into(),
+                title: "The Abula Experience".into(),
+                starts_at: Utc::now(),
+                starts_at_label: "Sat 6 Dec 2026, 18:00".into(),
+                area: "Almere".into(),
+                bookings_closed: true,
+                bookings_close_at: Utc::now(),
+            },
+            guests: Vec::new(),
+            plate_counts: Vec::new(),
+            confirmed_guests: 0,
+        };
+        assert!(render_pdf(&data).await.is_none());
     }
 }

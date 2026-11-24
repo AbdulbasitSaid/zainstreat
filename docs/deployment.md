@@ -429,6 +429,23 @@ SES SMTP; without credentials the API logs every send as a no-op.
 - **What leaves the server.** Menu text only, never customer data. Logs
   carry row ids and character counts, never the text.
 
+## Event attendees: close, CSV and PDF (Phase 38)
+
+- **Closing.** The admin's Bookings tab has **Close bookings** (stops
+  bookings, waitlist joins and guest cancellations straight away) and,
+  until the event's own deadline, **Reopen bookings**. Closing, by hand or
+  by deadline, emails the owner the attendee list once.
+- **PDF.** **Download PDF** is rendered by the web app
+  (`@react-pdf/renderer`, fonts in `apps/web/assets/fonts/`). The owner
+  email gets the same PDF from web's internal endpoint
+  `/api/internal/attendees-pdf`, which Caddy hides on every public host.
+- **Secret (once):**
+  1. `openssl rand -hex 32 | gh secret set INTERNAL_RENDER_TOKEN --env <env>`.
+  2. First deploy after adding it: Promote with
+     `allow_env_changes: INTERNAL_RENDER_TOKEN`.
+  Without it the email still goes, with the CSV only, and the API logs
+  "attendee pdf render failed" with the event id.
+
 ## Security headers, privacy and retention (Phase 33)
 
 - **Headers.** Caddy sends HSTS, `nosniff`, `Referrer-Policy`,

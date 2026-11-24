@@ -90,6 +90,8 @@ pub fn admin_router() -> Router<AppState> {
         .route("/events/{id}/bookings.csv", get(events::bookings_csv))
         // Phase 38: the attendee list once bookings close.
         .route("/events/{id}/attendees", get(events::list_attendees))
+        .route("/events/{id}/close", post(events::close_event))
+        .route("/events/{id}/reopen", post(events::reopen_event))
         .route("/events/{id}/attendees.csv", get(events::attendees_csv))
         .route("/events/bookings/{id}/offer", post(events::offer_seats))
         .route("/events/bookings/{id}/cancel", post(events::cancel_booking))

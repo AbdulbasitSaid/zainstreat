@@ -65,7 +65,7 @@ pub async fn list_events(
                e.starts_at as "starts_at: DateTime<Utc>",
                e.ends_at as "ends_at: DateTime<Utc>",
                (now() >= COALESCE(e.ends_at, e.starts_at)) as "is_past!",
-               (now() < LEAST(e.meal_orders_close_at, e.rsvp_closes_at, e.starts_at)) as "rsvp_open!",
+               (now() < LEAST(e.meal_orders_close_at, e.rsvp_closes_at, e.starts_at, e.closed_at)) as "rsvp_open!",
                (SELECT COALESCE(SUM(b.party_size), 0) FROM event_bookings b
                  WHERE b.event_id = e.id AND b.status IN ('awaiting_payment', 'confirmed'))::BIGINT as "taken!",
                EXISTS (SELECT 1 FROM event_photos p WHERE p.event_id = e.id) as "has_gallery!"
@@ -190,9 +190,9 @@ pub(crate) async fn load_public_event(
                e.starts_at as "starts_at: DateTime<Utc>",
                e.ends_at as "ends_at: DateTime<Utc>",
                e.meal_orders_close_at as "meal_orders_close_at: DateTime<Utc>",
-               LEAST(e.meal_orders_close_at, e.rsvp_closes_at) as "bookings_close_at: DateTime<Utc>",
+               LEAST(e.meal_orders_close_at, e.rsvp_closes_at, e.closed_at) as "bookings_close_at: DateTime<Utc>",
                (now() >= COALESCE(e.ends_at, e.starts_at)) as "is_past!",
-               (now() < LEAST(e.meal_orders_close_at, e.rsvp_closes_at, e.starts_at)) as "rsvp_open!",
+               (now() < LEAST(e.meal_orders_close_at, e.rsvp_closes_at, e.starts_at, e.closed_at)) as "rsvp_open!",
                (e.published_at IS NOT NULL) as "published!",
                (SELECT COALESCE(SUM(b.party_size), 0) FROM event_bookings b
                  WHERE b.event_id = e.id AND b.status IN ('awaiting_payment', 'confirmed'))::BIGINT as "taken!"
@@ -389,7 +389,7 @@ pub async fn create_booking(
     let event = sqlx::query!(
         r#"
         SELECT id, capacity, max_party_size,
-               (now() < LEAST(meal_orders_close_at, rsvp_closes_at, starts_at)) as "rsvp_open!"
+               (now() < LEAST(meal_orders_close_at, rsvp_closes_at, starts_at, closed_at)) as "rsvp_open!"
         FROM events
         WHERE slug = $1 AND published_at IS NOT NULL AND archived_at IS NULL
         FOR UPDATE
@@ -633,7 +633,7 @@ pub async fn cancel_booking(
     let mut tx = pool.begin().await?;
     let current = sqlx::query!(
         r#"
-        SELECT b.status, (now() < COALESCE(e.meal_orders_close_at, e.starts_at)) as "can_cancel!"
+        SELECT b.status, (now() < LEAST(e.meal_orders_close_at, e.closed_at, e.starts_at)) as "can_cancel!"
         FROM event_bookings b JOIN events e ON e.id = b.event_id
         WHERE b.id = $1
         FOR UPDATE OF b

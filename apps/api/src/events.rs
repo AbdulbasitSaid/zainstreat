@@ -283,7 +283,7 @@ pub async fn load_booking(pool: &PgPool, booking_id: i64) -> Result<Option<Booki
                e.slug, e.content, e.area, e.address, e.cover_image_url,
                e.starts_at as "starts_at: chrono::DateTime<chrono::Utc>",
                to_char(e.starts_at AT TIME ZONE 'Europe/Amsterdam', 'DD-MM-YYYY HH24:MI') as "starts_local!",
-               (now() < COALESCE(e.meal_orders_close_at, e.starts_at)) as "guest_can_cancel!"
+               (now() < LEAST(e.meal_orders_close_at, e.closed_at, e.starts_at)) as "guest_can_cancel!"
         FROM event_bookings b
         JOIN events e ON e.id = b.event_id
         LEFT JOIN orders o ON o.id = b.order_id

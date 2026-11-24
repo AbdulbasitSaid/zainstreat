@@ -33,9 +33,9 @@ const PRINTED_AT = new Intl.DateTimeFormat("en-GB", {
 });
 
 /**
- * Phase 38 Decision 15: the check-in sheet. Print-first, in the site's own
+ * Phase 38 Decision 15: the check-in sheet preview, in the site's own
  * fonts and colours; the admin shell is hidden when printing (protected
- * layout), and the toolbar's "Download PDF" opens the browser's Save as PDF.
+ * layout). The toolbar's "Download PDF" is the real file (Decision 27).
  */
 export default async function AdminAttendeesPage({ params }: { params: Promise<{ id: string }> }) {
   const id = eventId((await params).id);

@@ -722,9 +722,11 @@ owner needs the attendee list once an event's registration has closed.
   invoice, emails and tracking page; admin and kitchen keep English.
 - Once an event's bookings close, the Bookings tab shows "Registration
   closed" with **Export attendees**: confirmed guests only, one row per
-  guest with plate and choices, as a CSV and a branded print-to-PDF
-  check-in sheet. The owner is emailed the CSV and a link to the sheet
-  automatically when bookings close.
+  guest with plate and choices, as a CSV and a branded PDF file
+  (rendered with `@react-pdf/renderer` in the site's fonts and colours).
+  The owner can also **close bookings by hand** at any time, and reopen
+  them before the event's own deadline. The owner is emailed the CSV and
+  the PDF automatically when bookings close.
 
 ## Later — iDEAL Payments
 

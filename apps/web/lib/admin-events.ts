@@ -153,6 +153,10 @@ export interface AdminBookings {
   seats_taken: number;
   // Phase 38 Decision 16: the tab leads with the attendee export.
   bookings_closed: boolean;
+  // Decisions 24, 25: closed by hand ("6 Dec 2026, 18:00", Amsterdam), and
+  // whether the event's own deadline still allows reopening.
+  closed_at: string | null;
+  can_reopen: boolean;
 }
 
 // Phase 38 Decisions 13, 15: confirmed guests, one per row.

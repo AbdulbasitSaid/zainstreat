@@ -740,11 +740,18 @@ pub struct AdminBookingsResponse {
     pub seats_taken: i64,
     /// Phase 38 Decision 16: the tab leads with the attendee export.
     pub bookings_closed: bool,
+    /// Decision 25: when the admin closed bookings by hand, Amsterdam time
+    /// ("6 Dec 2026, 18:00").
+    pub closed_at: Option<String>,
+    /// Decision 24: closed by hand, and the event's own deadline is ahead.
+    pub can_reopen: bool,
 }
 
 async fn load_bookings(pool: &PgPool, event_id: i64) -> Result<AdminBookingsResponse, AppError> {
     let event = sqlx::query!(
-        r#"SELECT capacity, now() >= LEAST(meal_orders_close_at, rsvp_closes_at, starts_at) as "bookings_closed!"
+        r#"SELECT capacity, now() >= LEAST(meal_orders_close_at, rsvp_closes_at, starts_at, closed_at) as "bookings_closed!",
+                  to_char(closed_at AT TIME ZONE 'Europe/Amsterdam', 'FMDD Mon YYYY, HH24:MI') as closed_at,
+                  (closed_at IS NOT NULL AND now() < LEAST(meal_orders_close_at, rsvp_closes_at, starts_at)) as "can_reopen!"
            FROM events WHERE id = $1"#,
         event_id
     )
@@ -844,6 +851,8 @@ async fn load_bookings(pool: &PgPool, event_id: i64) -> Result<AdminBookingsResp
         capacity: event.capacity,
         seats_taken: seats_taken(&mut conn, event_id).await?,
         bookings_closed: event.bookings_closed,
+        closed_at: event.closed_at,
+        can_reopen: event.can_reopen,
     })
 }
 
@@ -854,6 +863,61 @@ pub async fn list_bookings(
     Ok(Json(load_bookings(&pool, id).await?))
 }
 
+/// Phase 38 Decisions 22, 23, 26: stops bookings, waitlist joins and guest
+/// cancellations now, then emails the owner the attendee list. Holds already
+/// awaiting payment keep running, as at a time-based close.
+pub async fn close_event(
+    State(pool): State<PgPool>,
+    State(email): State<EmailConfig>,
+    Path(id): Path<i64>,
+) -> Result<Json<AdminBookingsResponse>, AppError> {
+    let closed = sqlx::query_scalar!(
+        r#"
+        UPDATE events SET closed_at = now(), updated_at = now()
+        WHERE id = $1 AND now() < LEAST(meal_orders_close_at, rsvp_closes_at, starts_at, closed_at)
+        RETURNING id
+        "#,
+        id
+    )
+    .fetch_optional(&pool)
+    .await?;
+    if closed.is_none() {
+        return Err(missing_or_conflict(&pool, id).await);
+    }
+    tracing::info!(event_id = id, "admin closed event bookings");
+    attendees::notify_closed_event(&pool, &email, id).await;
+    Ok(Json(load_bookings(&pool, id).await?))
+}
+
+/// Decision 24: undoes a close by hand while the event's own deadline is
+/// still ahead. `attendees_sent_at` stays, so closing again sends no second
+/// email.
+pub async fn reopen_event(State(pool): State<PgPool>, Path(id): Path<i64>) -> Result<Json<AdminBookingsResponse>, AppError> {
+    let reopened = sqlx::query_scalar!(
+        r#"
+        UPDATE events SET closed_at = NULL, updated_at = now()
+        WHERE id = $1 AND closed_at IS NOT NULL
+          AND now() < LEAST(meal_orders_close_at, rsvp_closes_at, starts_at)
+        RETURNING id
+        "#,
+        id
+    )
+    .fetch_optional(&pool)
+    .await?;
+    if reopened.is_none() {
+        return Err(missing_or_conflict(&pool, id).await);
+    }
+    tracing::info!(event_id = id, "admin reopened event bookings");
+    Ok(Json(load_bookings(&pool, id).await?))
+}
+
+async fn missing_or_conflict(pool: &PgPool, id: i64) -> AppError {
+    match sqlx::query_scalar!("SELECT id FROM events WHERE id = $1", id).fetch_optional(pool).await {
+        Ok(Some(_)) => AppError::InvalidStatusTransition,
+        Ok(None) => AppError::NotFound,
+        Err(error) => error.into(),
+    }
+}
 
 /// Phase 38 Decision 13: confirmed guests, one per row, for the check-in
 /// sheet.
@@ -941,7 +1005,7 @@ pub async fn offer_seats(
     }
     let event = sqlx::query!(
         r#"
-        SELECT capacity, (now() < LEAST(meal_orders_close_at, rsvp_closes_at, starts_at)) as "booking_open!"
+        SELECT capacity, (now() < LEAST(meal_orders_close_at, rsvp_closes_at, starts_at, closed_at)) as "booking_open!"
         FROM events WHERE id = $1 FOR UPDATE
         "#,
         booking.event_id

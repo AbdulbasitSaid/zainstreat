@@ -18,6 +18,7 @@ const STATUS_CLASSES: Record<AdminBookingStatus, string> = {
 const CANCEL_REASONS = { expired: "unpaid, released", guest: "by guest", admin: "by you" } as const;
 
 type Pending = { booking: AdminBooking; action: "offer" | "cancel" };
+type EventAction = "close" | "reopen";
 
 function plateSummary(booking: AdminBooking): string {
   const counts = new Map<string, number>();
@@ -36,6 +37,7 @@ function plateSummary(booking: AdminBooking): string {
 export function AdminEventBookings({ eventId, initial }: { eventId: number; initial: AdminBookings }) {
   const [data, setData] = useState(initial);
   const [pending, setPending] = useState<Pending | null>(null);
+  const [eventAction, setEventAction] = useState<EventAction | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -67,27 +69,61 @@ export function AdminEventBookings({ eventId, initial }: { eventId: number; init
     setMessage("That didn't work. Refresh the page and try again.");
   }
 
+  // Phase 38 Decisions 22–25: close bookings by hand, or undo it.
+  async function runEventAction() {
+    if (!eventAction) return;
+    setBusy(true);
+    setMessage(null);
+    const response = await fetch(`/api/admin/events/${eventId}/${eventAction}`, { method: "POST" });
+    const body: unknown = await response.json().catch(() => null);
+    setBusy(false);
+    setEventAction(null);
+    if (response.ok) {
+      setData(body as AdminBookings);
+      return;
+    }
+    setMessage(
+      response.status === 409
+        ? eventAction === "close"
+          ? "Bookings for this event are already closed. Refresh the page."
+          : "This event's own booking deadline has passed, so bookings can't be reopened."
+        : "That didn't work. Refresh the page and try again.",
+    );
+  }
+
   // Phase 38 Decision 16: the attendee export, up front once bookings close.
   const confirmedGuests = data.bookings
     .filter((booking) => booking.status === "confirmed")
     .reduce((sum, booking) => sum + booking.guests.length, 0);
   const sheetHref = `/events/${eventId}/attendees`;
   const attendeesCsvHref = `/api/admin/events/${eventId}/attendees.csv`;
+  const attendeesPdfHref = `/api/admin/events/${eventId}/attendees.pdf`;
 
   return (
     <div className="flex flex-col gap-8">
       {data.bookings_closed && (
         <section className="flex flex-wrap items-center justify-between gap-4 rounded-card bg-primary px-5 py-4 text-white">
-          <p className="m-0 font-semibold">
-            Registration closed — {confirmedGuests} confirmed {confirmedGuests === 1 ? "guest" : "guests"}
-          </p>
+          <div>
+            <p className="m-0 font-semibold">
+              Registration closed — {confirmedGuests} confirmed {confirmedGuests === 1 ? "guest" : "guests"}
+            </p>
+            {data.closed_at && <p className="m-0 text-sm text-white/85">Closed by you on {data.closed_at}</p>}
+          </div>
           <div className="flex flex-wrap items-center gap-4">
-            <Link href={sheetHref} className="font-semibold text-white underline">
-              Check-in sheet (PDF)
-            </Link>
+            <a href={attendeesPdfHref} download className="font-semibold text-white underline">
+              Download PDF
+            </a>
             <a href={attendeesCsvHref} className="font-semibold text-white underline">
               Export attendees (CSV)
             </a>
+            <Link href={sheetHref} className="font-semibold text-white underline">
+              Check-in sheet
+            </Link>
+            {data.can_reopen && (
+              <Button type="button" variant="invert" className="px-4 py-2" onClick={() => setEventAction("reopen")}>
+                Reopen bookings
+              </Button>
+            )}
           </div>
         </section>
       )}
@@ -131,6 +167,9 @@ export function AdminEventBookings({ eventId, initial }: { eventId: number; init
               <Link href={sheetHref} className="font-semibold text-primary underline">
                 Check-in sheet
               </Link>
+              <a href={attendeesPdfHref} download className="font-semibold text-primary underline">
+                PDF
+              </a>
               <a href={attendeesCsvHref} className="font-semibold text-primary underline">
                 CSV
               </a>
@@ -139,6 +178,11 @@ export function AdminEventBookings({ eventId, initial }: { eventId: number; init
           <a href={`/api/admin/events/${eventId}/bookings.csv`} className="font-semibold text-primary underline">
             Download guest list (CSV)
           </a>
+          {!data.bookings_closed && (
+            <Button type="button" variant="outline" className="px-4 py-2" onClick={() => setEventAction("close")}>
+              Close bookings
+            </Button>
+          )}
         </div>
       </div>
 
@@ -201,6 +245,19 @@ export function AdminEventBookings({ eventId, initial }: { eventId: number; init
         {pending?.action === "offer"
           ? `${pending.booking.customer_name} gets ${pending.booking.party_size} seat(s) and an email. With meals, they get a payment request and a new payment window.`
           : `${pending?.booking.customer_name ?? "The guest"}'s seats are freed and they get an email. If they already paid, arrange the refund yourself.`}
+      </AdminConfirmDialog>
+
+      <AdminConfirmDialog
+        open={eventAction !== null}
+        title={eventAction === "close" ? "Close bookings for this event?" : "Reopen bookings?"}
+        confirmLabel={eventAction === "close" ? "Close bookings" : "Reopen bookings"}
+        busy={busy}
+        onConfirm={() => void runEventAction()}
+        onCancel={() => setEventAction(null)}
+      >
+        {eventAction === "close"
+          ? "Guests can't book, join the waitlist or cancel online after this. Guests still paying keep their seat until their hold runs out. You'll get the attendee list by email."
+          : "Guests can book, join the waitlist and cancel online again. You won't get a second attendee email; download a fresh list here when you close."}
       </AdminConfirmDialog>
     </div>
   );
