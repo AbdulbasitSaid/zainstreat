@@ -106,6 +106,7 @@ async fn main() {
     let payment = api::payment::PaymentConfig::from_env();
     let push = api::push::PushConfig::from_env();
     let delivery = api::delivery::DeliveryConfig::from_env();
+    let translation = api::translation::TranslationConfig::from_env();
 
     // Phase 31 Decision 8: release unpaid event bookings after their hold.
     api::events::spawn_hold_sweeper(pool.clone(), email.clone(), push.clone(), payment.clone());
@@ -115,8 +116,10 @@ async fn main() {
         tracing::info!("retention sweeper enabled");
         api::retention::spawn_retention_sweeper(pool.clone());
     }
+    // Phase 38 Decision 4: backfill and retry menu translations.
+    api::translation_sweep::spawn_translation_sweeper(pool.clone(), translation.clone());
 
-    let app = match api::build_app(pool, cookie_secure, media, email, payment, push, delivery).await {
+    let app = match api::build_app(pool, cookie_secure, media, email, payment, push, delivery, translation).await {
         Ok(app) => app,
         Err(error) => {
             tracing::error!(%error, "failed to build application");
