@@ -453,6 +453,7 @@ pub async fn update_order_status(
                 body,
                 reply_to: None,
                 track: Some(DeliveryRef { pool: pool.clone(), order_id: Some(order.id), quote_id: None, kind: "status" }),
+                attachments: Vec::new(),
             });
         }
     }

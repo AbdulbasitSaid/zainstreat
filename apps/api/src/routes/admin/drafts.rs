@@ -10,9 +10,12 @@ use crate::routes::admin::menu_items::{
     apply_menu_item_fields, delete_media_object, effective_fields, parse_draft, validate_menu_item,
     MenuItemFields, PriceOptionInput,
 };
-use crate::routes::categories::CategoryResponse;
+use crate::order_emails::Locale;
+use crate::routes::categories::{CategoryResponse, LocaleQuery};
 use crate::routes::menu_items::{ListMenuItemsQuery, MenuItemResponse, PriceOptionResponse};
 use crate::site_content::SiteContent;
+use crate::translation::{self, LocalizedText, TranslationConfig};
+use crate::translation_sweep;
 use crate::MediaConfig;
 use axum::{
     extract::{Path, Query, State},
@@ -42,6 +45,7 @@ struct MenuItemSourceRow {
     draft: Option<Value>,
     draft_updated_at: Option<DateTime<Utc>>,
     published_at: Option<DateTime<Utc>>,
+    translations: Value,
 }
 
 struct LiveOptionRow {
@@ -49,6 +53,7 @@ struct LiveOptionRow {
     menu_item_id: i64,
     label: String,
     price: rust_decimal::Decimal,
+    translations: Value,
 }
 
 /// Every non-archived item with its live price options.
@@ -60,7 +65,7 @@ async fn load_menu_item_sources(
         r#"
         SELECT id, category_id, name, description, price, image_url, is_available, is_featured, min_quantity,
                draft, draft_updated_at as "draft_updated_at: DateTime<Utc>",
-               published_at as "published_at: DateTime<Utc>"
+               published_at as "published_at: DateTime<Utc>", translations
         FROM menu_items
         WHERE deleted_at IS NULL
         ORDER BY display_order, id
@@ -72,7 +77,7 @@ async fn load_menu_item_sources(
     let option_rows = sqlx::query_as!(
         LiveOptionRow,
         r#"
-        SELECT id, menu_item_id, label, price
+        SELECT id, menu_item_id, label, price, translations
         FROM menu_item_price_options
         WHERE deleted_at IS NULL
         ORDER BY menu_item_id, display_order, id
@@ -96,11 +101,16 @@ fn live_fields(row: &MenuItemSourceRow, options: &[LiveOptionRow]) -> MenuItemFi
         price: row.price,
         price_options: options
             .iter()
-            .map(|option| PriceOptionInput { label: option.label.clone(), price: option.price })
+            .map(|option| PriceOptionInput {
+                label: option.label.clone(),
+                price: option.price,
+                translations: option.translations.clone(),
+            })
             .collect(),
         image_url: row.image_url.clone(),
         is_featured: row.is_featured,
         min_quantity: row.min_quantity,
+        translations: row.translations.clone(),
     }
 }
 
@@ -113,6 +123,7 @@ pub async fn preview_menu_items(
     Query(params): Query<ListMenuItemsQuery>,
 ) -> Result<Json<Vec<MenuItemResponse>>, AppError> {
     let (items, mut options) = load_menu_item_sources(&pool).await?;
+    let locale = translation::query_locale(params.locale.as_deref());
 
     let response = items
         .into_iter()
@@ -124,18 +135,20 @@ pub async fn preview_menu_items(
                     .price_options
                     .iter()
                     .enumerate()
-                    .map(|(index, option)| PriceOptionResponse {
-                        id: -(index as i64) - 1,
-                        label: option.label.clone(),
-                        price: option.price,
+                    .map(|(index, option)| {
+                        PriceOptionResponse::localized(
+                            -(index as i64) - 1,
+                            &option.label,
+                            option.price,
+                            &option.translations,
+                            locale,
+                        )
                     })
                     .collect(),
                 None => live_options
                     .iter()
-                    .map(|option| PriceOptionResponse {
-                        id: option.id,
-                        label: option.label.clone(),
-                        price: option.price,
+                    .map(|option| {
+                        PriceOptionResponse::localized(option.id, &option.label, option.price, &option.translations, locale)
                     })
                     .collect(),
             };
@@ -146,8 +159,14 @@ pub async fn preview_menu_items(
             Some(MenuItemResponse {
                 id: row.id,
                 category_id: fields.category_id,
-                name: fields.name,
-                description: fields.description,
+                name: translation::resolve(&fields.translations, locale, "name", &fields.name),
+                description: translation::resolve_opt(
+                    &fields.translations,
+                    locale,
+                    "description",
+                    fields.description.as_deref(),
+                ),
+                names: LocalizedText::of(&fields.translations, "name", &fields.name),
                 price: fields.price,
                 image_url: fields.image_url,
                 is_available: row.is_available,
@@ -168,6 +187,7 @@ struct CategorySourceRow {
     draft: Option<Value>,
     draft_updated_at: Option<DateTime<Utc>>,
     published_at: Option<DateTime<Utc>>,
+    translations: Value,
 }
 
 async fn load_category_sources(pool: &PgPool) -> Result<Vec<CategorySourceRow>, sqlx::Error> {
@@ -176,7 +196,7 @@ async fn load_category_sources(pool: &PgPool) -> Result<Vec<CategorySourceRow>, 
         r#"
         SELECT id, name, description,
                draft, draft_updated_at as "draft_updated_at: DateTime<Utc>",
-               published_at as "published_at: DateTime<Utc>"
+               published_at as "published_at: DateTime<Utc>", translations
         FROM categories
         WHERE deleted_at IS NULL
         ORDER BY display_order, id
@@ -186,21 +206,40 @@ async fn load_category_sources(pool: &PgPool) -> Result<Vec<CategorySourceRow>, 
     .await
 }
 
+fn live_category(row: &CategorySourceRow) -> CategoryFields {
+    CategoryFields {
+        name: row.name.clone(),
+        description: row.description.clone(),
+        translations: row.translations.clone(),
+    }
+}
+
 fn effective_category(row: &CategorySourceRow) -> CategoryFields {
-    let live = CategoryFields { name: row.name.clone(), description: row.description.clone() };
+    let live = live_category(row);
     row.draft.clone().and_then(|draft| parse_category_draft(row.id, draft)).unwrap_or(live)
 }
 
 /// `GET /api/admin/preview/categories`.
 pub async fn preview_categories(
     State(pool): State<PgPool>,
+    Query(params): Query<LocaleQuery>,
 ) -> Result<Json<Vec<CategoryResponse>>, AppError> {
     let rows = load_category_sources(&pool).await?;
+    let locale = translation::query_locale(params.locale.as_deref());
     Ok(Json(
         rows.iter()
             .map(|row| {
                 let fields = effective_category(row);
-                CategoryResponse { id: row.id, name: fields.name, description: fields.description }
+                CategoryResponse {
+                    id: row.id,
+                    name: translation::resolve(&fields.translations, locale, "name", &fields.name),
+                    description: translation::resolve_opt(
+                        &fields.translations,
+                        locale,
+                        "description",
+                        fields.description.as_deref(),
+                    ),
+                }
             })
             .collect(),
     ))
@@ -294,8 +333,22 @@ fn price_options_text(options: &[PriceOptionInput]) -> Value {
     )
 }
 
-fn menu_item_values(fields: &MenuItemFields, category_names: &HashMap<i64, String>) -> Vec<(&'static str, Value)> {
+/// Phase 38: the nl/fr name and description, so the Changes list shows a
+/// new translation before it's published.
+fn translated_values(translations: &Value) -> Vec<(&'static str, Value)> {
+    let text = |locale: Locale, key: &str| {
+        translations.get(locale.as_str()).and_then(|entry| entry.get(key)).cloned().unwrap_or(Value::Null)
+    };
     vec![
+        ("name_nl", text(Locale::Nl, "name")),
+        ("description_nl", text(Locale::Nl, "description")),
+        ("name_fr", text(Locale::Fr, "name")),
+        ("description_fr", text(Locale::Fr, "description")),
+    ]
+}
+
+fn menu_item_values(fields: &MenuItemFields, category_names: &HashMap<i64, String>) -> Vec<(&'static str, Value)> {
+    let mut values = vec![
         ("name", json!(fields.name)),
         ("description", json!(fields.description)),
         ("category", json!(category_names.get(&fields.category_id))),
@@ -304,7 +357,9 @@ fn menu_item_values(fields: &MenuItemFields, category_names: &HashMap<i64, Strin
         ("image_url", json!(fields.image_url)),
         ("is_featured", json!(fields.is_featured)),
         ("min_quantity", json!(fields.min_quantity)),
-    ]
+    ];
+    values.extend(translated_values(&fields.translations));
+    values
 }
 
 /// Field-level before/after; for a new row every non-empty field, with
@@ -379,9 +434,11 @@ async fn collect_changes(pool: &PgPool) -> Result<Vec<ChangeEntry>, AppError> {
         if !is_new && draft.is_none() {
             continue;
         }
-        let live = CategoryFields { name: row.name.clone(), description: row.description.clone() };
+        let live = live_category(row);
         let values = |fields: &CategoryFields| -> Vec<(&'static str, Value)> {
-            vec![("name", json!(fields.name)), ("description", json!(fields.description))]
+            let mut values = vec![("name", json!(fields.name)), ("description", json!(fields.description))];
+            values.extend(translated_values(&fields.translations));
+            values
         };
         let changed_fields = match &draft {
             Some(draft) => diff(Some(values(&live)), values(draft)),
@@ -474,8 +531,19 @@ fn invalid_entry(index: usize, field: &str) -> AppError {
 pub async fn publish(
     State(pool): State<PgPool>,
     State(media): State<MediaConfig>,
+    State(translator): State<TranslationConfig>,
     Json(payload): Json<PublishRequest>,
 ) -> Result<Json<PublishResponse>, AppError> {
+    // Phase 38 Decision 2: translate before the transaction (DeepL may take
+    // seconds). It writes only the draft's or row's translations, leaving
+    // the concurrency tokens checked below untouched; a refusal or failure
+    // publishes with English as the fallback.
+    for entry in &payload.entries {
+        if let (KIND_MENU_ITEM | KIND_CATEGORY, Some(id)) = (entry.kind.as_str(), entry.id) {
+            translation_sweep::translate_for_publish(&pool, &translator, &entry.kind, id).await?;
+        }
+    }
+
     let mut tx = pool.begin().await?;
     let mut superseded: Vec<String> = Vec::new();
     let mut published = Vec::new();
@@ -511,6 +579,7 @@ pub async fn publish(
                 let row = sqlx::query!(
                     r#"
                     SELECT category_id, name, description, price, image_url, is_featured, min_quantity, draft,
+                           translations,
                            draft_updated_at as "draft_updated_at: DateTime<Utc>",
                            deleted_at as "deleted_at: DateTime<Utc>"
                     FROM menu_items WHERE id = $1
@@ -528,7 +597,7 @@ pub async fn publish(
                 let live_options = sqlx::query_as!(
                     PriceOptionInput,
                     r#"
-                    SELECT label, price FROM menu_item_price_options
+                    SELECT label, price, translations FROM menu_item_price_options
                     WHERE menu_item_id = $1 AND deleted_at IS NULL
                     ORDER BY display_order, id
                     "#,
@@ -545,6 +614,7 @@ pub async fn publish(
                     image_url: row.image_url.clone(),
                     is_featured: row.is_featured,
                     min_quantity: row.min_quantity,
+                    translations: row.translations,
                 };
                 let draft = row.draft.and_then(|draft| parse_draft(id, draft));
                 let has_draft = draft.is_some();

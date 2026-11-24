@@ -237,6 +237,7 @@ pub async fn create_catering_enquiry(
             ),
             reply_to: Some(payload.email.trim().to_string()),
             track: None,
+            attachments: Vec::new(),
         });
     }
 

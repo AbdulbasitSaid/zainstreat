@@ -1,11 +1,13 @@
 use crate::chrono_to_offset;
 use crate::error::{AppError, BlockingMenuItem, FieldError};
+use crate::translation::{self, StatusPair, Unit};
 use axum::{
     Json,
     extract::{Path, State},
 };
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use sqlx::PgPool;
 
 #[derive(Debug, Serialize)]
@@ -20,6 +22,10 @@ pub struct AdminCategoryResponse {
     pub has_draft: bool,
     pub draft: Option<CategoryFields>,
     pub draft_updated_at: Option<DateTime<Utc>>,
+    /// Phase 38: the live nl/fr text and the state of the version the form
+    /// edits (the draft when there is one).
+    pub translations: Value,
+    pub translation_status: StatusPair,
 }
 
 pub(crate) struct CategoryRow {
@@ -31,22 +37,36 @@ pub(crate) struct CategoryRow {
     pub(crate) draft: Option<serde_json::Value>,
     pub(crate) draft_updated_at: Option<DateTime<Utc>>,
     pub(crate) published_at: Option<DateTime<Utc>>,
+    pub(crate) translations: Value,
 }
 
-impl From<CategoryRow> for AdminCategoryResponse {
-    fn from(row: CategoryRow) -> Self {
-        Self {
-            id: row.id,
-            name: row.name,
-            description: row.description,
-            is_archived: row.deleted_at.is_some(),
-            updated_at: row.updated_at,
-            is_published: row.published_at.is_some(),
-            has_draft: row.draft.is_some(),
-            draft: row.draft.and_then(|draft| parse_category_draft(row.id, draft)),
-            draft_updated_at: row.draft_updated_at,
+impl CategoryRow {
+    fn into_response(self, keep_version: i32) -> AdminCategoryResponse {
+        let draft = self.draft.and_then(|draft| parse_category_draft(self.id, draft));
+        let live = CategoryFields {
+            name: self.name.clone(),
+            description: self.description.clone(),
+            translations: self.translations.clone(),
+        };
+        let translation_status = draft.as_ref().unwrap_or(&live).unit().status(keep_version);
+        AdminCategoryResponse {
+            id: self.id,
+            name: self.name,
+            description: self.description,
+            is_archived: self.deleted_at.is_some(),
+            updated_at: self.updated_at,
+            is_published: self.published_at.is_some(),
+            has_draft: draft.is_some(),
+            draft,
+            draft_updated_at: self.draft_updated_at,
+            translations: self.translations,
+            translation_status,
         }
     }
+}
+
+async fn keep_version(pool: &PgPool) -> Result<i32, sqlx::Error> {
+    Ok(translation::load_settings(pool).await?.keep_version)
 }
 
 /// A category's editable content: the create body, the draft-save body and
@@ -55,6 +75,27 @@ impl From<CategoryRow> for AdminCategoryResponse {
 pub struct CategoryFields {
     pub name: String,
     pub description: Option<String>,
+    /// Phase 38 Decision 1. Drafts saved before Phase 38 have none.
+    #[serde(default = "translation::empty_translations")]
+    pub translations: Value,
+}
+
+impl CategoryFields {
+    pub(crate) fn unit(&self) -> Unit {
+        Unit::new(
+            translation::english(&[("name", Some(&self.name)), ("description", self.description.as_deref())]),
+            self.translations.clone(),
+        )
+    }
+}
+
+/// Phase 38 Decision 5: keeps the owner's nl/fr edits. DeepL runs on
+/// publish, not on every autosave (Decision 2).
+fn accept_translation_edits(fields: &mut CategoryFields) {
+    let mut units = [fields.unit()];
+    translation::accept_edits(&mut units);
+    let [unit] = units;
+    fields.translations = unit.translations;
 }
 
 #[derive(Debug, Deserialize)]
@@ -84,14 +125,15 @@ pub async fn list_categories(
                deleted_at as "deleted_at: DateTime<Utc>",
                updated_at as "updated_at: DateTime<Utc>",
                draft, draft_updated_at as "draft_updated_at: DateTime<Utc>",
-               published_at as "published_at: DateTime<Utc>"
+               published_at as "published_at: DateTime<Utc>", translations
         FROM categories ORDER BY display_order, id
         "#
     )
     .fetch_all(&pool)
     .await?;
 
-    Ok(Json(rows.into_iter().map(Into::into).collect()))
+    let keep_version = keep_version(&pool).await?;
+    Ok(Json(rows.into_iter().map(|row| row.into_response(keep_version)).collect()))
 }
 
 /// Disambiguates a 0-row conditional UPDATE: row gone entirely -> 404,
@@ -104,7 +146,7 @@ pub(crate) async fn category_or_conflict(pool: &PgPool, id: i64) -> AppError {
                deleted_at as "deleted_at: DateTime<Utc>",
                updated_at as "updated_at: DateTime<Utc>",
                draft, draft_updated_at as "draft_updated_at: DateTime<Utc>",
-               published_at as "published_at: DateTime<Utc>"
+               published_at as "published_at: DateTime<Utc>", translations
         FROM categories WHERE id = $1
         "#,
         id
@@ -112,10 +154,12 @@ pub(crate) async fn category_or_conflict(pool: &PgPool, id: i64) -> AppError {
     .fetch_optional(pool)
     .await
     {
-        Ok(Some(row)) => {
-            let current: AdminCategoryResponse = row.into();
-            AppError::Conflict(serde_json::to_value(current).expect("serializable"))
-        }
+        Ok(Some(row)) => match keep_version(pool).await {
+            Ok(keep_version) => {
+                AppError::Conflict(serde_json::to_value(row.into_response(keep_version)).expect("serializable"))
+            }
+            Err(err) => AppError::Database(err),
+        },
         Ok(None) => AppError::NotFound,
         Err(err) => AppError::Database(err),
     }
@@ -139,29 +183,31 @@ pub(crate) fn validate_category(payload: &CategoryFields) -> Result<(), AppError
 /// New categories start unpublished (Phase 25 Decision 15).
 pub async fn create_category(
     State(pool): State<PgPool>,
-    Json(payload): Json<CategoryFields>,
+    Json(mut payload): Json<CategoryFields>,
 ) -> Result<Json<AdminCategoryResponse>, AppError> {
     validate_category(&payload)?;
+    accept_translation_edits(&mut payload);
 
     // Appended last (requirement.md Decision 8) — no reorder UI this phase.
     let row = sqlx::query_as!(
         CategoryRow,
         r#"
-        INSERT INTO categories (name, description, display_order, published_at)
-        VALUES ($1, $2, (SELECT COALESCE(MAX(display_order), -1) + 1 FROM categories), NULL)
+        INSERT INTO categories (name, description, display_order, published_at, translations)
+        VALUES ($1, $2, (SELECT COALESCE(MAX(display_order), -1) + 1 FROM categories), NULL, $3)
         RETURNING id, name, description,
                   deleted_at as "deleted_at: DateTime<Utc>",
                   updated_at as "updated_at: DateTime<Utc>",
                   draft, draft_updated_at as "draft_updated_at: DateTime<Utc>",
-                  published_at as "published_at: DateTime<Utc>"
+                  published_at as "published_at: DateTime<Utc>", translations
         "#,
         payload.name.trim(),
         payload.description,
+        payload.translations,
     )
     .fetch_one(&pool)
     .await?;
 
-    Ok(Json(row.into()))
+    Ok(Json(row.into_response(keep_version(&pool).await?)))
 }
 
 /// Same model as `save_menu_item_draft`: a published category's edit goes
@@ -169,7 +215,7 @@ pub async fn create_category(
 pub async fn save_category_draft(
     State(pool): State<PgPool>,
     Path(id): Path<i64>,
-    Json(payload): Json<SaveCategoryDraftRequest>,
+    Json(mut payload): Json<SaveCategoryDraftRequest>,
 ) -> Result<Json<AdminCategoryResponse>, AppError> {
     validate_category(&payload.fields)?;
 
@@ -178,7 +224,7 @@ pub async fn save_category_draft(
         r#"
         SELECT deleted_at as "deleted_at: DateTime<Utc>",
                draft_updated_at as "draft_updated_at: DateTime<Utc>",
-               published_at as "published_at: DateTime<Utc>"
+               published_at as "published_at: DateTime<Utc>", translations
         FROM categories WHERE id = $1
         FOR UPDATE
         "#,
@@ -195,6 +241,7 @@ pub async fn save_category_draft(
         tx.rollback().await?;
         return Err(category_or_conflict(&pool, id).await);
     }
+    accept_translation_edits(&mut payload.fields);
 
     if row.published_at.is_none() {
         apply_category_fields(&mut tx, id, &payload.fields).await?;
@@ -228,10 +275,11 @@ pub(crate) async fn apply_category_fields(
     fields: &CategoryFields,
 ) -> Result<(), sqlx::Error> {
     sqlx::query!(
-        "UPDATE categories SET name = $2, description = $3, updated_at = now() WHERE id = $1",
+        "UPDATE categories SET name = $2, description = $3, translations = $4, updated_at = now() WHERE id = $1",
         id,
         fields.name.trim(),
         fields.description,
+        fields.translations,
     )
     .execute(&mut **tx)
     .await?;
@@ -246,7 +294,7 @@ pub(crate) async fn load_category(pool: &PgPool, id: i64) -> Result<AdminCategor
                deleted_at as "deleted_at: DateTime<Utc>",
                updated_at as "updated_at: DateTime<Utc>",
                draft, draft_updated_at as "draft_updated_at: DateTime<Utc>",
-               published_at as "published_at: DateTime<Utc>"
+               published_at as "published_at: DateTime<Utc>", translations
         FROM categories WHERE id = $1
         "#,
         id
@@ -254,7 +302,7 @@ pub(crate) async fn load_category(pool: &PgPool, id: i64) -> Result<AdminCategor
     .fetch_optional(pool)
     .await?
     .ok_or(AppError::NotFound)?;
-    Ok(row.into())
+    Ok(row.into_response(keep_version(pool).await?))
 }
 
 pub async fn archive_category(
@@ -283,7 +331,7 @@ pub async fn archive_category(
                   deleted_at as "deleted_at: DateTime<Utc>",
                   updated_at as "updated_at: DateTime<Utc>",
                   draft, draft_updated_at as "draft_updated_at: DateTime<Utc>",
-                  published_at as "published_at: DateTime<Utc>"
+                  published_at as "published_at: DateTime<Utc>", translations
         "#,
         id,
         chrono_to_offset(payload.updated_at),
@@ -292,7 +340,7 @@ pub async fn archive_category(
     .await?;
 
     match row {
-        Some(row) => Ok(Json(row.into())),
+        Some(row) => Ok(Json(row.into_response(keep_version(&pool).await?))),
         None => Err(category_or_conflict(&pool, id).await),
     }
 }

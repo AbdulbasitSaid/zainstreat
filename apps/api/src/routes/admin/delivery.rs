@@ -253,6 +253,7 @@ pub async fn set_order_fee(
         body,
         reply_to: None,
         track: Some(DeliveryRef { pool: pool.clone(), order_id: Some(order.id), quote_id: None, kind: "invoice" }),
+        attachments: Vec::new(),
     });
 
     get_order(State(pool), Path(id)).await

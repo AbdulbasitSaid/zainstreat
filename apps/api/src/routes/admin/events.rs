@@ -3,6 +3,7 @@
 //! a `datetime-local` input uses), converted in SQL, so the browser's own
 //! time zone never matters.
 
+use crate::attendees::{self, AttendeesResponse, csv_field};
 use crate::email::EmailConfig;
 use crate::error::{AppError, FieldError};
 use crate::event_options::{OptionGroup, choices_summary, normalize_groups, parse_choices, validate_groups};
@@ -737,10 +738,16 @@ pub struct AdminBookingsResponse {
     pub plate_counts: Vec<PlateCount>,
     pub capacity: i32,
     pub seats_taken: i64,
+    /// Phase 38 Decision 16: the tab leads with the attendee export.
+    pub bookings_closed: bool,
 }
 
 async fn load_bookings(pool: &PgPool, event_id: i64) -> Result<AdminBookingsResponse, AppError> {
-    let event = sqlx::query!("SELECT capacity FROM events WHERE id = $1", event_id)
+    let event = sqlx::query!(
+        r#"SELECT capacity, now() >= LEAST(meal_orders_close_at, rsvp_closes_at, starts_at) as "bookings_closed!"
+           FROM events WHERE id = $1"#,
+        event_id
+    )
         .fetch_optional(pool)
         .await?
         .ok_or(AppError::NotFound)?;
@@ -836,6 +843,7 @@ async fn load_bookings(pool: &PgPool, event_id: i64) -> Result<AdminBookingsResp
         plate_counts,
         capacity: event.capacity,
         seats_taken: seats_taken(&mut conn, event_id).await?,
+        bookings_closed: event.bookings_closed,
     })
 }
 
@@ -846,14 +854,26 @@ pub async fn list_bookings(
     Ok(Json(load_bookings(&pool, id).await?))
 }
 
-fn csv_field(value: &str) -> String {
-    // A leading =, +, - or @ would run as a formula in a spreadsheet.
-    let value = if value.starts_with(['=', '+', '-', '@']) { format!("'{value}") } else { value.to_string() };
-    if value.contains([',', '"', '\n', '\r']) {
-        format!("\"{}\"", value.replace('"', "\"\""))
-    } else {
-        value
-    }
+
+/// Phase 38 Decision 13: confirmed guests, one per row, for the check-in
+/// sheet.
+pub async fn list_attendees(
+    State(pool): State<PgPool>,
+    Path(id): Path<i64>,
+) -> Result<Json<AttendeesResponse>, AppError> {
+    Ok(Json(attendees::load_attendees(&pool, id).await?))
+}
+
+/// Phase 38 Decision 14.
+pub async fn attendees_csv(State(pool): State<PgPool>, Path(id): Path<i64>) -> Result<impl IntoResponse, AppError> {
+    let data = attendees::load_attendees(&pool, id).await?;
+    Ok((
+        [
+            (header::CONTENT_TYPE, "text/csv; charset=utf-8".to_string()),
+            (header::CONTENT_DISPOSITION, format!("attachment; filename=\"{}-attendees.csv\"", data.event.slug)),
+        ],
+        attendees::attendees_csv(&data),
+    ))
 }
 
 /// The guest list for the day (Decision 18).
@@ -987,14 +1007,6 @@ pub async fn preview_event(
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn csv_quotes_and_defuses_formulas() {
-        assert_eq!(csv_field("Amina"), "Amina");
-        assert_eq!(csv_field("Abula; Jollof, extra"), "\"Abula; Jollof, extra\"");
-        assert_eq!(csv_field("=HYPERLINK(1)"), "'=HYPERLINK(1)");
-        assert_eq!(csv_field("say \"hi\""), "\"say \"\"hi\"\"\"");
-    }
 
     #[test]
     fn slugs_are_validated() {
