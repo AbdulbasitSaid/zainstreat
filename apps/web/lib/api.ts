@@ -3,6 +3,11 @@ import { previewFetchInit } from "@/lib/preview";
 import { isQuoteToken, type PublicQuote } from "@/lib/quotes";
 import type { DeliveryInfo } from "@/lib/delivery";
 import { EMPTY_SITE_CONTENT, type SiteContent } from "@/lib/site-content";
+import type { AppLocale } from "@/i18n/routing";
+
+// Phase 38 Decision 7: a menu text in every locale, English filled in
+// where a translation is missing.
+export type LocalizedText = Record<AppLocale, string>;
 
 export interface Category {
   id: number;
@@ -14,6 +19,8 @@ export interface MenuItemPriceOption {
   id: number;
   label: string;
   price: string;
+  // Phase 38 Decision 8: so the cart can switch language.
+  labels: LocalizedText;
 }
 
 export interface MenuItem {
@@ -28,6 +35,8 @@ export interface MenuItem {
   // Phase 36 Decision 2: the cart and the API enforce it.
   min_quantity: number;
   price_options: MenuItemPriceOption[];
+  // Phase 38 Decision 8: so the cart can switch language.
+  names: LocalizedText;
 }
 
 const API_BASE_URL = process.env.API_BASE_URL;
@@ -58,12 +67,18 @@ async function previewFetch<T>(path: string): Promise<T | null> {
   return (await response.json()) as T;
 }
 
-export async function getCategories(): Promise<Category[]> {
-  return (await previewFetch<Category[]>("/categories")) ?? apiFetch<Category[]>("/api/categories");
+// Names and descriptions come back in `locale` (Phase 38 Decision 7).
+export async function getCategories(locale: AppLocale): Promise<Category[]> {
+  const query = `?locale=${locale}`;
+  return (
+    (await previewFetch<Category[]>(`/categories${query}`)) ?? apiFetch<Category[]>(`/api/categories${query}`)
+  );
 }
 
-export async function getMenuItems(categoryId?: number): Promise<MenuItem[]> {
-  const query = categoryId !== undefined ? `?category_id=${categoryId}` : "";
+export async function getMenuItems(locale: AppLocale, categoryId?: number): Promise<MenuItem[]> {
+  const params = new URLSearchParams({ locale });
+  if (categoryId !== undefined) params.set("category_id", String(categoryId));
+  const query = `?${params.toString()}`;
   return (
     (await previewFetch<MenuItem[]>(`/menu-items${query}`)) ??
     apiFetch<MenuItem[]>(`/api/menu-items${query}`)
@@ -77,10 +92,11 @@ export interface Rental {
   description: string | null;
   price: string;
   image_url: string | null;
+  names: LocalizedText;
 }
 
-export async function getRentals(): Promise<Rental[]> {
-  return apiFetch<Rental[]>("/api/rentals");
+export async function getRentals(locale: AppLocale): Promise<Rental[]> {
+  return apiFetch<Rental[]>(`/api/rentals?locale=${locale}`);
 }
 
 // Phase 37 Decision 11. Fails soft to null, which checkout treats as

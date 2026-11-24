@@ -75,6 +75,8 @@ services:
       VAPID_SUBJECT: ${VAPID_SUBJECT:-}
       # Phase 37: driving distances for the delivery fee. Unset = straight-line estimate.
       MAPBOX_ACCESS_TOKEN: ${MAPBOX_ACCESS_TOKEN:-}
+      # Phase 38: DeepL for nl/fr menu text. Unset = translations typed in admin.
+      DEEPL_API_KEY: ${DEEPL_API_KEY:-}
       PUBLIC_SITE_URL: ${PUBLIC_SITE_URL:-http://localhost:3000}
       PUBLIC_ADMIN_URL: ${PUBLIC_ADMIN_URL:-http://cms.localhost:3000}
       BANK_ACCOUNT_NAME: ${BANK_ACCOUNT_NAME:-}

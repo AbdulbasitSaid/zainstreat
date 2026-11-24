@@ -67,8 +67,31 @@ export function AdminEventBookings({ eventId, initial }: { eventId: number; init
     setMessage("That didn't work. Refresh the page and try again.");
   }
 
+  // Phase 38 Decision 16: the attendee export, up front once bookings close.
+  const confirmedGuests = data.bookings
+    .filter((booking) => booking.status === "confirmed")
+    .reduce((sum, booking) => sum + booking.guests.length, 0);
+  const sheetHref = `/events/${eventId}/attendees`;
+  const attendeesCsvHref = `/api/admin/events/${eventId}/attendees.csv`;
+
   return (
     <div className="flex flex-col gap-8">
+      {data.bookings_closed && (
+        <section className="flex flex-wrap items-center justify-between gap-4 rounded-card bg-primary px-5 py-4 text-white">
+          <p className="m-0 font-semibold">
+            Registration closed — {confirmedGuests} confirmed {confirmedGuests === 1 ? "guest" : "guests"}
+          </p>
+          <div className="flex flex-wrap items-center gap-4">
+            <Link href={sheetHref} className="font-semibold text-white underline">
+              Check-in sheet (PDF)
+            </Link>
+            <a href={attendeesCsvHref} className="font-semibold text-white underline">
+              Export attendees (CSV)
+            </a>
+          </div>
+        </section>
+      )}
+
       <section className="grid gap-4 sm:grid-cols-3">
         <div className="rounded-card bg-cream p-5">
           <p className="m-0 text-sm text-text-muted">Seats taken</p>
@@ -101,9 +124,22 @@ export function AdminEventBookings({ eventId, initial }: { eventId: number; init
         <h2 className="m-0 text-xl">
           Bookings {waitlist.length > 0 && <span className="text-base text-text-muted">· {waitlist.length} on the waitlist</span>}
         </h2>
-        <a href={`/api/admin/events/${eventId}/bookings.csv`} className="text-sm font-semibold text-primary underline">
-          Download guest list (CSV)
-        </a>
+        <div className="flex flex-wrap items-center gap-4 text-sm">
+          {!data.bookings_closed && (
+            <>
+              <span className="text-text-muted">Attendees so far:</span>
+              <Link href={sheetHref} className="font-semibold text-primary underline">
+                Check-in sheet
+              </Link>
+              <a href={attendeesCsvHref} className="font-semibold text-primary underline">
+                CSV
+              </a>
+            </>
+          )}
+          <a href={`/api/admin/events/${eventId}/bookings.csv`} className="font-semibold text-primary underline">
+            Download guest list (CSV)
+          </a>
+        </div>
       </div>
 
       {data.bookings.length === 0 ? (

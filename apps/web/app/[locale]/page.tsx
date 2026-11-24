@@ -115,7 +115,9 @@ export default async function Home() {
   const heroHeadingClass = "mb-4 text-[clamp(2.5rem,5vw,4.25rem)]";
   const heroSupportingClass = "max-w-[48ch] text-[clamp(1.05rem,1.5vw,1.25rem)] text-text-muted";
 
-  const [menuItems, categories] = await Promise.all([getMenuItems(), getCategories()]);
+  // English categories: the Snacks tile is found by its English name,
+  // which a translation would change (Phase 38).
+  const [menuItems, categories] = await Promise.all([getMenuItems(locale as AppLocale), getCategories("en")]);
   const snacksCategory = categories.find((category) => category.name.trim().toLowerCase() === "snacks");
   const snacksHref = snacksCategory ? `/menu?category=${snacksCategory.id}` : "/menu";
   const featuredItems = menuItems

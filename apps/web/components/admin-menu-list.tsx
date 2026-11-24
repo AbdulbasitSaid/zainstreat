@@ -6,7 +6,8 @@ import Image from "next/image";
 import { Button } from "@/components/button";
 import { Notice } from "@/components/notice";
 import { ImageSlot } from "@/components/image-slot";
-import { AdminArchivedBadge, AdminDraftBadge } from "@/components/admin-archived-badge";
+import { AdminArchivedBadge, AdminDraftBadge, AdminTranslationBadge } from "@/components/admin-archived-badge";
+import { needsTranslation } from "@/lib/admin-translations";
 import { formatPrice } from "@/lib/format";
 import type { AdminMenuItem } from "@/lib/admin-menu-items";
 
@@ -19,6 +20,8 @@ export function AdminMenuList({ items: initialItems }: { items: AdminMenuItem[] 
   const [confirmingArchiveId, setConfirmingArchiveId] = useState<number | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // Phase 38: show only rows whose nl/fr needs the owner (or a publish).
+  const [onlyUntranslated, setOnlyUntranslated] = useState(false);
 
   function replaceItem(next: AdminMenuItem) {
     setItems((current) => current.map((item) => (item.id === next.id ? next : item)));
@@ -82,9 +85,22 @@ export function AdminMenuList({ items: initialItems }: { items: AdminMenuItem[] 
     return <p className="m-0 text-text-muted">No menu items yet.</p>;
   }
 
+  const untranslatedCount = items.filter((item) => !item.is_archived && needsTranslation(item.translation_status)).length;
+  const visibleItems = onlyUntranslated
+    ? items.filter((item) => !item.is_archived && needsTranslation(item.translation_status))
+    : items;
+
   return (
     <div className="flex flex-col gap-4">
       {notice && <Notice>{notice}</Notice>}
+      <label className="flex items-center gap-2 self-start text-sm font-semibold">
+        <input
+          type="checkbox"
+          checked={onlyUntranslated}
+          onChange={(event) => setOnlyUntranslated(event.target.checked)}
+        />
+        Needs translation only ({untranslatedCount})
+      </label>
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <thead>
@@ -99,7 +115,7 @@ export function AdminMenuList({ items: initialItems }: { items: AdminMenuItem[] 
             </tr>
           </thead>
           <tbody>
-            {items.map((item) => (
+            {visibleItems.map((item) => (
               <tr key={item.id} className="border-b border-text/10">
                 <td className="py-3 pr-4">
                   {item.image_url ? (
@@ -143,6 +159,11 @@ export function AdminMenuList({ items: initialItems }: { items: AdminMenuItem[] 
                     <AdminDraftBadge unpublished />
                   ) : (
                     item.has_draft && <AdminDraftBadge />
+                  )}
+                  {!item.is_archived && needsTranslation(item.translation_status) && (
+                    <span className="ml-1">
+                      <AdminTranslationBadge />
+                    </span>
                   )}
                 </td>
                 <td className="py-3">

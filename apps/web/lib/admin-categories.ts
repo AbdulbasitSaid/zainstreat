@@ -1,3 +1,5 @@
+import type { Translations, TranslationStatusPair } from "@/lib/admin-translations";
+
 export interface AdminCategory {
   id: number;
   name: string;
@@ -9,9 +11,13 @@ export interface AdminCategory {
   has_draft: boolean;
   draft: CategoryFields | null;
   draft_updated_at: string | null;
+  // Phase 38: live nl/fr, and the state of the version the form edits.
+  translations: Translations;
+  translation_status: TranslationStatusPair;
 }
 
 export interface CategoryFields {
   name: string;
   description: string | null;
+  translations?: Translations;
 }

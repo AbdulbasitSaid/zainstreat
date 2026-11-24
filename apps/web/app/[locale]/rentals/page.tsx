@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { PageHero } from "@/components/page-hero";
 import { ButtonAnchor } from "@/components/button";
 import { RentalBentoGrid } from "@/components/menu-bento-grid";
@@ -7,6 +7,7 @@ import { Notice } from "@/components/notice";
 import { Reveal } from "@/components/reveal";
 import { getRentals } from "@/lib/api";
 import { localeAlternates } from "@/lib/seo";
+import type { AppLocale } from "@/i18n/routing";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
 
 // The owner's edits in admin are live at once (Phase 36 Decision 9).
@@ -29,7 +30,8 @@ export async function generateMetadata({
 
 // Phase 36 Decision 10, ordered through the cart since Phase 37 Decision 2.
 export default async function RentalsPage() {
-  const [t, rentals] = await Promise.all([getTranslations("RentalsPage"), getRentals()]);
+  const locale = (await getLocale()) as AppLocale;
+  const [t, rentals] = await Promise.all([getTranslations("RentalsPage"), getRentals(locale)]);
 
   return (
     <main className="container">

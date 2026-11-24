@@ -15,7 +15,7 @@ export default async function SplashLabPage({
   if (process.env.NODE_ENV === "production") notFound();
   const { t, seed } = await searchParams;
 
-  const items = await getMenuItems();
+  const items = await getMenuItems("en");
   const seen = new Set<string>();
   const slides: SplashLabSlide[] = items.flatMap((item) => {
     if (!item.is_featured || !item.is_available || !item.image_url || seen.has(item.image_url)) return [];

@@ -30,9 +30,10 @@ export default async function ProtectedAdminLayout({
   return (
     // Safe-area padding keeps the installed app clear of the notch and home
     // indicator (Phase 27 Decision 3, viewport-fit=cover).
-    <div className="min-h-dvh pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] md:grid md:grid-cols-[15rem_1fr]">
+    <div className="min-h-dvh pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] md:grid md:grid-cols-[15rem_1fr] print:block print:min-h-0 print:p-0">
       <AdminServiceWorker badgeCount={badgeCount} />
-      <aside className="flex flex-col gap-6 border-b border-text/10 bg-background-soft/40 p-5 md:min-h-dvh md:border-b-0 md:border-r">
+      {/* The check-in sheet prints without the admin shell (Phase 38). */}
+      <aside className="print:hidden flex flex-col gap-6 border-b border-text/10 bg-background-soft/40 p-5 md:min-h-dvh md:border-b-0 md:border-r">
         <p className="m-0 text-base font-semibold text-primary">Zain&apos;s Admin</p>
         <AdminNav changesCount={changes.count} />
         <div className="flex flex-col items-start gap-3 pt-4 md:mt-auto">
@@ -40,7 +41,7 @@ export default async function ProtectedAdminLayout({
           <AdminLogoutButton />
         </div>
       </aside>
-      <main className="p-5 md:p-10">{children}</main>
+      <main className="p-5 md:p-10 print:p-0">{children}</main>
     </div>
   );
 }

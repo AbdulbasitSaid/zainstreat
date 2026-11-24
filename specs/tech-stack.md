@@ -635,6 +635,34 @@ or recreated repo can't match.
   business origin never reaches the browser. The fee is always
   recomputed server-side when the order is placed.
 
+## Menu Translation (Phase 38)
+
+- **DeepL API** (`POST /v2/translate`, key in `DEEPL_API_KEY`; a `:fx`
+  key uses `api-free.deepl.com`), called from the API with the existing
+  `reqwest`. It translates menu item, category, price-option and rental
+  text from English to Dutch and French when the owner saves, plus a
+  five-minute sweep that backfills and retries. Results are stored per
+  locale in a `translations` JSONB column next to the English columns
+  (the events `content` pattern). Owner edits are marked `manual` and
+  never overwritten. Chosen over owner-typed translations because the
+  owner writes English only, and over Google Translate and LLM APIs
+  because DeepL is EU-hosted, has a free tier that covers this menu
+  (DeepL API Free, 1,000,000 characters), and supports XML `ignore_tags`, which
+  keeps dish names (an admin "Words to keep" list) untranslated without
+  needing glossaries.
+- **DeepL is never in the request path for customers.** Public menu
+  responses read stored translations (English fallback). A DeepL outage
+  only delays new translations.
+- **DeepL API Free** (no card, no subscription). The user confirmed
+  commercial use is allowed, with a 1,000,000-character allowance. Google
+  Cloud Translation was rejected because even its free tier needs a Google
+  Cloud billing account, and the keyless endpoint is unofficial.
+- **The allowance is enforced in code, not estimated:** live usage from
+  DeepL's `/v2/usage`, an admin-set stop line (default 80 %), per-save and
+  per-run character caps, no retry loops, an owner on/off switch, and fail
+  closed when usage is unknown. Past the stop line the owner types Dutch
+  and French, and English is the fallback.
+
 ## Summary Table
 
 | Concern | Choice |
@@ -664,3 +692,4 @@ or recreated repo can't match.
 | Reverse proxy / TLS | Caddy (automatic HTTPS) |
 | Security & privacy | Caddy security headers + CSP, login limiter + lockout, admin Origin check, retention sweeper, admin Privacy tool, CI dependency audits (Phase 33) |
 | Delivery fee | PDOK Locatieserver (address lookup) + Mapbox Directions API (driving distance, haversine fallback), proxied by the API; admin-set rate/minimum/max in `delivery_settings` (Phase 37) |
+| Menu translation | DeepL API (EN → NL/FR) from the API on save + five-minute backfill sweep; stored in `translations` JSONB with English fallback and owner overrides; allowance guard with an 80 % stop line (Phase 38) |

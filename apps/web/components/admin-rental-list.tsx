@@ -6,6 +6,8 @@ import { Button } from "@/components/button";
 import { Notice } from "@/components/notice";
 import { formatPrice } from "@/lib/format";
 import type { AdminRental, RentalFields } from "@/lib/admin-rentals";
+import { AdminTranslationBadge } from "@/components/admin-archived-badge";
+import { needsTranslation } from "@/lib/admin-translations";
 
 const LINK_CLASSES =
   "text-sm font-semibold text-primary underline focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-accent focus-visible:outline-offset-2";
@@ -18,6 +20,7 @@ function fieldsOf(rental: AdminRental): RentalFields {
     image_url: rental.image_url,
     is_available: rental.is_available,
     display_order: rental.display_order,
+    translations: rental.translations,
   };
 }
 
@@ -83,7 +86,14 @@ export function AdminRentalList({ rentals: initialRentals }: { rentals: AdminRen
             {rentals.map((rental) => (
               <tr key={rental.id} className="border-b border-text/10">
                 <td className="py-3 pr-4 text-text-muted">{rental.display_order}</td>
-                <td className="py-3 pr-4 font-semibold">{rental.name}</td>
+                <td className="py-3 pr-4 font-semibold">
+                  {rental.name}
+                  {needsTranslation(rental.translation_status) && (
+                    <span className="ml-2">
+                      <AdminTranslationBadge />
+                    </span>
+                  )}
+                </td>
                 <td className="py-3 pr-4">{formatPrice(rental.price)}</td>
                 <td className="py-3 pr-4">
                   <label className="flex items-center gap-2">

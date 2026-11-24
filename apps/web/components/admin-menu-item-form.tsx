@@ -7,6 +7,7 @@ import { Notice } from "@/components/notice";
 import { AdminImageUpload } from "@/components/admin-image-upload";
 import { AdminDraftBar, AdminDraftStatus } from "@/components/admin-draft-bar";
 import { useRefreshPreview } from "@/components/admin-preview-panel";
+import { AdminTranslationTabs, useTranslationSettings } from "@/components/admin-translation-tabs";
 import {
   AdminPriceOptionsEditor,
   type PriceOptionsValue,
@@ -14,6 +15,7 @@ import {
 import { discardDraft, publishEntries } from "@/lib/admin-drafts";
 import type { AdminCategory } from "@/lib/admin-categories";
 import type { AdminMenuItem, MenuItemFields } from "@/lib/admin-menu-items";
+import type { Translations, TranslationStatusPair } from "@/lib/admin-translations";
 import { putDraft, useAutosaveDraft } from "@/lib/use-autosave-draft";
 
 interface FieldErrorItem {
@@ -53,6 +55,15 @@ export function AdminMenuItemForm({
     price_options: startOptions,
   });
   const [imageUrl, setImageUrl] = useState<string | null>(start.image_url ?? null);
+  // Phase 38: nl/fr for the item and, by position, each price option.
+  const [translations, setTranslations] = useState<Translations>(start.translations ?? {});
+  const [optionTranslations, setOptionTranslations] = useState<Translations[]>(
+    start.price_options?.map((option) => option.translations ?? {}) ?? [],
+  );
+  const [translationStatus, setTranslationStatus] = useState<TranslationStatusPair | undefined>(
+    initialValue?.translation_status,
+  );
+  const translationSettings = useTranslationSettings();
   const [fieldErrors, setFieldErrors] = useState<FieldErrorItem[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [pending, setPending] = useState(initialValue ? initialValue.has_draft || !initialValue.is_published : false);
@@ -74,14 +85,16 @@ export function AdminMenuItemForm({
     name,
     description: description.trim() === "" ? null : description,
     price: pricing.price === null ? null : pricing.price.trim() === "" ? "0" : pricing.price,
-    price_options: pricing.price_options.map((option) => ({
+    price_options: pricing.price_options.map((option, index) => ({
       label: option.label,
       price: option.price.trim() === "" ? "0" : option.price,
+      translations: optionTranslations[index] ?? {},
     })),
     image_url: imageUrl,
     is_featured: isFeatured,
     // Blank or not a number → 0, so the API's own range error shows inline.
     min_quantity: Number.parseInt(minQuantity, 10) || 0,
+    translations,
   };
 
   const autosave = useAutosaveDraft({
@@ -95,7 +108,8 @@ export function AdminMenuItemForm({
         draft_updated_at: draftUpdatedAt,
       }),
     initialDraftUpdatedAt: initialValue?.draft_updated_at ?? null,
-    onSaved: () => {
+    onSaved: (saved) => {
+      setTranslationStatus(saved.translation_status);
       setFieldErrors([]);
       setPending(true);
       refreshPreview();
@@ -183,32 +197,56 @@ export function AdminMenuItemForm({
         </Notice>
       )}
 
-      <div>
-        <label htmlFor="menu-item-name" className="mb-1.5 block text-sm font-semibold">
-          Name
-        </label>
-        <input
-          id="menu-item-name"
-          type="text"
-          className="field"
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-        />
-        {fieldError("name") && <p className="m-0 mt-1 text-sm text-primary-dark">Name is required.</p>}
-      </div>
+      <AdminTranslationTabs
+        idPrefix="menu-item"
+        english={{ name, description }}
+        englishFields={
+          <>
+        <div>
+          <label htmlFor="menu-item-name" className="mb-1.5 block text-sm font-semibold">
+            Name
+          </label>
+          <input
+            id="menu-item-name"
+            type="text"
+            className="field"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+          />
+          {fieldError("name") && <p className="m-0 mt-1 text-sm text-primary-dark">Name is required.</p>}
+        </div>
 
-      <div>
-        <label htmlFor="menu-item-description" className="mb-1.5 block text-sm font-semibold">
-          Description
-        </label>
-        <textarea
-          id="menu-item-description"
-          className="field"
-          rows={3}
-          value={description}
-          onChange={(event) => setDescription(event.target.value)}
-        />
-      </div>
+        <div>
+          <label htmlFor="menu-item-description" className="mb-1.5 block text-sm font-semibold">
+            Description
+          </label>
+          <textarea
+            id="menu-item-description"
+            className="field"
+            rows={3}
+            value={description}
+            onChange={(event) => setDescription(event.target.value)}
+          />
+        </div>
+          </>
+        }
+        translations={translations}
+        onChange={setTranslations}
+        options={pricing.price_options.map((option, index) => ({
+          label: option.label,
+          translations: optionTranslations[index] ?? {},
+        }))}
+        onOptionChange={(index, next) =>
+          setOptionTranslations((current) => {
+            const updated = [...current];
+            updated[index] = next;
+            return updated;
+          })
+        }
+        status={translationStatus}
+        fillsOn="publish"
+        settings={translationSettings}
+      />
 
       <div>
         <label htmlFor="menu-item-category" className="mb-1.5 block text-sm font-semibold">

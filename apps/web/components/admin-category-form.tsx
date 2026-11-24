@@ -6,8 +6,10 @@ import { Button } from "@/components/button";
 import { Notice } from "@/components/notice";
 import { AdminDraftBar, AdminDraftStatus } from "@/components/admin-draft-bar";
 import { useRefreshPreview } from "@/components/admin-preview-panel";
+import { AdminTranslationTabs, useTranslationSettings } from "@/components/admin-translation-tabs";
 import { discardDraft, publishEntries } from "@/lib/admin-drafts";
 import type { AdminCategory, CategoryFields } from "@/lib/admin-categories";
+import type { Translations, TranslationStatusPair } from "@/lib/admin-translations";
 import { putDraft, useAutosaveDraft } from "@/lib/use-autosave-draft";
 
 interface FieldErrorItem {
@@ -29,6 +31,12 @@ export function AdminCategoryForm({ initialValue }: { initialValue?: AdminCatego
   const start: Partial<CategoryFields> = initialValue?.draft ?? initialValue ?? {};
   const [name, setName] = useState(start.name ?? "");
   const [description, setDescription] = useState(start.description ?? "");
+  // Phase 38: the form edits the draft's nl/fr when there is a draft.
+  const [translations, setTranslations] = useState<Translations>(start.translations ?? {});
+  const [translationStatus, setTranslationStatus] = useState<TranslationStatusPair | undefined>(
+    initialValue?.translation_status,
+  );
+  const translationSettings = useTranslationSettings();
   const [fieldErrors, setFieldErrors] = useState<FieldErrorItem[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [pending, setPending] = useState(initialValue ? initialValue.has_draft || !initialValue.is_published : false);
@@ -37,7 +45,7 @@ export function AdminCategoryForm({ initialValue }: { initialValue?: AdminCatego
     return fieldErrors.find((error) => error.field === field)?.message;
   }
 
-  const fields: CategoryFields = { name, description: description.trim() === "" ? null : description };
+  const fields: CategoryFields = { name, description: description.trim() === "" ? null : description, translations };
 
   const autosave = useAutosaveDraft({
     value: fields,
@@ -48,7 +56,8 @@ export function AdminCategoryForm({ initialValue }: { initialValue?: AdminCatego
         draft_updated_at: draftUpdatedAt,
       }),
     initialDraftUpdatedAt: initialValue?.draft_updated_at ?? null,
-    onSaved: () => {
+    onSaved: (saved) => {
+      setTranslationStatus(saved.translation_status);
       setFieldErrors([]);
       setPending(true);
       refreshPreview();
@@ -124,32 +133,45 @@ export function AdminCategoryForm({ initialValue }: { initialValue?: AdminCatego
         </Notice>
       )}
 
-      <div>
-        <label htmlFor="category-name" className="mb-1.5 block text-sm font-semibold">
-          Name
-        </label>
-        <input
-          id="category-name"
-          type="text"
-          className="field"
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-        />
-        {fieldError("name") && <p className="m-0 mt-1 text-sm text-primary-dark">Name is required.</p>}
-      </div>
+      <AdminTranslationTabs
+        idPrefix="category"
+        english={{ name, description }}
+        englishFields={
+          <>
+        <div>
+          <label htmlFor="category-name" className="mb-1.5 block text-sm font-semibold">
+            Name
+          </label>
+          <input
+            id="category-name"
+            type="text"
+            className="field"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+          />
+          {fieldError("name") && <p className="m-0 mt-1 text-sm text-primary-dark">Name is required.</p>}
+        </div>
 
-      <div>
-        <label htmlFor="category-description" className="mb-1.5 block text-sm font-semibold">
-          Description
-        </label>
-        <textarea
-          id="category-description"
-          className="field"
-          rows={3}
-          value={description}
-          onChange={(event) => setDescription(event.target.value)}
-        />
-      </div>
+        <div>
+          <label htmlFor="category-description" className="mb-1.5 block text-sm font-semibold">
+            Description
+          </label>
+          <textarea
+            id="category-description"
+            className="field"
+            rows={3}
+            value={description}
+            onChange={(event) => setDescription(event.target.value)}
+          />
+        </div>
+          </>
+        }
+        translations={translations}
+        onChange={setTranslations}
+        status={translationStatus}
+        fillsOn="publish"
+        settings={translationSettings}
+      />
 
       {initialValue ? (
         <AdminDraftBar

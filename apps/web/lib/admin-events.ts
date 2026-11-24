@@ -151,6 +151,42 @@ export interface AdminBookings {
   plate_counts: PlateCount[];
   capacity: number;
   seats_taken: number;
+  // Phase 38 Decision 16: the tab leads with the attendee export.
+  bookings_closed: boolean;
+}
+
+// Phase 38 Decisions 13, 15: confirmed guests, one per row.
+export interface Attendee {
+  booker_name: string;
+  guest_no: number;
+  party_size: number;
+  plate_name: string | null;
+  choices: string;
+  phone: string;
+  note: string | null;
+  payment_reference: string | null;
+}
+
+export interface AttendeePlateCount {
+  plate_name: string | null;
+  choices: string;
+  count: number;
+}
+
+export interface AdminAttendees {
+  event: {
+    id: number;
+    slug: string;
+    title: string;
+    starts_at: string;
+    starts_at_label: string;
+    area: string;
+    bookings_closed: boolean;
+    bookings_close_at: string;
+  };
+  guests: Attendee[];
+  plate_counts: AttendeePlateCount[];
+  confirmed_guests: number;
 }
 
 export const BOOKING_STATUS_LABELS: Record<AdminBookingStatus, string> = {

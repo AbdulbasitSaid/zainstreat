@@ -5,6 +5,11 @@ import { getAdminDeliverySettings, getAdminOrdersSummary } from "@/lib/admin-ord
 import { AdminAutoRefresh, NewOrderHighlight } from "@/components/admin-auto-refresh";
 import { AdminStatusBadge } from "@/components/admin-status-badge";
 import { formatDateTime, formatPrice } from "@/lib/format";
+import { adminApiJson } from "@/lib/admin-api";
+import type { TranslationSettingsStatus } from "@/lib/admin-translations";
+
+// Phase 38 Decision 20: warn well before the stop line.
+const TRANSLATION_WARN_SHARE = 0.6;
 
 export const metadata: Metadata = {
   title: "Dashboard | Zain's Admin",
@@ -24,7 +29,15 @@ const DASHBOARD_STATUSES: OrderStatus[] = [
 ];
 
 export default async function AdminDashboardPage() {
-  const [summary, delivery] = await Promise.all([getAdminOrdersSummary(), getAdminDeliverySettings()]);
+  const [summary, delivery, translations] = await Promise.all([
+    getAdminOrdersSummary(),
+    getAdminDeliverySettings(),
+    // A failed status read only hides the notice.
+    adminApiJson<TranslationSettingsStatus>("/api/admin/translations/status").catch(() => null),
+  ]);
+  const translationUsage = translations?.usage;
+  const translationShare =
+    translationUsage && translationUsage.limit > 0 ? translationUsage.count / translationUsage.limit : 0;
 
   return (
     <AdminAutoRefresh recentOrderIds={summary.recent.map((order) => order.id)} claimedIds={summary.claimed_ids}>
@@ -39,6 +52,16 @@ export default async function AdminDashboardPage() {
               Settings
             </Link>{" "}
             and switch it on.
+          </p>
+        )}
+
+        {translationShare >= TRANSLATION_WARN_SHARE && (
+          <p className="m-0 rounded-card bg-accent-light px-5 py-4">
+            DeepL translation allowance {Math.round(translationShare * 100)}% used — see{" "}
+            <Link href="/settings#translations" className="font-semibold text-primary underline">
+              Settings
+            </Link>
+            .
           </p>
         )}
 
